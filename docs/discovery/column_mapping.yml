@@ -1,0 +1,239 @@
+workbook: "marketing_spend_workbook.xlsx"
+discovery_status: "proposed_mapping_with_open_questions"
+inspected_without_modifying_workbook: true
+
+sheets:
+  invoices:
+    actual_sheet_name: "Marketing Spend Input"
+    visibility: "visible"
+    model: "Invoice"
+    purpose: "Primary actual invoice/spend source"
+    header_row: 1
+    data_start_row: 2
+    data_end_row: 52
+    non_empty_data_rows: 51
+    hidden_columns:
+      - "K"
+    columns:
+      year: "Year"
+      month_label: "Month"
+      cost_center: "Cost Center"
+      team: "MKT Team"
+      sub_team: "Sub Team"
+      requester_name: "Requester"
+      category: "Budget Line"
+      campaign_name: "Campaign Name"
+      business_section: "Business Section"
+      vendor_name: "Vendor Name"
+      description: "Description"
+      invoice_date_jalali_serial: "invoice date in Jalali"
+      invoice_date_gregorian_serial: "invoice date in gregorian"
+      invoice_number: "Invoice Number"
+      amount: "Invoice Amount (IRR)"
+      action_cost_amount: "Action Cost (iRR)"
+      tax_amount: "Tax Amount (IRR)"
+      insurance_rate: "Insurance Rate"
+      insurance_amount: "Insurance Amount (IRR)"
+      paid_amount: "Paid (IRR)"
+      mkt_confirmation_stage: "MKT Confirmation stage"
+      finance_sent_date_jalali_serial: "MKT to Finance sent date"
+      finance_sent_date_gregorian_serial: "MKT to Finance sent date in gregorian"
+      payment_stage: "payment state"
+      lead_time: "lead Time"
+      jalali_invoice_date_text_candidate: "blank_AC"
+    derived_values:
+      currency: "IRR"
+      cost_bucket:
+        default: "TEAM"
+        rules:
+          - bucket: "REFERRAL"
+            when_any_source_column_contains:
+              - "referral"
+              - "ریفرال"
+            source_columns:
+              - "MKT Team"
+              - "Sub Team"
+              - "Budget Line"
+              - "Vendor Name"
+              - "Description"
+            evidence:
+              - "Marketing Spend Input rows 18 and 39 contain Referral/referral/ریفرال values."
+          - bucket: "SMS"
+            when_any_source_column_contains:
+              - "SMS"
+              - "پیامک"
+              - "اس ام اس"
+            source_columns:
+              - "MKT Team"
+              - "Sub Team"
+              - "Budget Line"
+              - "Vendor Name"
+              - "Description"
+            evidence:
+              - "No SMS invoice rows were found in Marketing Spend Input during discovery."
+              - "SMS values were found in Budget and Data sheets, so the rule should exist for future rows."
+      payment_stage_mapping:
+        Paid: "PAID"
+        Finance: "FINANCE_REVIEW"
+      mkt_confirmation_stage_values_seen:
+        - "Done"
+    values_seen:
+      payment_state:
+        Paid: 39
+        Finance: 12
+      mkt_confirmation_stage:
+        Done: 51
+      teams:
+        Growth: 19
+        "Team Beta": 16
+        Brand: 7
+        "Ops & Analytics": 7
+        Referral: 2
+      campaign_name:
+        "on going": 51
+    missing_or_unmapped_model_fields:
+      due_date: null
+      paid_at: null
+      created_by: null
+      updated_by: null
+      invoice_attachment_files: null
+      payment_proof_files: null
+    idempotency_candidate:
+      preferred_key:
+        - "Invoice Number"
+        - "Vendor Name"
+      risk: "Invoice number 1 with vendor Sample Vendor Co. (ریفرال) appears twice, so this key is not always unique."
+      fallback_key_candidates:
+        - ["Invoice Number", "Vendor Name", "invoice date in gregorian"]
+        - ["Invoice Number", "Vendor Name", "source_row_number"]
+
+  budget:
+    actual_sheet_name: "Budget"
+    visibility: "visible"
+    model: "BudgetLine"
+    purpose: "Primary planned budget source, stored in wide monthly projection/actual columns"
+    header_row: 18
+    month_header_row: 17
+    quarter_header_row: 16
+    data_start_row: 19
+    data_end_row: 175
+    summary_rows:
+      - "Rows 2-14 contain total/team/referral summary values and should not be imported as normal BudgetLine rows."
+      - "Rows 15-18 contain cash-flow/quarter/month/column headers."
+    row_context_columns:
+      team: "Team"
+      sub_team: "Sub Team"
+      team_lead: "Team Lead"
+      org_vertical: "Org. Vertical"
+      category_or_title: "Title"
+      description: "Description"
+      currency: "Unit Price"
+      total_projection: "Total projection"
+      total_actual: "Total Actual"
+    budget_line_mapping:
+      year: 1405
+      month: "Derived from month_header_row labels."
+      team: "Team"
+      campaign_name: null
+      category: "Title"
+      planned_amount: "Monthly projection column for the derived month."
+      currency: "Unit Price"
+      raw_description: "Description"
+      actual_amount_reference: "Monthly Actual column for the derived month, for validation/reporting only unless explicitly imported."
+    monthly_columns:
+      - month_number: 1
+        month_label: "FarVardin"
+        projection_column: "J"
+        actual_column: "K"
+      - month_number: 2
+        month_label: "Ordibehesht"
+        projection_column: "L"
+        actual_column: "M"
+      - month_number: 3
+        month_label: "Khordad"
+        projection_column: "N"
+        actual_column: "O"
+      - month_number: 4
+        month_label: "Tir"
+        projection_column: "P"
+        actual_column: "Q"
+      - month_number: 5
+        month_label: "Mordad"
+        projection_column: "R"
+        actual_column: "S"
+      - month_number: 6
+        month_label: "Shahrivar"
+        projection_column: "T"
+        actual_column: "U"
+      - month_number: 7
+        month_label: "Mehr"
+        projection_column: "V"
+        actual_column: "W"
+      - month_number: 8
+        month_label: "Aban"
+        projection_column: "X"
+        actual_column: "Y"
+      - month_number: 9
+        month_label: "Azar"
+        projection_column: "Z"
+        actual_column: "AA"
+      - month_number: 10
+        month_label: "Dey"
+        projection_column: "AB"
+        actual_column: "AC"
+      - month_number: 11
+        month_label: "Bahman"
+        projection_column: "AD"
+        actual_column: "AE"
+      - month_number: 12
+        month_label: "Esfand"
+        projection_column: "AF"
+        actual_column: "AG"
+    special_cost_buckets:
+      referral:
+        evidence:
+          - "Budget row 4 contains referral summary values."
+          - "Budget rows 33, 34, 45, 46, and 56 contain referral line items."
+      sms:
+        evidence:
+          - "Budget rows 70-85 contain SMS/Retention, SMS/Micro Campaign, SMS/BigCampaign, SMS/Product, and SMS/OtherTeam values."
+    missing_or_unmapped_model_fields:
+      campaign_name: null
+
+  market_live_spending:
+    actual_sheet_name: "Market Live Spending"
+    visibility: "visible"
+    model: null
+    purpose: "Formula-derived summary/dashboard sheet, not a primary import source"
+    header_row: 1
+    notes:
+      - "Rows are grouped by team with Title values such as projection, Actual, Remaining, and Deviation."
+      - "Monthly columns run from Farvardin through Esfand with a Total column."
+      - "This sheet should be used for validation/reference only unless the product owner confirms it is an import source."
+
+  lookup_data:
+    actual_sheet_name: "Data"
+    visibility: "visible"
+    model: "Reference data"
+    purpose: "Lookup/reference sheet for requesters, vendors, titles, months, and sub teams"
+    header_row: 1
+    columns:
+      requester_name: "requester"
+      vendor_name: "Vendor List"
+      unique_vendor_name: "Vendor list unique"
+      title: "Title"
+      unique_title: "Title list unique"
+      month_label: "Month list"
+      sub_team: "sub team"
+    import_use:
+      - "Seed or validate Vendor names."
+      - "Seed or validate category/title values."
+      - "Seed or validate month and sub-team values."
+
+open_questions:
+  - "Should Budget.Title map to category, campaign, or both? Proposed mapping uses category and leaves campaign_name unmapped."
+  - "Should Budget monthly Actual columns be imported, or should actual spend always come from Marketing Spend Input invoices?"
+  - "How should duplicate invoice number/vendor rows be handled for idempotent import?"
+  - "Should blank_AC in Marketing Spend Input be treated as the canonical Jalali invoice date text?"
+  - "What is the intended meaning of Action Cost (iRR) compared with Invoice Amount (IRR)?"
+  - "Where should SMS actual spend come from if it is not present in Marketing Spend Input invoice rows?"

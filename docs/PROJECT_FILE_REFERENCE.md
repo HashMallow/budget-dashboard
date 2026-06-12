@@ -1,0 +1,899 @@
+# Project File Reference
+
+This document explains the project structure and what each important file does.
+
+It focuses on source files, project configuration, discovery outputs, and workflow files. It does not list every generated file inside `.venv/`, `__pycache__/`, `.pytest_cache/`, or `.ruff_cache/`.
+
+## Visual Map
+
+```text
+Alireza/
+|
+|-- Makefile                         Local command pipeline
+|-- README.md                        Quick start guide
+|-- manage.py                        Django command entrypoint
+|-- requirements.txt                 Python dependencies
+|-- pyproject.toml                   Test/lint configuration
+|-- .env.example                     Example environment variables
+|-- .gitignore                       Files Git should ignore
+|
+|-- config/                          Django project settings
+|   |-- settings.py
+|   |-- urls.py
+|   |-- asgi.py
+|   |-- wsgi.py
+|   `-- __init__.py
+|
+|-- marketing/                       Main Django app
+|   |-- models.py                    Database schema
+|   |-- admin.py                     Django Admin panel setup
+|   |-- permissions.py               Server-side RBAC helpers
+|   |-- views.py                     Web views
+|   |-- urls.py                      App routes
+|   |-- apps.py                      App config
+|   |-- importers/
+|   |   |-- excel.py                 Excel import service
+|   |   `-- __init__.py
+|   |-- management/commands/
+|   |   |-- bootstrap_dev_admin.py   Local admin shortcut
+|   |   |-- import_marketing_excel.py Excel import command
+|   |   |-- seed_auth_groups.py      Create auth groups
+|   |   `-- __init__.py
+|   |-- migrations/
+|   |   |-- 0001_initial.py          Initial database schema migration
+|   |   `-- __init__.py
+|   `-- tests/
+|       |-- test_permissions.py
+|       |-- test_excel_importer.py
+|       `-- __init__.py
+|
+|-- templates/
+|   `-- marketing/dashboard.html     Placeholder dashboard page
+|
+|-- docs/
+|   |-- CURRENT_STATE_AND_RUN_GUIDE.md
+|   |-- PROJECT_FILE_REFERENCE.md
+|   |-- discovery/
+|   |   |-- audio_transcript.fa.md
+|   |   |-- audio_summary.en.md
+|   |   |-- audio_requirements.en.md
+|   |   |-- workbook_structure.md
+|   |   |-- workbook_sample_rows.md
+|   |   |-- column_mapping.yml
+|   |   |-- import_risks.md
+|   |   `-- audio.wav
+|   `-- product/spec docs...
+|
+|-- .agents/
+|   `-- skills/audio-transcription/  Reusable Codex transcription skill
+|
+|-- data/                            Optional workbook drop folder
+|-- imports/                         Optional workbook drop folder
+`-- tools/                           Discovery helper scripts
+```
+
+## Root Files
+
+### `Makefile`
+
+Local command pipeline so you do not need to remember long Django commands.
+
+Important commands:
+
+```bash
+make setup
+make dev-admin
+make import-dry-run
+make import
+make run
+make panel
+make first-run
+make check
+```
+
+This is the easiest way to run the project locally.
+
+### `README.md`
+
+Short quick-start guide. It links to the more detailed guide files.
+
+Use this when you only need the basic commands.
+
+### `manage.py`
+
+Django command entrypoint.
+
+Examples:
+
+```bash
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py import_marketing_excel
+.venv/bin/python manage.py runserver
+```
+
+Most of the time, use `make ...` instead.
+
+### `requirements.txt`
+
+Python package dependencies.
+
+Includes:
+
+```text
+Django
+pandas
+openpyxl
+Pillow
+PyYAML
+reportlab
+pytest
+pytest-django
+ruff
+```
+
+### `pyproject.toml`
+
+Configuration for:
+
+```text
+ruff
+pytest
+```
+
+It sets the Django settings module for tests and excludes generated/support directories from linting.
+
+### `.env.example`
+
+Example environment variables.
+
+Current examples:
+
+```text
+DJANGO_DEBUG=true
+DJANGO_SECRET_KEY=
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+DJANGO_DEFAULT_CURRENCY=IRR
+```
+
+This is a template only. Real secrets should go in `.env` or server environment variables later.
+
+### `.gitignore`
+
+Prevents generated/local files from being committed.
+
+Examples:
+
+```text
+.venv/
+db.sqlite3
+media/
+staticfiles/
+__pycache__/
+docs/discovery/audio.wav
+```
+
+## Django Project: `config/`
+
+### `config/settings.py`
+
+Main Django configuration.
+
+Controls:
+
+```text
+Installed apps
+Middleware
+Templates
+SQLite database
+Static files
+Media files
+Timezone
+Login URLs
+Default currency
+```
+
+Right now the project uses SQLite for local development.
+
+### `config/urls.py`
+
+Top-level URL routing.
+
+Current routes:
+
+```text
+/admin/  -> Django Admin
+/        -> marketing app URLs
+```
+
+### `config/asgi.py`
+
+ASGI entrypoint for async-capable servers.
+
+You usually do not touch this during normal development.
+
+### `config/wsgi.py`
+
+WSGI entrypoint for production servers like Gunicorn.
+
+This will matter later during deployment.
+
+### `config/__init__.py`
+
+Marks `config/` as a Python package.
+
+Usually empty.
+
+## Django App: `marketing/`
+
+### `marketing/models.py`
+
+Core database models.
+
+Models currently defined:
+
+```text
+Team
+Vendor
+Campaign
+BudgetLine
+Invoice
+InvoiceAttachment
+UserTeamAccess
+InvoiceStatusHistory
+```
+
+Important behavior:
+
+```text
+Invoice payment stage changes create InvoiceStatusHistory rows.
+Paid invoices set paid_at automatically.
+Vendors use normalized names to avoid duplicates.
+Invoices preserve source sheet/source row/raw row JSON.
+```
+
+### `marketing/admin.py`
+
+Django Admin panel configuration.
+
+Controls how models appear in `/admin/`:
+
+```text
+List columns
+Filters
+Search fields
+Inline invoice attachments
+Inline invoice status history
+Autocomplete fields
+```
+
+This is why imported invoices, budget lines, vendors, teams, and access rules are visible in the panel.
+
+### `marketing/permissions.py`
+
+Central server-side access-control helpers.
+
+Important functions:
+
+```text
+get_user_scope(user)
+filter_invoices_for_user(queryset, user)
+filter_budget_lines_for_user(queryset, user)
+filter_campaigns_for_user(queryset, user)
+can_edit_invoice(user, invoice)
+can_upload_invoice_file(user, invoice)
+can_upload_payment_proof(user, invoice)
+can_export(user)
+```
+
+These will be used by the custom UI so users only see permitted data.
+
+### `marketing/views.py`
+
+Current web views.
+
+Right now it has one placeholder dashboard view:
+
+```text
+/
+```
+
+The real dashboard UI will expand here or in additional view modules later.
+
+### `marketing/urls.py`
+
+Routes for the `marketing` app.
+
+Currently:
+
+```text
+"" -> dashboard placeholder
+```
+
+Later this will include routes like:
+
+```text
+/invoices/
+/vendors/
+/campaigns/
+/reports/
+/imports/
+```
+
+### `marketing/apps.py`
+
+Django app configuration.
+
+Defines:
+
+```text
+MarketingConfig
+```
+
+Usually this file stays simple.
+
+### `marketing/__init__.py`
+
+Marks `marketing/` as a Python package.
+
+Usually empty.
+
+## Importer: `marketing/importers/`
+
+### `marketing/importers/excel.py`
+
+Reusable Excel import service.
+
+This is the core import logic called by the management command.
+
+It does:
+
+```text
+1. Finds workbook when --file is not supplied.
+2. Reads docs/discovery/column_mapping.yml.
+3. Opens XLSX with openpyxl.
+4. Imports invoice rows.
+5. Imports budget rows.
+6. Creates teams/vendors/campaigns as needed.
+7. Preserves raw row JSON.
+8. Supports dry-run mode.
+9. Reports skipped rows with reasons.
+10. Re-runs idempotently: updates existing rows instead of duplicating.
+```
+
+Important discovery-specific behavior:
+
+```text
+Marketing Spend Input -> Invoice
+Budget -> BudgetLine
+Duplicate invoice number/vendor rows fall back to source sheet + row number
+Referral rows map to cost_bucket=REFERRAL
+Paid maps to PAID
+Finance maps to FINANCE_REVIEW
+```
+
+### `marketing/importers/__init__.py`
+
+Marks `importers/` as a Python package.
+
+Usually empty.
+
+## Management Commands
+
+### `marketing/management/commands/bootstrap_dev_admin.py`
+
+Creates or updates a local development admin user.
+
+Used by:
+
+```bash
+make dev-admin
+make panel
+make first-run
+```
+
+Default local login:
+
+```text
+admin / admin12345
+```
+
+Safety behavior:
+
+```text
+Refuses to run when DEBUG=False.
+```
+
+This prevents the easy local password command from being used in production.
+
+### `marketing/management/commands/import_marketing_excel.py`
+
+Command wrapper around the Excel importer service.
+
+Used by:
+
+```bash
+make import-dry-run
+make import
+```
+
+Raw examples:
+
+```bash
+.venv/bin/python manage.py import_marketing_excel --dry-run
+.venv/bin/python manage.py import_marketing_excel
+.venv/bin/python manage.py import_marketing_excel --file ./imports/my-file.xlsx
+```
+
+It prints:
+
+```text
+Detected sheets
+Selected invoice mapping
+Selected budget mapping
+Created/updated/skipped counts
+Skipped-row reasons
+```
+
+### `marketing/management/commands/seed_auth_groups.py`
+
+Creates baseline Django auth groups:
+
+```text
+Admin
+Manager
+Editor
+Observer
+```
+
+Used by:
+
+```bash
+make setup
+```
+
+### `marketing/management/__init__.py`
+
+Marks `management/` as a Python package.
+
+Required for Django to discover custom commands.
+
+### `marketing/management/commands/__init__.py`
+
+Marks `commands/` as a Python package.
+
+Required for Django to discover custom commands.
+
+## Migrations
+
+### `marketing/migrations/0001_initial.py`
+
+Initial database schema generated by Django.
+
+Creates tables for:
+
+```text
+Team
+Vendor
+Campaign
+BudgetLine
+Invoice
+InvoiceAttachment
+UserTeamAccess
+InvoiceStatusHistory
+```
+
+Do not edit this manually unless there is a very specific migration reason.
+
+### `marketing/migrations/__init__.py`
+
+Marks `migrations/` as a Python package.
+
+Usually empty.
+
+## Tests
+
+### `marketing/tests/test_permissions.py`
+
+Tests role/scope behavior and invoice payment-stage history.
+
+Examples:
+
+```text
+Admin can see all invoices.
+Team editor only sees own team invoices.
+Observer cannot edit invoices.
+Referral/SMS requires explicit access or global access.
+Payment stage changes create history rows.
+```
+
+### `marketing/tests/test_excel_importer.py`
+
+Tests the Excel importer with a generated mini workbook.
+
+Covers:
+
+```text
+Invoice import
+Budget line import
+Dry-run behavior
+Duplicate invoice number/vendor handling
+Re-import updates instead of duplicating
+Referral bucket detection
+Payment stage mapping
+```
+
+### `marketing/tests/__init__.py`
+
+Marks `tests/` as a Python package.
+
+Usually empty.
+
+## Templates
+
+### `templates/marketing/dashboard.html`
+
+Placeholder dashboard page.
+
+Current purpose:
+
+```text
+Prove the Django app can serve a page.
+```
+
+Later this will be replaced or expanded into the real dashboard UI.
+
+## Documentation
+
+### `docs/CURRENT_STATE_AND_RUN_GUIDE.md`
+
+Visual guide explaining:
+
+```text
+Current architecture
+Capabilities
+How to run locally
+How to test manually
+Roadmap to UI, analytics, and AWS deployment
+```
+
+### `docs/PROJECT_FILE_REFERENCE.md`
+
+This file.
+
+Explains the purpose of each important project file.
+
+### `docs/DATA_MODEL.md`
+
+Original data model specification.
+
+The Django models were built from this.
+
+### `docs/RBAC_SPEC.md`
+
+Original access-control specification.
+
+The permission helper functions were built from this.
+
+### `docs/EXCEL_IMPORT_SPEC.md`
+
+Original Excel import requirements.
+
+The importer command/service follows this spec.
+
+### `docs/DASHBOARD_SPEC.md`
+
+Future dashboard requirements.
+
+Use this when building the custom UI and charts.
+
+### `docs/PRODUCT_REQUIREMENTS.md`
+
+Product-level requirements.
+
+Use this as the broader product reference.
+
+### `docs/IMPLEMENTATION_PLAN.md`
+
+Planned phase order.
+
+Discovery and the initial Django foundation are already started/completed.
+
+### `docs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`
+
+Discovery workflow specification.
+
+This guided the audio transcription and workbook inspection.
+
+### `docs/ACCEPTANCE_TESTS.md`
+
+Expected acceptance criteria.
+
+Use this later to decide when the app is ready.
+
+### `docs/DEVELOPER_NOTES.md`
+
+Developer guidance and notes.
+
+### `docs/CODEX_PROMPTS.md`
+
+Prompt/reference material for Codex-driven work.
+
+## Discovery Files
+
+### `docs/discovery/audio_transcript.fa.md`
+
+Persian transcript of the audio note.
+
+### `docs/discovery/audio_summary.en.md`
+
+English summary of the audio note.
+
+### `docs/discovery/audio_requirements.en.md`
+
+Structured English requirements extracted from the audio note.
+
+### `docs/discovery/workbook_structure.md`
+
+Inventory of workbook sheets, columns, headers, hidden columns, formulas, merged headers, and likely sheet purpose.
+
+### `docs/discovery/workbook_sample_rows.md`
+
+Sample rows and normalized columns from relevant workbook sheets.
+
+### `docs/discovery/column_mapping.yml`
+
+Machine-readable mapping from workbook sheets/columns to app concepts.
+
+The importer uses this file.
+
+Important:
+
+```text
+If workbook structure changes, update this mapping before importing.
+```
+
+### `docs/discovery/import_risks.md`
+
+Known import risks and open questions.
+
+Examples:
+
+```text
+Formula risks
+Date parsing risks
+Duplicate invoice numbers
+SMS actual spend not present in invoice sheet
+Budget merged headers
+```
+
+### `docs/discovery/audio.wav`
+
+Converted WAV version of the audio file used for transcription.
+
+Generated artifact. It is ignored by Git.
+
+## Codex Skill Files
+
+### `.agents/skills/audio-transcription/SKILL.md`
+
+Reusable Codex skill instructions for audio transcription.
+
+Use when future work includes an audio file and needs:
+
+```text
+Transcript
+Summary
+Requirements extraction
+```
+
+### `.agents/skills/audio-transcription/scripts/transcribe_audio.py`
+
+Helper script bundled with the transcription skill.
+
+It can:
+
+```text
+Convert .ogg/.oga to .wav
+Use OpenAI speech-to-text if OPENAI_API_KEY exists
+Fallback to local Whisper/faster-whisper
+Write markdown transcript output
+```
+
+### `.agents/skills/audio-transcription/agents/openai.yaml`
+
+UI metadata for the Codex skill.
+
+Usually not edited manually unless skill display text changes.
+
+## Data Folders
+
+### `data/.gitkeep`
+
+Keeps the `data/` folder in the project.
+
+You can place workbooks here:
+
+```text
+data/my-workbook.xlsx
+```
+
+### `imports/.gitkeep`
+
+Keeps the `imports/` folder in the project.
+
+You can place workbooks here:
+
+```text
+imports/my-workbook.xlsx
+```
+
+## Tool Scripts
+
+### `tools/inspect_xlsx_structure.py`
+
+Discovery helper script that inspects XLSX files without modifying them.
+
+It writes:
+
+```text
+docs/discovery/workbook_structure.md
+docs/discovery/workbook_sample_rows.md
+```
+
+### `tools/transcribe_audio.py`
+
+Earlier transcription helper script from the initial project instructions.
+
+The newer reusable skill script lives at:
+
+```text
+.agents/skills/audio-transcription/scripts/transcribe_audio.py
+```
+
+## Local Generated Files
+
+These are useful locally but should not be treated as source files.
+
+### `.venv/`
+
+Python virtual environment.
+
+Created by:
+
+```bash
+make setup
+```
+
+Do not edit manually.
+
+### `db.sqlite3`
+
+Local SQLite database.
+
+Contains imported local data.
+
+For production, this should become PostgreSQL.
+
+### `__pycache__/`
+
+Python bytecode cache directories.
+
+Generated automatically.
+
+### `.pytest_cache/`
+
+Pytest cache.
+
+Generated automatically.
+
+### `.ruff_cache/`
+
+Ruff lint cache.
+
+Generated automatically.
+
+### `media/`
+
+Future upload folder for invoice images/payment proofs.
+
+Ignored by Git.
+
+### `staticfiles/`
+
+Future collected static files folder.
+
+Ignored by Git.
+
+## Source Workbook and Audio
+
+### `marketing_spend_workbook.xlsx`
+
+Current real workbook used for discovery and import.
+
+Imported with:
+
+```bash
+make import
+```
+
+### `audio_2026-06-12_10-33-51.ogg`
+
+Original audio note used during discovery.
+
+Transcribed into:
+
+```text
+docs/discovery/audio_transcript.fa.md
+```
+
+## How To Read This Project
+
+Recommended order:
+
+```text
+1. README.md
+2. docs/CURRENT_STATE_AND_RUN_GUIDE.md
+3. docs/PROJECT_FILE_REFERENCE.md
+4. docs/discovery/column_mapping.yml
+5. marketing/models.py
+6. marketing/importers/excel.py
+7. marketing/permissions.py
+8. marketing/admin.py
+```
+
+## How To Modify This Project Safely
+
+### Adding Database Fields
+
+```text
+1. Edit marketing/models.py
+2. Run makemigrations
+3. Run migrate
+4. Update admin/tests/importer if needed
+```
+
+Commands:
+
+```bash
+.venv/bin/python manage.py makemigrations
+.venv/bin/python manage.py migrate
+make check
+```
+
+### Changing Excel Import Mapping
+
+```text
+1. Update docs/discovery/column_mapping.yml
+2. Run make import-dry-run
+3. Review skipped-row reasons
+4. Run make import
+5. Run make check
+```
+
+### Adding UI Pages
+
+```text
+1. Add view in marketing/views.py or a new views module
+2. Add route in marketing/urls.py
+3. Add template under templates/marketing/
+4. Use marketing/permissions.py to filter querysets
+5. Add tests
+```
+
+### Adding Dashboard Analysis
+
+Recommended future structure:
+
+```text
+marketing/services/
+  analytics.py
+
+marketing/views/
+  dashboards.py
+
+templates/marketing/dashboard/
+  overview.html
+  team.html
+```
+
+Keep chart data server-side aggregated and permission-filtered.

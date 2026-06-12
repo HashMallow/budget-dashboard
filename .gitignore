@@ -1,0 +1,26 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+media/
+staticfiles/
+.pytest_cache/
+.ruff_cache/
+docs/discovery/audio.wav
+docs/discovery/faster-whisper-models/
+
+# Local source artifacts and generated discovery notes.
+# Keep docs/discovery/column_mapping.yml because the importer uses it.
+/*.xlsx
+/*.ogg
+/*.oga
+/*.mp3
+/*.m4a
+/*.wav
+data/*.xlsx
+imports/*.xlsx
+docs/discovery/audio_*.md
+docs/discovery/workbook_*.md
+docs/discovery/import_risks.md
+marketing_dashboard_codex_instructions_updated.zip
