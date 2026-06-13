@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from collections import defaultdict
 from decimal import Decimal
 from pathlib import Path
@@ -64,6 +65,39 @@ from .table_sort import SortState, apply_ordering, parse_sort, sort_rows
 
 User = get_user_model()
 ZERO = Decimal("0")
+
+# Small set of gradient palettes + glyphs used to build a random tab logo (favicon).
+_FAVICON_PALETTES = [
+    ("#0f766e", "#14b8a6"),
+    ("#7c3aed", "#a855f7"),
+    ("#2563eb", "#06b6d4"),
+    ("#dc2626", "#f97316"),
+    ("#db2777", "#f43f5e"),
+    ("#ca8a04", "#facc15"),
+    ("#059669", "#34d399"),
+    ("#4f46e5", "#818cf8"),
+]
+_FAVICON_GLYPHS = ["📊", "📈", "💸", "📉", "🧾", "💹", "🎯", "📌", "🪙", "📣"]
+
+
+def favicon_svg(request):
+    """Return a randomly themed SVG app icon so the browser tab shows a fun logo, not a blank box."""
+    color_start, color_end = random.choice(_FAVICON_PALETTES)
+    glyph = random.choice(_FAVICON_GLYPHS)
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+        f'<stop offset="0" stop-color="{color_start}"/><stop offset="1" stop-color="{color_end}"/>'
+        "</linearGradient></defs>"
+        '<rect width="64" height="64" rx="14" fill="url(#g)"/>'
+        '<text x="32" y="33" font-size="36" text-anchor="middle" '
+        f'dominant-baseline="central">{glyph}</text>'
+        "</svg>"
+    )
+    response = HttpResponse(svg, content_type="image/svg+xml")
+    # Re-roll the logo on every visit instead of caching a single icon.
+    response["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 INVOICE_SORT_FIELDS = {
     "number": "invoice_number",

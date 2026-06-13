@@ -51,6 +51,7 @@ staticfiles/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.artifacts/
 
 *.xlsx
 *.ogg
@@ -69,12 +70,26 @@ marketing_dashboard_codex_instructions_updated.zip
 
 These are now covered by `.gitignore` where appropriate.
 
+Use this ignored folder for raw voice notes, WAV conversions, and generated transcript markdown:
+
+```text
+.artifacts/voice-feedback/
+```
+
+Keep durable decisions in normal docs, not in raw transcript files.
+
 ## Recreate Discovery Artifacts Later
 
 Audio transcription can be recreated with the local Codex skill:
 
 ```text
 .agents/skills/audio-transcription/
+```
+
+Recommended command:
+
+```bash
+make transcribe-audio AUDIO=.artifacts/voice-feedback/audio/my-note.ogg TRANSCRIPT_OUT=.artifacts/voice-feedback/transcripts
 ```
 
 Workbook discovery can be recreated with:

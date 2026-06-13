@@ -11,6 +11,10 @@ Alireza/
 |
 |-- Makefile                         Local command pipeline
 |-- README.md                        Quick start guide
+|-- AGENTS.md                        Canonical agent/product instructions
+|-- CLAUDE.md                        Claude-generated helper context
+|-- README_FOR_CODEX.md              Early Codex bootstrap instructions
+|-- AWS_Infrastructure_...md/.pdf    AWS learning background, not app runtime
 |-- manage.py                        Django command entrypoint
 |-- pyproject.toml                   Project metadata, dependencies, test/lint config
 |-- uv.lock                          Locked dependency graph
@@ -31,6 +35,8 @@ Alireza/
 |   |-- admin.py                     Django Admin panel setup
 |   |-- permissions.py               Server-side RBAC helpers
 |   |-- context_processors.py        Display language/digit preferences
+|   |-- analytics.py                 Dashboard/report aggregation helpers
+|   |-- reference_data.py            Data-sheet lookup seeding service
 |   |-- forms.py                     Custom panel forms
 |   |-- views.py                     Web views
 |   |-- urls.py                      App routes
@@ -38,18 +44,26 @@ Alireza/
 |   |-- importers/
 |   |   |-- excel.py                 Excel import service
 |   |   `-- __init__.py
+|   |-- reports/
+|   |   |-- pdf.py                   ReportLab PDF builder
+|   |   `-- __init__.py
 |   |-- management/commands/
 |   |   |-- bootstrap_dev_admin.py   Local admin shortcut
 |   |   |-- import_marketing_excel.py Excel import command
+|   |   |-- seed_reference_data.py   Seed Data-sheet lookup rows
 |   |   |-- seed_auth_groups.py      Create auth groups
 |   |   `-- __init__.py
 |   |-- migrations/
 |   |   |-- 0001_initial.py          Initial database schema migration
+|   |   |-- 0002_add_team_aliases.py Team alias model + canonical aliases
+|   |   |-- 0003_canonical_campaign_names.py Campaign-name cleanup
+|   |   |-- 0004_reference_lookup_models.py SpendCategory/SubTeam/Requester
 |   |   `-- __init__.py
 |   `-- tests/
 |       |-- test_permissions.py
 |       |-- test_excel_importer.py
 |       |-- test_frontend_views.py
+|       |-- test_phase2_features.py
 |       `-- __init__.py
 |
 |-- templates/
@@ -62,16 +76,14 @@ Alireza/
 |   |-- PROJECT_FILE_REFERENCE.md
 |   |-- END_STATE_CLEANUP_PLAN.md
 |   |-- discovery/
-|   |   |-- audio_transcript.fa.md
-|   |   |-- audio_summary.en.md
-|   |   |-- audio_requirements.en.md
-|   |   |-- audio_followup_answers.en.md
 |   |   |-- workbook_structure.md
 |   |   |-- workbook_sample_rows.md
 |   |   |-- column_mapping.yml
-|   |   |-- import_risks.md
-|   |   `-- generated audio/transcript artifacts
+|   |   `-- import_risks.md
 |   `-- product/spec docs...
+|
+|-- .artifacts/                      Ignored local/generated artifacts
+|   `-- voice-feedback/              Raw voice notes, WAV conversions, transcripts
 |
 |-- .agents/
 |   `-- skills/audio-transcription/  Reusable Codex transcription skill
@@ -96,6 +108,8 @@ make setup
 make dev-admin
 make import-dry-run
 make import
+make load-data-dry-run
+make load-data
 make run
 make panel
 make first-run
@@ -109,6 +123,43 @@ This is the easiest way to run the project locally.
 Short quick-start guide. It links to the more detailed guide files.
 
 Use this when you only need the basic commands.
+
+### `AGENTS.md`
+
+Standing instructions for coding agents working in this repo.
+
+This is the highest-level project contract. It explains the product goal, mandatory discovery phase,
+recommended stack, non-negotiable requirements, data model direction, access-control rules, dashboard
+requirements, import rules, and definition of done.
+
+Use this when:
+
+```text
+You want to know what the app is supposed to become.
+You are asking an AI coding agent to continue the project.
+You need to check whether a feature is required or optional.
+```
+
+### `CLAUDE.md`
+
+Claude-specific project context generated during the Claude update.
+
+Treat this as helper context, not the canonical product spec. If it conflicts with `AGENTS.md`,
+`PROJECT_BLUEPRINT.md`, or the current code, prefer the latter.
+
+### `README_FOR_CODEX.md`
+
+Early bootstrap instructions for Codex.
+
+This is mostly historical now because discovery and the Django foundation are already done, but it
+still explains why the first phase had to transcribe audio and inspect the workbook before coding.
+
+### `AWS_Infrastructure_Research_Project_Practical_Labs_Roadmap_Edition.md`
+
+AWS learning roadmap/background material.
+
+This is not app code and not a deployment script. Use it as learning context for AWS concepts,
+labs, and progression. The app-specific deployment instructions live in `docs/DEPLOYMENT_AWS.md`.
 
 ### `manage.py`
 
@@ -257,6 +308,9 @@ Models currently defined:
 Team
 TeamAlias
 Vendor
+SpendCategory
+SubTeam
+Requester
 Campaign
 BudgetLine
 Invoice
@@ -271,6 +325,7 @@ Important behavior:
 Invoice payment stage changes create InvoiceStatusHistory rows.
 Paid invoices set paid_at automatically.
 Vendors use normalized names to avoid duplicates.
+SpendCategory, SubTeam, and Requester are lookup tables seeded from the Data sheet.
 Invoices preserve source sheet/source row/raw row JSON.
 ```
 
@@ -323,6 +378,39 @@ html_dir
 
 These power the `FA/EN` and `123/۰۱۲` top-bar buttons.
 
+### `marketing/analytics.py`
+
+Reusable server-side aggregation helpers for dashboard and report numbers.
+
+Includes:
+
+```text
+monthly_spend_rows()
+monthly_chart_data()
+team_spend_rows()
+team_chart_data()
+overall_spend_pie()
+vendor_grouped_rows()
+attention_invoices()
+```
+
+These functions keep the chart/report math out of templates and make it reusable later for JSON API
+endpoints.
+
+### `marketing/reference_data.py`
+
+Reads the workbook `Data` sheet and seeds lookup/reference rows:
+
+```text
+Vendor
+SpendCategory
+SubTeam
+Requester
+```
+
+It uses `docs/discovery/column_mapping.yml`, normalizes names, supports dry-run mode, and upserts by
+normalized name.
+
 ### `marketing/forms.py`
 
 Forms for the custom panel.
@@ -345,6 +433,14 @@ Team/editor permissions are validated server-side.
 Upload permissions are checked before accepting files.
 ```
 
+Current caveat:
+
+```text
+SpendCategory, SubTeam, and Requester are seeded lookup models, but invoice forms are not fully
+lookup-backed yet. Category is still free text; wiring seeded categories into dropdown/autocomplete
+fields and validation is a future step.
+```
+
 ### `marketing/views.py`
 
 Current web views.
@@ -354,6 +450,8 @@ Current panel views:
 ```text
 /login/
 /
+/teams/
+/teams/<id>/
 /invoices/
 /vendors/
 /campaigns/
@@ -361,6 +459,9 @@ Current panel views:
 /imports/
 /users/
 /exports/invoices.xlsx
+/exports/vendors.xlsx
+/exports/campaigns.xlsx
+/reports/dashboard.pdf
 /reports/invoices/print/
 ```
 
@@ -374,12 +475,17 @@ Currently:
 
 ```text
 "" -> dashboard
+"teams/" -> team list
+"teams/<id>/" -> dedicated team dashboard
 "invoices/" -> invoice list
 "vendors/" -> vendor report
 "campaigns/" -> campaign report
 "budgets/" -> budget table/pivot
 "imports/" -> Excel upload/import
 "users/" -> user/access management
+"exports/vendors.xlsx" -> vendor Excel export
+"exports/campaigns.xlsx" -> campaign Excel export
+"reports/dashboard.pdf" -> dashboard PDF export
 ```
 
 Later this will include routes like:
@@ -524,6 +630,27 @@ Used by:
 make setup
 ```
 
+### `marketing/management/commands/seed_reference_data.py`
+
+Command wrapper around the Data-sheet lookup seeding service.
+
+Used by:
+
+```bash
+make seed-reference-dry-run
+make seed-reference
+```
+
+Raw examples:
+
+```bash
+uv run python manage.py seed_reference_data --dry-run
+uv run python manage.py seed_reference_data
+uv run python manage.py seed_reference_data --file ./imports/my-file.xlsx
+```
+
+It prints created/updated/skipped counts for vendors, categories, sub-teams, and requesters.
+
 ### `marketing/management/__init__.py`
 
 Marks `management/` as a Python package.
@@ -556,6 +683,24 @@ InvoiceStatusHistory
 ```
 
 Do not edit this manually unless there is a very specific migration reason.
+
+### `marketing/migrations/0002_add_team_aliases.py`
+
+Adds `TeamAlias` and seeds the obvious workbook duplicate-team mappings.
+
+### `marketing/migrations/0003_canonical_campaign_names.py`
+
+Canonicalizes campaign labels such as `on going` into consistent campaign names.
+
+### `marketing/migrations/0004_reference_lookup_models.py`
+
+Adds lookup tables seeded from the workbook `Data` sheet:
+
+```text
+SpendCategory
+SubTeam
+Requester
+```
 
 ### `marketing/migrations/__init__.py`
 
@@ -609,6 +754,16 @@ Observer blocked from invoice creation.
 Editor can create invoice only for their own team.
 ```
 
+### `marketing/tests/test_phase2_features.py`
+
+Tests the newer Phase 2 capabilities:
+
+```text
+Data-sheet reference seeding creates lookup rows.
+Team dashboard access is scoped for an editor.
+Admin can export vendor Excel, campaign Excel, and dashboard PDF.
+```
+
 ### `marketing/tests/__init__.py`
 
 Marks `tests/` as a Python package.
@@ -642,13 +797,23 @@ Current purpose:
 
 ```text
 Summary cards
-Monthly spend bars
-Team breakdown
+Overall spend pie chart
+Monthly trend Chart.js line chart
+Per-team Chart.js bar chart
 Referral/SMS totals
 Vendor and campaign previews
 Payment stage summary
 Finance-review attention list
 ```
+
+### `templates/marketing/teams/list.html`
+
+Team index page with links to dedicated team dashboards.
+
+### `templates/marketing/teams/dashboard.html`
+
+Dedicated team dashboard with team totals, budget total, monthly chart, vendors, campaigns, and
+attention invoices.
 
 ### `templates/marketing/invoices/`
 
@@ -678,94 +843,268 @@ Admin-only database-backed user and team access management page.
 
 Browser-printable invoice report that can be saved as PDF.
 
+## Reports
+
+### `marketing/reports/pdf.py`
+
+Builds server-rendered PDF bytes with ReportLab.
+
+Current pattern:
+
+```text
+Django view gathers permission-scoped rows
+        |
+        v
+build_dashboard_summary_pdf(...)
+        |
+        v
+ReportLab SimpleDocTemplate + Paragraph/Table
+        |
+        v
+HttpResponse(content_type="application/pdf")
+```
+
+Current limitation: the PDF uses simple English text and built-in fonts. Persian/RTL output needs a
+Persian-capable font and deliberate RTL/shaping support.
+
 ## Documentation
+
+The markdown files are split into five groups:
+
+```text
+Current operating docs        What to read today
+Product/spec docs            What the product should satisfy
+Discovery docs               What the real audio/workbook showed
+Agent/helper docs            Prompts and AI workflow context
+Deployment/AWS docs          How this becomes a real server
+```
+
+### Which docs to read first
+
+```text
+1. README.md
+   Fast local start and command summary.
+
+2. docs/CURRENT_STATE_AND_RUN_GUIDE.md
+   What works right now, how to run it, how to test it manually.
+
+3. docs/PROJECT_EXPLAINED.md
+   Plain-language walkthrough of Django concepts and this project's flow.
+
+4. docs/PROJECT_FILE_REFERENCE.md
+   This map of every important file.
+
+5. docs/PROJECT_BLUEPRINT.md
+   Current product direction and chosen AWS path.
+
+6. docs/DEPLOYMENT_AWS.md
+   EC2 + Caddy first, then RDS, then S3.
+```
 
 ### `docs/PROJECT_BLUEPRINT.md`
 
-Main project direction document.
+Current product direction and decision log.
 
-Use this when deciding what to build next. It captures:
+This is the best file for answering:
 
 ```text
-product goal
-current architecture decision
-voice-note feedback
-uv workflow decision
-AWS deployment direction
-next UI and visualization phases
+What is the app trying to become?
+What feedback has been incorporated?
+What stack decisions have been made?
+What are the next build phases?
+What deployment path did we choose?
+```
+
+Current deployment decision captured there:
+
+```text
+EC2 + Caddy + Gunicorn first
+then RDS PostgreSQL
+then S3 media uploads
+serverless later only if the requirements change
 ```
 
 ### `docs/CURRENT_STATE_AND_RUN_GUIDE.md`
 
-Visual guide explaining:
+Practical status and runbook for local use.
+
+Use this when you want to:
 
 ```text
-Current architecture
-Capabilities
-How to run locally
-How to test manually
-Roadmap to UI, analytics, and AWS deployment
+Understand what exists today.
+Run the project locally.
+Import or seed the workbook data.
+Check current URLs.
+Manually test admin/editor/viewer behavior.
+See which roadmap phases are done vs pending.
 ```
+
+### `docs/PROJECT_EXPLAINED.md`
+
+Guided tour written for your learning style.
+
+It maps this Django app to concepts you already know from Python, SQLAlchemy, FastAPI, Docker, and
+your notebooks. It also explains request flow, QuerySets, permissions, importer behavior, bilingual
+UI, CSRF, and the main commands.
+
+Use this when the codebase feels abstract and you want the mental model.
 
 ### `docs/PROJECT_FILE_REFERENCE.md`
 
 This file.
 
-Explains the purpose of each important project file.
+It is the table of contents for the repository. It explains the role of root files, Django files,
+templates, markdown docs, discovery outputs, generated files, and safe modification workflows.
+
+### `docs/PHASE_2.md`
+
+Current Phase 2 status and next-step plan.
+
+Use this when deciding what to build next. It lists what Claude/this phase already added:
+
+```text
+Data-sheet reference seeding
+Team dashboards
+Monthly/team Chart.js charts
+Vendor/campaign Excel exports
+ReportLab dashboard PDF
+```
+
+It also lists remaining work:
+
+```text
+Budget planned-vs-actual
+Reference management UI
+Lookup-backed forms
+Upload hardening
+Persian/RTL PDFs
+CI/CD
+AWS deployment
+```
+
+### `docs/DEPLOYMENT_AWS.md`
+
+App-specific AWS deployment runbook.
+
+This is the deployment source of truth. It is intentionally practical and ordered:
+
+```text
+1. EC2 + Caddy + Gunicorn
+2. Add RDS PostgreSQL
+3. Add S3 for uploaded invoice/payment files
+4. Add CloudWatch and CI/CD
+5. Add ALB/Terraform only later
+```
+
+It also explains production environment variables, systemd, Caddy, database initialization,
+`make load-data`, and the manual deployment workflow CI/CD should automate later.
+
+### `docs/ACCESS_BY_ROLE.md`
+
+Human-readable RBAC guide.
+
+Use this when asking:
+
+```text
+What can Admin, Manager, Editor, or Observer do?
+Which users can export?
+Who can upload invoice files or payment proofs?
+What should team-limited users see?
+```
 
 ### `docs/END_STATE_CLEANUP_PLAN.md`
 
-Explains which files should remain in the final project and which generated/local artifacts should be ignored or removed before deployment.
+Cleanup and repository hygiene plan.
+
+Use this before committing or deploying to know which files are source files and which are local or
+generated artifacts. It helps keep audio transcripts, workbook files, caches, local DBs, and media
+uploads out of the main tracked project unless intentionally needed.
+
+### `docs/PRODUCT_REQUIREMENTS.md`
+
+Original product-level requirements.
+
+Use this as the broad product reference when checking whether the app still reflects the business
+request: dashboards, users, access control, Excel import, invoice tracking, exports, referral/SMS
+separation, and campaign/vendor reporting.
 
 ### `docs/DATA_MODEL.md`
 
-Original data model specification.
+Original data-model design.
 
-The Django models were built from this.
+The current Django models were built from this. Use it when checking why tables such as `Invoice`,
+`BudgetLine`, `UserTeamAccess`, `InvoiceAttachment`, and `InvoiceStatusHistory` exist.
 
 ### `docs/RBAC_SPEC.md`
 
-Original access-control specification.
+Original role/access-control specification.
 
-The permission helper functions were built from this.
+The permission helper functions in `marketing/permissions.py` were built from this. Use it when
+changing role behavior or adding a new permission.
 
 ### `docs/EXCEL_IMPORT_SPEC.md`
 
 Original Excel import requirements.
 
-The importer command/service follows this spec.
+Use this when changing importer behavior. It explains mapping, aliases, skipped-row reporting,
+idempotency, raw-row traceability, and why the database becomes the source of truth after import.
 
 ### `docs/DASHBOARD_SPEC.md`
 
-Future dashboard requirements.
+Dashboard and analysis requirements.
 
-Use this when building the custom UI and charts.
-
-### `docs/PRODUCT_REQUIREMENTS.md`
-
-Product-level requirements.
-
-Use this as the broader product reference.
+Use this when adding BI features. It describes expected cards, charts, vendor reports, campaign
+reports, payment-stage summaries, and budget analysis.
 
 ### `docs/IMPLEMENTATION_PLAN.md`
 
-Planned phase order.
+Original phase plan.
 
-Discovery and the initial Django foundation are already started/completed.
+Some of it is now historical because the app already exists. Use it to understand the intended build
+order, not as the current truth. Current truth lives in `CURRENT_STATE_AND_RUN_GUIDE.md` and
+`PHASE_2.md`.
+
+### `docs/ACCEPTANCE_TESTS.md`
+
+Definition-of-done style acceptance criteria.
+
+Use this before calling a version “ready.” It should eventually align with automated tests and a
+manual QA checklist.
+
+### `docs/DEVELOPER_NOTES.md`
+
+General developer notes.
+
+Use this for implementation reminders that do not belong in product specs or the run guide.
+
+### `docs/CODEX_PROMPTS.md`
+
+Prompt/reference material for AI-assisted work.
+
+Mostly useful when you want Codex or another agent to perform a structured phase, such as discovery,
+modeling, importer work, RBAC, dashboard work, or deployment.
 
 ### `docs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`
 
 Discovery workflow specification.
 
-This guided the audio transcription and workbook inspection.
+This guided the first mandatory phase: transcribe audio, inspect the workbook, create
+`docs/discovery/column_mapping.yml`, and document import risks before implementing importer logic.
 
-### `docs/discovery/audio_followup_answers.en.md`
+## Discovery Files
 
-Summary of the follow-up voice notes.
+### `.artifacts/voice-feedback/`
 
-This is a generated discovery note. Its durable decisions have also been copied into `docs/PROJECT_BLUEPRINT.md`.
+Ignored local folder for raw voice feedback files:
 
-Important decisions captured there:
+```text
+.artifacts/voice-feedback/audio/        source .ogg/.mp3/.m4a files
+.artifacts/voice-feedback/converted/    generated .wav conversions
+.artifacts/voice-feedback/transcripts/  generated transcript markdown
+```
+
+Durable decisions from voice notes should be copied into `docs/PROJECT_BLUEPRINT.md` and
+`docs/CURRENT_STATE_AND_RUN_GUIDE.md`, including:
 
 ```text
 Data sheet is lookup/reference data.
@@ -773,35 +1112,10 @@ Vendors should be managed in the app UI.
 Duplicate team names need alias rules.
 BudgetLine should stay normalized in the DB.
 The budget UI should offer an Excel-like horizontal pivot table.
+Managers are view/report users; Editors are scoped data-entry users.
+Shamsi/Jalali dates must parse correctly.
+Money/amount display needs QA when Persian digits or table layouts change.
 ```
-
-### `docs/ACCEPTANCE_TESTS.md`
-
-Expected acceptance criteria.
-
-Use this later to decide when the app is ready.
-
-### `docs/DEVELOPER_NOTES.md`
-
-Developer guidance and notes.
-
-### `docs/CODEX_PROMPTS.md`
-
-Prompt/reference material for Codex-driven work.
-
-## Discovery Files
-
-### `docs/discovery/audio_transcript.fa.md`
-
-Persian transcript of the audio note.
-
-### `docs/discovery/audio_summary.en.md`
-
-English summary of the audio note.
-
-### `docs/discovery/audio_requirements.en.md`
-
-Structured English requirements extracted from the audio note.
 
 ### `docs/discovery/workbook_structure.md`
 
@@ -815,7 +1129,8 @@ Sample rows and normalized columns from relevant workbook sheets.
 
 Machine-readable mapping from workbook sheets/columns to app concepts.
 
-The importer uses this file.
+The importer uses this file. This is the most important discovery file at runtime because it tells
+the importer which real workbook sheet/column maps to each app concept.
 
 Important:
 
@@ -990,18 +1305,18 @@ Current real workbook used for discovery and import.
 Imported with:
 
 ```bash
-make import
+make load-data
 ```
 
-### `audio_2026-06-12_10-33-51.ogg`
-
-Original audio note used during discovery.
-
-Transcribed into:
+### Raw Audio Notes
 
 ```text
-docs/discovery/audio_transcript.fa.md
+.artifacts/voice-feedback/audio/
+.artifacts/voice-feedback/transcripts/
 ```
+
+Raw audio notes and generated transcripts are local ignored artifacts. They are useful for
+traceability, but they are not part of the runtime project.
 
 ## How To Read This Project
 
@@ -1041,9 +1356,9 @@ make check
 
 ```text
 1. Update docs/discovery/column_mapping.yml
-2. Run make import-dry-run
+2. Run make load-data-dry-run
 3. Review skipped-row reasons
-4. Run make import
+4. Run make load-data
 5. Run make check
 ```
 

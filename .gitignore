@@ -1,26 +1,44 @@
+# Secrets / environment
 .env
+.env.*
+!.env.example
+
+# Python / tooling
 .venv/
 .uv-cache/
 __pycache__/
 *.py[cod]
-db.sqlite3
-media/
-staticfiles/
 .pytest_cache/
 .ruff_cache/
-docs/discovery/faster-whisper-models/
+.DS_Store
 
-# Local source artifacts and generated discovery notes.
-# Keep docs/discovery/column_mapping.yml because the importer uses it.
-/*.xlsx
-/*.ogg
-/*.oga
-/*.mp3
-/*.m4a
-/*.wav
-data/*.xlsx
-imports/*.xlsx
+# Django runtime data (database, uploads, collected static)
+db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+*.db
+media/
+staticfiles/
+
+# Source workbooks / spreadsheets (data, not code). Anywhere in the tree.
+*.xlsx
+*.xls
+*.xlsm
+
+# Voice notes / audio (raw + converted). Anywhere in the tree.
+*.ogg
+*.oga
+*.mp3
+*.m4a
+*.wav
+
+# Local artifacts, discovery outputs, and model caches
+.artifacts/
+docs/discovery/faster-whisper-models/
 docs/discovery/audio_*.md
 docs/discovery/workbook_*.md
 docs/discovery/import_risks.md
 marketing_dashboard_codex_instructions_updated.zip
+
+# Keep docs/discovery/column_mapping.yml tracked — the importer reads it.
+!docs/discovery/column_mapping.yml

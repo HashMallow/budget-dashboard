@@ -155,11 +155,17 @@ This creates or updates vendors, spend categories, sub-teams, and requesters fro
 
 ## Documentation
 
+Full, categorized index with status labels: **[`docs/README.md`](docs/README.md)**.
+
+Most-used docs:
+
 | Doc | Purpose |
 |---|---|
+| [`docs/README.md`](docs/README.md) | Documentation map — start here to find anything |
+| [`docs/PROJECT_EXPLAINED.md`](docs/PROJECT_EXPLAINED.md) | Plain-language guided tour |
 | [`docs/CURRENT_STATE_AND_RUN_GUIDE.md`](docs/CURRENT_STATE_AND_RUN_GUIDE.md) | What works now + local run commands |
 | [`docs/PHASE_2.md`](docs/PHASE_2.md) | Status and next features |
-| [`docs/DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) | Production deployment |
+| [`docs/DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) | Production deployment runbook |
 | [`AGENTS.md`](AGENTS.md) | Product requirements for agents |
 
 ## Transcribe Future Voice Notes

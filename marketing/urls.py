@@ -8,6 +8,7 @@ from . import views
 app_name = "marketing"
 
 urlpatterns = [
+    path("favicon.svg", views.favicon_svg, name="favicon_svg"),
     path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
     path("preferences/", views.set_display_preferences, name="set_display_preferences"),
     path("logout/", views.logout_view, name="logout"),

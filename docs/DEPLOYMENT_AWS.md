@@ -4,9 +4,11 @@ A concrete, copy-pasteable runbook for putting **this** project — the Marketin
 (Django + gunicorn, server-rendered templates) — online. It is written around what is already in
 this repo, not a generic tutorial.
 
-The AWS learning whitepaper/roadmap files in the repo are used only as
-**background** (cost discipline, CLI-first habits, the "add managed services later" philosophy).
-Where its assumptions differ from this app, see [§9 — How this maps to the PDF](#9-how-this-maps-to-the-pdf).
+The AWS field guide in the repo
+([`../AWS_Infrastructure_Field_Guide_Gentle_Steps.md`](../AWS_Infrastructure_Field_Guide_Gentle_Steps.md))
+is used only as **background** (cost discipline, CLI-first habits, the "add managed services later"
+philosophy). Where its assumptions differ from this app, see
+[§9 — How this maps to the AWS field guide](#9-how-this-maps-to-the-aws-field-guide).
 
 > **Pricing note.** Don't trust any fixed price below. AWS pricing and free-tier rules change by
 > Region, account age, and configuration. Check the official AWS pricing pages before creating
@@ -101,7 +103,7 @@ What flips on automatically when `DJANGO_DEBUG=false`:
 
 A single always-on Linux VM running gunicorn, with Caddy in front for automatic HTTPS.
 
-### 4.0 Before anything — guardrails (PDF §11)
+### 4.0 Before anything — guardrails (AWS field guide: set guardrails first)
 - Set an **AWS Budget alert** in Billing so a mistake can't run up a surprise bill.
 - Decide on tags and apply them to every resource: `Project=marketing-dashboard`, `Environment=prod`, `Owner=alireza`.
 - Confirm which account/region you're in before creating anything:
@@ -158,6 +160,12 @@ make load-data         FILE="marketing_spend_workbook.xlsx"
 > The importer is idempotent on `invoice_number + vendor`, so re-running it updates rather than
 > duplicates. The reference seed upserts vendors/categories/sub-teams/requesters by normalized name.
 > Excel is an import format only — after this, the database is the source of truth.
+>
+> On import the loader also: (a) **merges workbook team spelling variants** into one canonical team
+> (e.g. `Operation & Analysis` → `Ops & Analytics`, `Brand (PR & Social & CSR)` → `Brand`), and
+> (b) treats **Referral** and **SMS** as **cost buckets, not teams** — Referral rolls into Growth and
+> SMS into Retention while still shown separately. So a fresh prod import yields the canonical team
+> list automatically; no manual cleanup needed.
 
 ### 4.4 Run gunicorn as a service
 `/etc/systemd/system/marketing.service`:
@@ -303,8 +311,9 @@ ElastiCache/Valkey, SQS, ECS/Fargate, and EKS are **not needed** for this app's 
 Today the XLSX import runs **synchronously** inside the Django request, which is fine at the current
 volume. Only if imports grow large enough to time out a request (or you want progress/retries) should
 you move imports to a queue: store the upload in S3, create an import row (`status=queued`), send an
-SQS message, and have a small worker process it idempotently with a DLQ. The PDF builds this as a Go
-service; a Django management command or a tiny Python consumer would be the natural fit here. This is
+SQS message, and have a small worker process it idempotently with a DLQ. The AWS field guide builds
+this as a Go service; a Django management command or a tiny Python consumer would be the natural fit
+here. This is
 explicitly a *future* concern, not a launch requirement.
 
 ---
@@ -324,14 +333,14 @@ If you don't specifically need AWS, a PaaS removes servers, TLS, and OS patching
 
 ---
 
-## 9. How this maps to the PDF
+## 9. How this maps to the AWS field guide
 
-The whitepaper describes a learning project built around **FastAPI + a Go SQS worker + React +
-PostgreSQL**. This repo is **Django (server-rendered) + WhiteNoise + SQLite-for-dev**. The PDF's
+The field guide describes generic learning projects built around **FastAPI + a Go SQS worker + React +
+PostgreSQL**. This repo is **Django (server-rendered) + WhiteNoise + SQLite-for-dev**. The guide's
 *roadmap, CLI-first discipline, tagging/budget rules, and "managed services later" philosophy apply
 directly*; only the runtime specifics differ:
 
-| PDF | This project |
+| AWS field guide | This project |
 |---|---|
 | FastAPI app | Django + gunicorn (`config.wsgi`) |
 | React dashboard | Django templates (a React front-end is a separate, later project) |
@@ -340,7 +349,7 @@ directly*; only the runtime specifics differ:
 | Alembic migrations | Django migrations (`manage.py migrate`) |
 | SQLAlchemy models | Django ORM models |
 
-The PDF's recommended progression — `local → EC2 → RDS → S3 → CloudWatch → CI/CD → ALB → Terraform`,
+The guide's recommended progression — `local → EC2 → RDS → S3 → CloudWatch → CI/CD → ALB → Terraform`,
 adding each piece only when it earns its keep — is exactly the order of §4 → §6 here.
 
 ---

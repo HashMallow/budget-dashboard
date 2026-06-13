@@ -23,13 +23,13 @@ Near-term app
   Server-rendered browser UI
   SQLite locally
   Chart.js visualizations
+  Data-sheet lookup seeding
 
 Production target
-  Docker
   Gunicorn
   PostgreSQL
   S3 media storage
-  AWS EC2 first
+  AWS EC2 + Caddy first, then RDS, then S3
 ```
 
 Serverless is not the recommended first production target. This app has normal admin sessions, file uploads, reports, and background-style import work, so an always-on small Django service is simpler and easier to operate for version 1.
@@ -59,7 +59,7 @@ Database
 
 The Excel `Data` sheet is a lookup/reference sheet, not an invoice or budget fact table.
 
-Use it later to seed or validate:
+It is now used to seed or validate:
 
 ```text
 vendors
@@ -69,7 +69,9 @@ requesters
 month names
 ```
 
-It should not become a runtime table that users edit directly. In the final app, add/remove vendor and reference data through database-backed UI screens.
+It should not become a runtime table that users edit directly. The implemented seed command creates
+database lookup rows; the next step is a friendly browser UI to manage those rows without editing
+Excel.
 
 ### Voice Feedback: Duplicate Team Names
 
@@ -123,9 +125,54 @@ Team | Category | Farvardin | Ordibehesht | Khordad | ... | Esfand
 
 The browser view should support horizontal scrolling for the Excel-like budget table.
 
+### Voice Feedback: Roles
+
+Manager should be treated as a reporting/view role, not as a broad edit role.
+
+```text
+Admin
+  Full ownership of users, imports, edits, uploads, and exports.
+
+Manager
+  View dashboards/reports for its allowed scope; export only if explicitly granted.
+
+Observer
+  Read-only access for its allowed scope.
+
+Editor
+  Data-entry/update role for assigned teams or granted global scope.
+```
+
+The app should keep enforcing this server-side. Hiding buttons in the UI is not enough.
+
+### Voice Feedback: Dates And Amounts
+
+Dates from the workbook and forms may be Shamsi/Jalali. They must not be misread as Gregorian
+years. The importer and invoice forms now accept values such as:
+
+```text
+1405/01/10
+۱۴۰۵/۰۱/۱۰
+2026-03-30
+```
+
+The database stores normalized Gregorian dates; Persian mode displays Jalali dates back to users.
+
+Recent voice feedback also called out possible number/amount display problems. Treat money display
+as a QA-sensitive area: Persian digit display must not change stored numeric values, and amount
+columns in team/vendor tables must stay aligned on narrow screens.
+
 ### User Feedback: Keep The Final Project Clean
 
 Keep source code, config, tests, selected product docs, and the import mapping. Ignore generated/local artifacts such as the SQLite database, caches, source audio files, source workbook files, WAV conversions, and generated discovery transcripts.
+
+Raw voice notes, WAV conversions, and raw transcript markdown should live in:
+
+```text
+.artifacts/voice-feedback/
+```
+
+That directory is ignored by Git. Copy only durable product decisions back into docs.
 
 Discovery can be recreated later through the local Codex skills and helper scripts.
 
@@ -148,10 +195,16 @@ uv may still create an internal project environment while syncing dependencies, 
 Recommended first production shape:
 
 ```text
-Docker + EC2 + RDS PostgreSQL + S3
+EC2 + Caddy + Gunicorn
+then RDS PostgreSQL
+then S3 media uploads
 ```
 
-Avoid serverless for version 1 unless requirements change substantially.
+Docker is useful when you want reproducible deploys, but it is not required for the first working
+server. Avoid serverless for version 1 unless requirements change substantially.
+
+Decision: use the AWS learning path, not the PaaS shortcut, unless the priority changes from
+learning/control to fastest possible public URL.
 
 ## Current Capabilities
 
@@ -163,6 +216,7 @@ Avoid serverless for version 1 unless requirements change substantially.
 [x] Django Admin registered
 [x] Custom panel dashboard/list/detail/form pages
 [x] Persian/English shell toggle and Persian digit toggle
+[x] Shamsi/Jalali date parsing for imports and invoice forms
 [x] Browser Excel dry-run/confirm import
 [x] Admin user/access creation screen
 [x] TeamAlias model and obvious duplicate-team merge
@@ -172,6 +226,11 @@ Avoid serverless for version 1 unless requirements change substantially.
 [x] Baseline roles and permission helpers implemented
 [x] Local admin bootstrap implemented
 [x] uv-based command pipeline implemented
+[x] Data-sheet reference seeding implemented
+[x] Dedicated team dashboards implemented
+[x] Dashboard Chart.js pie/monthly/team charts implemented
+[x] Vendor and campaign Excel exports implemented
+[x] Server-rendered dashboard PDF implemented with ReportLab
 [x] Frontend smoke/permission tests passing
 [x] Tests and lint checks passing
 ```
@@ -181,28 +240,33 @@ Avoid serverless for version 1 unless requirements change substantially.
 ```text
 /login/           Login
 /                 Dashboard
+/teams/           Team list and per-team dashboards
 /invoices/        Invoice list/create/detail/edit
 /vendors/         Vendor spend report
 /campaigns/       Campaign spend report
 /budgets/         Budget table and pivot
 /imports/         Admin-only Excel upload/import
 /users/           Admin-only user/access management
+/exports/*.xlsx   Permission-scoped Excel exports
+/reports/*.pdf    Permission-scoped PDF reports
 /admin/           Django Admin fallback
 ```
 
 Users are database records. Do not manage ordinary users in `.env`; use the `/users/` panel as admin. `.env` is for secrets and deployment configuration.
 
-## Next Build Phase: Analysis UI
+## Next Build Phase: BI Depth and Operational Hardening
 
-Build the analysis layer on top of the current server-rendered pages:
+The first analysis layer is now present. Next, deepen it and prepare the app for real users:
 
 ```text
-1. Chart.js dashboard visualizations
-2. JSON endpoints for chart data
-3. Budget planned-vs-actual analysis
-4. Dedicated team dashboards
-5. Full page-by-page English copy for every form/table label
-6. Reference-data management seeded from the Data sheet
+1. Budget planned-vs-actual analysis
+2. Richer campaign-over-year visuals
+3. Reference-data management screens for vendors/categories/sub-teams/requesters
+4. Lookup-backed invoice form dropdowns or autocomplete
+5. Upload hardening and S3 media storage
+6. CI/CD that runs `make check`
+7. Production deployment on AWS or a PaaS
+8. JSON endpoints only when a React front-end becomes necessary
 ```
 
 ## Analysis And Visualization Phase
@@ -235,10 +299,10 @@ Users
 HTTPS
   |
   v
-Nginx/Caddy or AWS load balancer
+Nginx/Caddy, PaaS router, or AWS load balancer
   |
   v
-Docker: Django + Gunicorn
+Django + Gunicorn
   |
   +--> RDS PostgreSQL
   |
@@ -248,14 +312,15 @@ Docker: Django + Gunicorn
 Minimum deployment work:
 
 ```text
-1. Dockerfile and docker-compose for local production-like runs
-2. PostgreSQL settings
-3. S3 media storage
+1. Launch EC2 + Caddy + Gunicorn
+2. Add RDS PostgreSQL after the EC2 app is stable
+3. Add S3 media storage after RDS is stable
 4. Gunicorn entrypoint
 5. DEBUG=False production config
 6. Real secrets through environment variables
 7. collectstatic/static serving
 8. Database backup plan
+9. Optional Dockerfile and docker-compose for reproducible production-like runs
 ```
 
 ## Current Run Commands
@@ -263,8 +328,8 @@ Minimum deployment work:
 ```bash
 make setup
 make dev-admin
-make import-dry-run
-make import
+make load-data-dry-run
+make load-data
 make run
 ```
 
