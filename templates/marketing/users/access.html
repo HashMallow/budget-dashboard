@@ -1,16 +1,17 @@
 {% extends "marketing/base.html" %}
+{% load marketing_format %}
 
-{% block title %}Users and access{% endblock %}
-{% block page_title %}Users and access{% endblock %}
-{% block page_subtitle %}Create users, roles, permitted teams, upload and export rights{% endblock %}
+{% block title %}{% t "Users and access" %}{% endblock %}
+{% block page_title %}{% t "Users and access" %}{% endblock %}
+{% block page_subtitle %}{% t "Create users, roles, permitted teams, upload and export rights" %}{% endblock %}
 
 {% block content %}
   <section class="section grid two">
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">New user</h2>
-          <p class="section-subtitle">The user and initial access are created in the database</p>
+          <h2 class="section-title">{% t "New user" %}</h2>
+          <p class="section-subtitle">{% t "The user and initial access are created in the database" %}</p>
         </div>
       </div>
       <form method="post">
@@ -19,51 +20,51 @@
         {% if form.non_field_errors %}<div class="message">{{ form.non_field_errors }}</div>{% endif %}
         <div class="form-grid">
           <div class="field">
-            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+            <label for="{{ form.username.id_for_label }}">{% t form.username.label %}</label>
             {{ form.username }}
             {{ form.username.errors }}
           </div>
           <div class="field">
-            <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+            <label for="{{ form.password.id_for_label }}">{% t form.password.label %}</label>
             {{ form.password }}
             {{ form.password.errors }}
           </div>
           <div class="field">
-            <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+            <label for="{{ form.first_name.id_for_label }}">{% t form.first_name.label %}</label>
             {{ form.first_name }}
           </div>
           <div class="field">
-            <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+            <label for="{{ form.last_name.id_for_label }}">{% t form.last_name.label %}</label>
             {{ form.last_name }}
           </div>
           <div class="field">
-            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            <label for="{{ form.email.id_for_label }}">{% t form.email.label %}</label>
             {{ form.email }}
           </div>
           <div class="field">
-            <label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
+            <label for="{{ form.role.id_for_label }}">{% t form.role.label %}</label>
             {{ form.role }}
           </div>
           <div class="field">
-            <label for="{{ form.team.id_for_label }}">{{ form.team.label }}</label>
+            <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
             {{ form.team }}
           </div>
           <div class="field">
             <label>&nbsp;</label>
-            <label class="badge">{{ form.is_global }} All teams</label>
+            <label class="badge">{{ form.is_global }} {% t "All teams" %}</label>
           </div>
           <div class="field wide">
-            <label>Permissions</label>
+            <label>{% t "Permissions" %}</label>
             <div class="actions">
-              <label class="badge">{{ form.can_view_referral_sms }} Referral &amp; SMS</label>
-              <label class="badge">{{ form.can_export }} Export</label>
-              <label class="badge">{{ form.can_upload_invoice_files }} Upload invoice</label>
-              <label class="badge">{{ form.can_upload_payment_proofs }} Upload receipt</label>
+              <label class="badge">{{ form.can_view_referral_sms }} {% t "Referral & SMS" %}</label>
+              <label class="badge">{{ form.can_export }} {% t "Export" %}</label>
+              <label class="badge">{{ form.can_upload_invoice_files }} {% t "Upload invoice" %}</label>
+              <label class="badge">{{ form.can_upload_payment_proofs }} {% t "Upload receipt" %}</label>
             </div>
           </div>
         </div>
         <div class="actions" style="margin-top: 18px;">
-          <button class="btn primary" type="submit">Create user</button>
+          <button class="btn primary" type="submit">{% t "Create user" %}</button>
         </div>
       </form>
     </div>
@@ -71,17 +72,17 @@
     <div class="panel ltr" style="text-align: left;">
       <div class="section-header">
         <div>
-          <h2 class="section-title">How user management works</h2>
-          <p class="section-subtitle">Regular users are not configured in environment variables</p>
+          <h2 class="section-title">{% t "How user management works" %}</h2>
+          <p class="section-subtitle">{% t "Regular users are not configured in environment variables" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <tbody>
-            <tr><th>Bootstrap admin</th><td>Created for local development with <code>make dev-admin</code>.</td></tr>
-            <tr><th>Regular users</th><td>Created from this page and stored in the database.</td></tr>
-            <tr><th>Safe delete</th><td>A user is deactivated (not deleted) so invoice history stays intact.</td></tr>
-            <tr><th>.env file</th><td>Holds <code>SECRET_KEY</code>, server settings and the database connection — not day-to-day users.</td></tr>
+            <tr><th>{% t "Bootstrap admin" %}</th><td>{% t "Created for local development with" %} <code>make dev-admin</code>.</td></tr>
+            <tr><th>{% t "Regular users" %}</th><td>{% t "Created from this page and stored in the database." %}</td></tr>
+            <tr><th>{% t "Safe delete" %}</th><td>{% t "A user is deactivated (not deleted) so invoice history stays intact." %}</td></tr>
+            <tr><th>{% t ".env file" %}</th><td>{% t "Holds" %} <code>SECRET_KEY</code>, {% t "server settings and the database connection — not day-to-day users." %}</td></tr>
           </tbody>
         </table>
       </div>
@@ -91,20 +92,20 @@
   <section class="section panel">
     <div class="section-header">
       <div>
-        <h2 class="section-title">Current users</h2>
-        <p class="section-subtitle">Roles and team-level access</p>
+        <h2 class="section-title">{% t "Current users" %}</h2>
+        <p class="section-subtitle">{% t "Roles and team-level access" %}</p>
       </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Name</th>
-            <th>Group</th>
-            <th>Access</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>{% t "Username" %}</th>
+            <th>{% t "Name" %}</th>
+            <th>{% t "Group" %}</th>
+            <th>{% t "Access" %}</th>
+            <th>{% t "Status" %}</th>
+            <th>{% t "Actions" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -114,7 +115,7 @@
               <td>{{ item.get_full_name|default:"-" }}</td>
               <td>
                 {% for group in item.groups.all %}
-                  <span class="badge">{{ group.name }}</span>
+                  <span class="badge">{% t group.name %}</span>
                 {% empty %}
                   <span class="badge">-</span>
                 {% endfor %}
@@ -122,14 +123,14 @@
               <td>
                 {% for access in item.team_access.all %}
                   <span class="badge">
-                    {{ access.get_role_display }} /
-                    {% if access.is_global %}All teams{% else %}{{ access.team.name }}{% endif %}
+                    {% t access.get_role_display %} /
+                    {% if access.is_global %}{% t "All teams" %}{% else %}{{ access.team.name }}{% endif %}
                   </span>
                 {% empty %}
                   <span class="badge">-</span>
                 {% endfor %}
               </td>
-              <td>{% if item.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge danger">Inactive</span>{% endif %}</td>
+              <td>{% if item.is_active %}<span class="badge ok">{% t "Active" %}</span>{% else %}<span class="badge danger">{% t "Inactive" %}</span>{% endif %}</td>
               <td>
                 {% if item != request.user %}
                   <form method="post">
@@ -137,19 +138,19 @@
                     <input type="hidden" name="user_id" value="{{ item.id }}">
                     {% if item.is_active %}
                       <input type="hidden" name="action" value="deactivate">
-                      <button class="btn danger" type="submit">Deactivate</button>
+                      <button class="btn danger" type="submit">{% t "Deactivate" %}</button>
                     {% else %}
                       <input type="hidden" name="action" value="activate">
-                      <button class="btn" type="submit">Activate</button>
+                      <button class="btn" type="submit">{% t "Activate" %}</button>
                     {% endif %}
                   </form>
                 {% else %}
-                  <span class="badge">Current user</span>
+                  <span class="badge">{% t "Current user" %}</span>
                 {% endif %}
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="6" class="empty">No users.</td></tr>
+            <tr><td colspan="6" class="empty">{% t "No users." %}</td></tr>
           {% endfor %}
         </tbody>
       </table>

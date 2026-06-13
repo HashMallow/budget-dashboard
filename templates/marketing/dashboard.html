@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}Spend Dashboard{% endblock %}
-{% block page_title %}Spend Dashboard{% endblock %}
-{% block page_subtitle %}Overview of marketing spend, payments and team status{% endblock %}
+{% block title %}{% t "Spend Dashboard" %}{% endblock %}
+{% block page_title %}{% t "Spend Dashboard" %}{% endblock %}
+{% block page_subtitle %}{% t "Overview of marketing spend, payments and team status" %}{% endblock %}
 {% block page_actions %}
   {% if can_create_invoice %}
-    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ New invoice</a>
+    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ {% t "New invoice" %}</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ Excel</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ PDF report</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ {% t "PDF report" %}</a>
   {% endif %}
 {% endblock %}
 
@@ -18,48 +18,48 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="year">Year</label>
+        <label for="year">{% t "Year" %}</label>
         <select id="year" name="year">
-          <option value="">All years</option>
+          <option value="">{% t "All years" %}</option>
           {% for year in years %}
             <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="team">Team</label>
+        <label for="team">{% t "Team" %}</label>
         <select id="team" name="team">
-          <option value="">All permitted teams</option>
+          <option value="">{% t "All permitted teams" %}</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <button class="btn primary" type="submit">Apply filter</button>
+      <button class="btn primary" type="submit">{% t "Apply filter" %}</button>
     </form>
   </section>
 
   <section class="section">
     <div class="grid cards">
       <div class="card">
-        <div class="card-label">Total spend</div>
+        <div class="card-label">{% t "Total spend" %}</div>
         <div class="card-value number">{{ total_spend|money }}</div>
         <div class="card-note">IRR</div>
       </div>
       <div class="card">
-        <div class="card-label">Invoice count</div>
+        <div class="card-label">{% t "Invoice count" %}</div>
         <div class="card-value number">{{ invoice_count }}</div>
-        <div class="card-note">In selected range</div>
+        <div class="card-note">{% t "In selected range" %}</div>
       </div>
       <div class="card">
-        <div class="card-label">Paid</div>
+        <div class="card-label">{% t "Paid" %}</div>
         <div class="card-value number">{{ paid_spend|money }}</div>
-        <div class="card-note">Paid invoices</div>
+        <div class="card-note">{% t "Paid invoices" %}</div>
       </div>
       <div class="card">
-        <div class="card-label">Referral / SMS</div>
+        <div class="card-label">{% t "Referral / SMS" %}</div>
         <div class="card-value number">{{ referral_total|money }} / {{ sms_total|money }}</div>
-        <div class="card-note">Separate from team breakdown</div>
+        <div class="card-note">{% t "Separate from team breakdown" %}</div>
       </div>
     </div>
   </section>
@@ -68,8 +68,8 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Monthly trend</h2>
-          <p class="section-subtitle">By Persian (Jalali) month</p>
+          <h2 class="section-title">{% t "Monthly trend" %}</h2>
+          <p class="section-subtitle">{% t "By Persian (Jalali) month" %}</p>
         </div>
       </div>
       <div class="bar-list">
@@ -86,22 +86,22 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Spend by team</h2>
-          <p class="section-subtitle">Referral and SMS are excluded from this breakdown</p>
+          <h2 class="section-title">{% t "Spend by team" %}</h2>
+          <p class="section-subtitle">{% t "Referral and SMS are excluded from this breakdown" %}</p>
         </div>
       </div>
       {% if team_total_rows %}
         <div class="bar-list">
           {% for row in team_total_rows %}
             <div class="bar-row">
-              <span>{{ row.team_name }}</span>
+              <span>{% t row.team_name %}</span>
               <div class="bar-track"><div class="bar-fill" style="--w: {{ row.percent }}%;"></div></div>
               <strong class="number">{{ row.total|money }}</strong>
             </div>
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty">No data to display.</div>
+        <div class="empty">{% t "No data to display." %}</div>
       {% endif %}
     </div>
   </section>
@@ -110,18 +110,18 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Top vendors</h2>
-          <p class="section-subtitle">Sorted from highest to lowest spend</p>
+          <h2 class="section-title">{% t "Top vendors" %}</h2>
+          <p class="section-subtitle">{% t "Sorted from highest to lowest spend" %}</p>
         </div>
-        <a class="btn" href="{% url 'marketing:vendor_report' %}">View all</a>
+        <a class="btn" href="{% url 'marketing:vendor_report' %}">{% t "View all" %}</a>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Vendor</th>
-              <th>Count</th>
-              <th>Amount</th>
+              <th>{% t "Vendor" %}</th>
+              <th>{% t "Count" %}</th>
+              <th>{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -132,7 +132,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">No data to display.</td></tr>
+              <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -142,19 +142,19 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Campaigns</h2>
-          <p class="section-subtitle">Spend on campaigns recorded on invoices</p>
+          <h2 class="section-title">{% t "Campaigns" %}</h2>
+          <p class="section-subtitle">{% t "Spend on campaigns recorded on invoices" %}</p>
         </div>
-        <a class="btn" href="{% url 'marketing:campaign_report' %}">View all</a>
+        <a class="btn" href="{% url 'marketing:campaign_report' %}">{% t "View all" %}</a>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Campaign</th>
-              <th>Year</th>
-              <th>Invoices</th>
-              <th>Amount</th>
+              <th>{% t "Campaign" %}</th>
+              <th>{% t "Year" %}</th>
+              <th>{% t "Invoices" %}</th>
+              <th>{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -166,7 +166,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4" class="empty">No campaigns recorded in this range.</td></tr>
+              <tr><td colspan="4" class="empty">{% t "No campaigns recorded in this range." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -178,28 +178,28 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Payment status</h2>
-          <p class="section-subtitle">Invoice count per stage</p>
+          <h2 class="section-title">{% t "Payment status" %}</h2>
+          <p class="section-subtitle">{% t "Invoice count per stage" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Stage</th>
-              <th>Count</th>
-              <th>Amount</th>
+              <th>{% t "Stage" %}</th>
+              <th>{% t "Count" %}</th>
+              <th>{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in stage_rows %}
               <tr>
-                <td><span class="badge">{{ row.payment_stage|stage_label }}</span></td>
+                <td><span class="badge">{% t row.payment_stage|stage_label %}</span></td>
                 <td class="number">{{ row.invoice_count }}</td>
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">No data to display.</td></tr>
+              <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -209,17 +209,17 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Invoices in finance review</h2>
-          <p class="section-subtitle">Sorted by days waiting in stage</p>
+          <h2 class="section-title">{% t "Invoices in finance review" %}</h2>
+          <p class="section-subtitle">{% t "Sorted by days waiting in stage" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Invoice</th>
-              <th>Vendor</th>
-              <th>Days in stage</th>
+              <th>{% t "Invoice" %}</th>
+              <th>{% t "Vendor" %}</th>
+              <th>{% t "Days in stage" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -230,7 +230,7 @@
                 <td class="number">{{ invoice.days_in_current_stage }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">No invoices waiting in finance review.</td></tr>
+              <tr><td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>

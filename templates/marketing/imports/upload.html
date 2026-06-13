@@ -1,16 +1,17 @@
 {% extends "marketing/base.html" %}
+{% load marketing_format %}
 
-{% block title %}Excel import{% endblock %}
-{% block page_title %}Excel import{% endblock %}
-{% block page_subtitle %}Upload an xlsx file, review the dry-run, then commit to the database{% endblock %}
+{% block title %}{% t "Excel import" %}{% endblock %}
+{% block page_title %}{% t "Excel import" %}{% endblock %}
+{% block page_subtitle %}{% t "Upload an xlsx file, review the dry-run, then commit to the database" %}{% endblock %}
 
 {% block content %}
   <section class="section grid two">
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Upload file</h2>
-          <p class="section-subtitle">First a dry-run only; nothing in the database changes</p>
+          <h2 class="section-title">{% t "Upload file" %}</h2>
+          <p class="section-subtitle">{% t "First a dry-run only; nothing in the database changes" %}</p>
         </div>
       </div>
       <form method="post" enctype="multipart/form-data">
@@ -19,18 +20,18 @@
         {{ form.non_field_errors }}
         <div class="grid">
           <div class="field">
-            <label for="{{ form.workbook.id_for_label }}">{{ form.workbook.label }}</label>
+            <label for="{{ form.workbook.id_for_label }}">{% t form.workbook.label %}</label>
             {{ form.workbook }}
             {{ form.workbook.errors }}
           </div>
-          <button class="btn primary" type="submit">Check file</button>
+          <button class="btn primary" type="submit">{% t "Check file" %}</button>
         </div>
       </form>
       {% if pending_path %}
         <form method="post" style="margin-top: 14px;">
           {% csrf_token %}
           <input type="hidden" name="action" value="confirm">
-          <button class="btn primary" type="submit">Confirm and import to database</button>
+          <button class="btn primary" type="submit">{% t "Confirm and import to database" %}</button>
         </form>
       {% endif %}
     </div>
@@ -38,8 +39,8 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Last check result</h2>
-          <p class="section-subtitle">created / updated / skipped</p>
+          <h2 class="section-title">{% t "Last check result" %}</h2>
+          <p class="section-subtitle">{% t "created / updated / skipped" %}</p>
         </div>
       </div>
       {% if summary %}
@@ -47,16 +48,16 @@
           <table>
             <thead>
               <tr>
-                <th>Section</th>
-                <th>Created</th>
-                <th>Updated</th>
-                <th>Skipped</th>
+                <th>{% t "Section" %}</th>
+                <th>{% t "Created" %}</th>
+                <th>{% t "Updated" %}</th>
+                <th>{% t "Skipped" %}</th>
               </tr>
             </thead>
             <tbody>
               {% for row in summary %}
                 <tr>
-                  <td>{{ row.label }}</td>
+                  <td>{% t row.label %}</td>
                   <td class="number">{{ row.created }}</td>
                   <td class="number">{{ row.updated }}</td>
                   <td class="number">{{ row.skipped }}</td>
@@ -66,7 +67,7 @@
           </table>
         </div>
       {% else %}
-        <div class="empty">No file checked yet.</div>
+        <div class="empty">{% t "No file checked yet." %}</div>
       {% endif %}
     </div>
   </section>
@@ -75,17 +76,17 @@
     <section class="section panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Skipped rows</h2>
-          <p class="section-subtitle">First 20 for a quick review</p>
+          <h2 class="section-title">{% t "Skipped rows" %}</h2>
+          <p class="section-subtitle">{% t "First 20 for a quick review" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Sheet</th>
-              <th>Row</th>
-              <th>Reason</th>
+              <th>{% t "Sheet" %}</th>
+              <th>{% t "Row" %}</th>
+              <th>{% t "Reason" %}</th>
             </tr>
           </thead>
           <tbody>

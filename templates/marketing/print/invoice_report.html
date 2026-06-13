@@ -1,25 +1,25 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}Invoice report{% endblock %}
-{% block page_title %}Invoice report{% endblock %}
-{% block page_subtitle %}Use your browser's print dialog to save as PDF{% endblock %}
+{% block title %}{% t "Invoice report" %}{% endblock %}
+{% block page_title %}{% t "Invoice report" %}{% endblock %}
+{% block page_subtitle %}{% t "Use your browser's print dialog to save as PDF" %}{% endblock %}
 {% block page_actions %}
-  <button class="btn primary" onclick="window.print()">⎙ Print / Save PDF</button>
+  <button class="btn primary" onclick="window.print()">⎙ {% t "Print / Save PDF" %}</button>
 {% endblock %}
 
 {% block content %}
   <section class="section grid cards">
     <div class="card">
-      <div class="card-label">Generated at</div>
+      <div class="card-label">{% t "Generated at" %}</div>
       <div class="card-value" style="font-size: 18px;">{{ generated_at }}</div>
     </div>
     <div class="card">
-      <div class="card-label">Invoice count</div>
+      <div class="card-label">{% t "Invoice count" %}</div>
       <div class="card-value number">{{ invoice_count }}</div>
     </div>
     <div class="card">
-      <div class="card-label">Total spend</div>
+      <div class="card-label">{% t "Total spend" %}</div>
       <div class="card-value number">{{ total_spend|money }}</div>
       <div class="card-note">IRR</div>
     </div>
@@ -27,14 +27,14 @@
 
   <section class="section grid two">
     <div class="panel">
-      <h2 class="section-title">Vendors</h2>
+      <h2 class="section-title">{% t "Vendors" %}</h2>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Vendor</th>
-              <th>Count</th>
-              <th>Amount</th>
+              <th>{% t "Vendor" %}</th>
+              <th>{% t "Count" %}</th>
+              <th>{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -45,7 +45,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">No data.</td></tr>
+              <tr><td colspan="3" class="empty">{% t "No data." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -53,23 +53,23 @@
     </div>
 
     <div class="panel">
-      <h2 class="section-title">Payment stage</h2>
+      <h2 class="section-title">{% t "Payment stage" %}</h2>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Stage</th>
-              <th>Count</th>
+              <th>{% t "Stage" %}</th>
+              <th>{% t "Count" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in stage_rows %}
               <tr>
-                <td>{{ row.payment_stage|stage_label }}</td>
+                <td>{% t row.payment_stage|stage_label %}</td>
                 <td class="number">{{ row.invoice_count }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="2" class="empty">No data.</td></tr>
+              <tr><td colspan="2" class="empty">{% t "No data." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>

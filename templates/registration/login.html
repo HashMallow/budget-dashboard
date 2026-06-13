@@ -1,8 +1,9 @@
 {% extends "marketing/base.html" %}
+{% load marketing_format %}
 
-{% block title %}Sign in{% endblock %}
-{% block page_title %}Sign in{% endblock %}
-{% block page_subtitle %}Sign in with your username and password{% endblock %}
+{% block title %}{% t "Sign in" %}{% endblock %}
+{% block page_title %}{% t "Sign in" %}{% endblock %}
+{% block page_subtitle %}{% t "Sign in with your username and password" %}{% endblock %}
 
 {% block content %}
   <section class="section" style="max-width: 460px; margin: 48px auto;">
@@ -14,14 +15,14 @@
         {% endif %}
         <div class="grid">
           <div class="field">
-            <label for="{{ form.username.id_for_label }}">Username</label>
+            <label for="{{ form.username.id_for_label }}">{% t "Username" %}</label>
             {{ form.username }}
           </div>
           <div class="field">
-            <label for="{{ form.password.id_for_label }}">Password</label>
+            <label for="{{ form.password.id_for_label }}">{% t "Password" %}</label>
             {{ form.password }}
           </div>
-          <button class="btn primary" type="submit">Sign in</button>
+          <button class="btn primary" type="submit">{% t "Sign in" %}</button>
         </div>
       </form>
     </div>

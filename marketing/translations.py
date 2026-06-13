@@ -134,6 +134,15 @@ FA: dict[str, str] = {
     "Last name": "نام خانوادگی",
     "Email": "ایمیل",
     "Access level": "سطح دسترسی",
+    "All-team access": "دسترسی به همه تیم‌ها",
+    "View referral and SMS": "مشاهده ریفرال و پیامک",
+    "Export Excel/reports": "خروجی اکسل/گزارش",
+    "Upload invoice files": "آپلود فایل فاکتور",
+    "Upload payment receipts": "آپلود رسید پرداخت",
+    # --- Attachment types ---
+    "Invoice image": "تصویر فاکتور",
+    "Payment proof": "رسید پرداخت",
+    "Other": "سایر",
     # --- Vendor report ---
     "Vendor report": "گزارش وندورها",
     "Amount, invoice count, payment stage and invoice numbers per vendor": (
@@ -142,7 +151,6 @@ FA: dict[str, str] = {
     "Vendor or invoice number": "وندور یا شماره فاکتور",
     "Invoice numbers": "شماره فاکتورها",
     "Stages": "مرحله‌ها",
-    "Total spend": "جمع هزینه",
     "No vendors in this range.": "وندوری در این محدوده وجود ندارد.",
     # --- Campaign report ---
     "Campaign report": "گزارش کمپین‌ها",
@@ -171,11 +179,11 @@ FA: dict[str, str] = {
     "Upload an xlsx file, review the dry-run, then commit to the database": (
         "آپلود فایل xlsx، بررسی اولیه، سپس ثبت در دیتابیس"
     ),
-    "Upload file": "آپلود فایل",
     "First a dry-run only; nothing in the database changes": "ابتدا فقط بررسی می‌شود و چیزی در دیتابیس تغییر نمی‌کند",
     "Check file": "بررسی فایل",
     "Confirm and import to database": "تایید و ورود به دیتابیس",
     "Last check result": "نتیجه آخرین بررسی",
+    "created / updated / skipped": "جدید / به‌روزرسانی / ردشده",
     "Section": "بخش",
     "Created": "جدید",
     "Updated": "به‌روزرسانی",
@@ -213,7 +221,7 @@ FA: dict[str, str] = {
     ".env file": "فایل env",
     "Holds": "شامل",
     "server settings and the database connection — not day-to-day users.": (
-        "، تنظیمات سرور و اتصال دیتابیس است — نه کاربران روزمره."
+        "تنظیمات سرور و اتصال دیتابیس است — نه کاربران روزمره."
     ),
     "Current users": "کاربران فعلی",
     "Roles and team-level access": "نقش‌ها و دسترسی‌های تیمی",
@@ -261,7 +269,9 @@ FA: dict[str, str] = {
     "Payment stage updated.": "مرحله پرداخت به‌روزرسانی شد.",
     "Invalid payment stage.": "مرحله پرداخت معتبر نیست.",
     "File uploaded.": "فایل آپلود شد.",
-    "Upload failed. Check the file type or your permissions.": "آپلود فایل انجام نشد. نوع فایل یا دسترسی را بررسی کنید.",
+    "Upload failed. Check the file type or your permissions.": (
+        "آپلود فایل انجام نشد. نوع فایل یا دسترسی را بررسی کنید."
+    ),
     "There is no file ready to import.": "هیچ فایل آماده‌ای برای ورود وجود ندارد.",
     "Excel data imported into the database.": "اطلاعات اکسل وارد دیتابیس شد.",
     "Dry-run complete. If the result looks correct, confirm the import.": (

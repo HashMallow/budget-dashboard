@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}Invoices{% endblock %}
-{% block page_title %}Invoices{% endblock %}
-{% block page_subtitle %}Search, filter, track payments and enter spend data{% endblock %}
+{% block title %}{% t "Invoices" %}{% endblock %}
+{% block page_title %}{% t "Invoices" %}{% endblock %}
+{% block page_subtitle %}{% t "Search, filter, track payments and enter spend data" %}{% endblock %}
 {% block page_actions %}
   {% if can_create_invoice %}
-    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ New invoice</a>
+    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ {% t "New invoice" %}</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ Excel</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ PDF report</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF report" %}</a>
   {% endif %}
 {% endblock %}
 
@@ -18,41 +18,41 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="q">Search</label>
-        <input id="q" name="q" value="{{ filters.q }}" placeholder="Number, vendor, category">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="{% t 'Number, vendor, category' %}">
       </div>
       <div class="field">
-        <label for="team">Team</label>
+        <label for="team">{% t "Team" %}</label>
         <select id="team" name="team">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="stage">Payment stage</label>
+        <label for="stage">{% t "Payment stage" %}</label>
         <select id="stage" name="stage">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for value, label in payment_stages %}
-            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{% t label %}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="bucket">Cost type</label>
+        <label for="bucket">{% t "Cost type" %}</label>
         <select id="bucket" name="bucket">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for value, label in cost_buckets %}
-            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{% t label %}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="year">Year</label>
+        <label for="year">{% t "Year" %}</label>
         <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
       </div>
-      <button class="btn primary" type="submit">Filter</button>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
     </form>
   </section>
 
@@ -61,14 +61,14 @@
       <table>
         <thead>
           <tr>
-            <th>Number</th>
-            <th>Vendor</th>
-            <th>Team</th>
-            <th>Category</th>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Stage</th>
-            <th>Days</th>
+            <th>{% t "Number" %}</th>
+            <th>{% t "Vendor" %}</th>
+            <th>{% t "Team" %}</th>
+            <th>{% t "Category" %}</th>
+            <th>{% t "Date" %}</th>
+            <th>{% t "Amount" %}</th>
+            <th>{% t "Stage" %}</th>
+            <th>{% t "Days" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -80,11 +80,11 @@
               <td>{{ invoice.category }}</td>
               <td class="number">{{ invoice.invoice_date }}</td>
               <td class="number">{{ invoice.amount|money }}</td>
-              <td><span class="badge">{{ invoice.payment_stage|stage_label }}</span></td>
+              <td><span class="badge">{% t invoice.payment_stage|stage_label %}</span></td>
               <td class="number">{{ invoice.days_in_current_stage }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="8" class="empty">No invoices to display.</td></tr>
+            <tr><td colspan="8" class="empty">{% t "No invoices to display." %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -92,11 +92,11 @@
     {% if page_obj.has_other_pages %}
       <div class="pagination">
         {% if page_obj.has_previous %}
-          <a class="btn" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Previous</a>
+          <a class="btn" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">{% t "Previous" %}</a>
         {% endif %}
-        <span class="btn">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <span class="btn">{% t "Page" %} {{ page_obj.number }} {% t "of" %} {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="btn" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Next</a>
+          <a class="btn" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">{% t "Next" %}</a>
         {% endif %}
       </div>
     {% endif %}

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Marketing Spend Panel{% endblock %}</title>
+  <title>{% block title %}{% t "Marketing Spend Panel" %}{% endblock %}</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <style>
@@ -240,33 +240,33 @@
   <div class="app-shell">
     <aside class="sidebar no-print">
       <div class="brand">
-        <strong>Marketing Spend</strong>
-        <span>Internal dashboard and invoice control</span>
+        <strong>{% t "Marketing Spend" %}</strong>
+        <span>{% t "Internal dashboard and invoice control" %}</span>
       </div>
       {% if user.is_authenticated %}
         {% with current=request.resolver_match.url_name %}
           <nav class="nav">
             <a href="{% url 'marketing:dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}">
-              <span class="nav-icon">⌂</span><span>Dashboard</span>
+              <span class="nav-icon">⌂</span><span>{% t "Dashboard" %}</span>
             </a>
             <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' %}active{% endif %}">
-              <span class="nav-icon">□</span><span>Invoices</span>
+              <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>
             </a>
             <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
-              <span class="nav-icon">◫</span><span>Vendors</span>
+              <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
             </a>
             <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
-              <span class="nav-icon">◇</span><span>Campaigns</span>
+              <span class="nav-icon">◇</span><span>{% t "Campaigns" %}</span>
             </a>
             <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
-              <span class="nav-icon">▦</span><span>Budget</span>
+              <span class="nav-icon">▦</span><span>{% t "Budget" %}</span>
             </a>
             {% if user|is_panel_admin %}
               <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
-                <span class="nav-icon">⇧</span><span>Excel Import</span>
+                <span class="nav-icon">⇧</span><span>{% t "Excel Import" %}</span>
               </a>
               <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
-                <span class="nav-icon">◎</span><span>Users</span>
+                <span class="nav-icon">◎</span><span>{% t "Users" %}</span>
               </a>
             {% endif %}
           </nav>
@@ -274,11 +274,11 @@
         <div class="sidebar-footer">
           <div class="user-meta">
             <strong>{{ user.username }}</strong><br>
-            {% if user.is_superuser %}Full admin{% else %}Panel user{% endif %}
+            {% if user.is_superuser %}{% t "Full admin" %}{% else %}{% t "Panel user" %}{% endif %}
           </div>
           <form class="logout-form" method="post" action="{% url 'marketing:logout' %}">
             {% csrf_token %}
-            <button class="btn ghost" type="submit">Logout</button>
+            <button class="btn ghost" type="submit">{% t "Logout" %}</button>
           </form>
         </div>
       {% endif %}
@@ -287,8 +287,8 @@
     <main class="main">
       <header class="topbar no-print">
         <div>
-          <h1>{% block page_title %}Dashboard{% endblock %}</h1>
-          <p>{% block page_subtitle %}Monitor spend, invoices and payment status{% endblock %}</p>
+          <h1>{% block page_title %}{% t "Dashboard" %}{% endblock %}</h1>
+          <p>{% block page_subtitle %}{% t "Monitor spend, invoices and payment status" %}{% endblock %}</p>
         </div>
         <div class="actions">
           <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
@@ -310,7 +310,7 @@
         {% if messages %}
           <div class="messages">
             {% for message in messages %}
-              <div class="message">{{ message }}</div>
+              <div class="message">{% t message %}</div>
             {% endfor %}
           </div>
         {% endif %}

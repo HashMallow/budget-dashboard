@@ -86,9 +86,15 @@ def decimal_sum(queryset, field: str = "amount") -> Decimal:
 
 
 def percent(value: Decimal, maximum: Decimal) -> int:
-    if not maximum:
+    """Bar width (0-100) for a value relative to a maximum.
+
+    Any strictly positive value gets a small minimum width so that small-but-real
+    amounts stay visible and distinguishable from a true zero on the chart.
+    """
+    if not maximum or value <= 0:
         return 0
-    return min(int((float(value) / float(maximum)) * 100), 100)
+    ratio = (float(value) / float(maximum)) * 100
+    return min(max(int(round(ratio)), 2), 100)
 
 
 def visible_invoice_queryset(request):

@@ -1,13 +1,13 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}Vendor report{% endblock %}
-{% block page_title %}Vendor report{% endblock %}
-{% block page_subtitle %}Amount, invoice count, payment stage and invoice numbers per vendor{% endblock %}
+{% block title %}{% t "Vendor report" %}{% endblock %}
+{% block page_title %}{% t "Vendor report" %}{% endblock %}
+{% block page_subtitle %}{% t "Amount, invoice count, payment stage and invoice numbers per vendor" %}{% endblock %}
 {% block page_actions %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ Excel</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ PDF report</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF report" %}</a>
   {% endif %}
 {% endblock %}
 
@@ -15,41 +15,41 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="q">Search</label>
-        <input id="q" name="q" value="{{ filters.q }}" placeholder="Vendor or invoice number">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="{% t 'Vendor or invoice number' %}">
       </div>
       <div class="field">
-        <label for="team">Team</label>
+        <label for="team">{% t "Team" %}</label>
         <select id="team" name="team">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="stage">Stage</label>
+        <label for="stage">{% t "Stage" %}</label>
         <select id="stage" name="stage">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for value, label in payment_stages %}
-            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{% t label %}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="bucket">Cost type</label>
+        <label for="bucket">{% t "Cost type" %}</label>
         <select id="bucket" name="bucket">
-          <option value="">All</option>
+          <option value="">{% t "All" %}</option>
           {% for value, label in cost_buckets %}
-            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{% t label %}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="year">Year</label>
+        <label for="year">{% t "Year" %}</label>
         <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
       </div>
-      <button class="btn primary" type="submit">Filter</button>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
     </form>
   </section>
 
@@ -58,11 +58,11 @@
       <table>
         <thead>
           <tr>
-            <th>Vendor</th>
-            <th>Invoice count</th>
-            <th>Invoice numbers</th>
-            <th>Stages</th>
-            <th>Total spend</th>
+            <th>{% t "Vendor" %}</th>
+            <th>{% t "Invoice count" %}</th>
+            <th>{% t "Invoice numbers" %}</th>
+            <th>{% t "Stages" %}</th>
+            <th>{% t "Total spend" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -80,13 +80,13 @@
               </td>
               <td>
                 {% for stage in row.stages %}
-                  <span class="badge">{{ stage }}</span>
+                  <span class="badge">{% t stage %}</span>
                 {% endfor %}
               </td>
               <td class="number"><strong>{{ row.total|money }}</strong></td>
             </tr>
           {% empty %}
-            <tr><td colspan="5" class="empty">No vendors in this range.</td></tr>
+            <tr><td colspan="5" class="empty">{% t "No vendors in this range." %}</td></tr>
           {% endfor %}
         </tbody>
       </table>

@@ -1,37 +1,37 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
-{% block page_title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block title %}{% t "Invoice" %} {{ invoice.invoice_number }}{% endblock %}
+{% block page_title %}{% t "Invoice" %} {{ invoice.invoice_number }}{% endblock %}
 {% block page_subtitle %}{{ invoice.vendor.name }}{% endblock %}
 {% block page_actions %}
-  <a class="btn" href="{% url 'marketing:invoice_list' %}">List</a>
+  <a class="btn" href="{% url 'marketing:invoice_list' %}">{% t "List" %}</a>
   {% if can_edit %}
-    <a class="btn primary" href="{% url 'marketing:invoice_edit' invoice.pk %}">Edit</a>
+    <a class="btn primary" href="{% url 'marketing:invoice_edit' invoice.pk %}">{% t "Edit" %}</a>
   {% endif %}
 {% endblock %}
 
 {% block content %}
   <section class="section grid cards">
     <div class="card">
-      <div class="card-label">Amount</div>
+      <div class="card-label">{% t "Amount" %}</div>
       <div class="card-value number">{{ invoice.amount|money }}</div>
       <div class="card-note">{{ invoice.currency }}</div>
     </div>
     <div class="card">
-      <div class="card-label">Payment stage</div>
-      <div class="card-value"><span class="badge warn">{{ invoice.payment_stage|stage_label }}</span></div>
-      <div class="card-note">{{ invoice.days_in_current_stage }} days in this stage</div>
+      <div class="card-label">{% t "Payment stage" %}</div>
+      <div class="card-value"><span class="badge warn">{% t invoice.payment_stage|stage_label %}</span></div>
+      <div class="card-note">{{ invoice.days_in_current_stage }} {% t "days in this stage" %}</div>
     </div>
     <div class="card">
-      <div class="card-label">Team</div>
+      <div class="card-label">{% t "Team" %}</div>
       <div class="card-value">{{ invoice.team.name|default:"-" }}</div>
-      <div class="card-note">{{ invoice.cost_bucket|bucket_label }}</div>
+      <div class="card-note">{% t invoice.cost_bucket|bucket_label %}</div>
     </div>
     <div class="card">
-      <div class="card-label">Invoice date</div>
+      <div class="card-label">{% t "Invoice date" %}</div>
       <div class="card-value number">{{ invoice.invoice_date }}</div>
-      <div class="card-note">Due: {{ invoice.due_date|default:"-" }}</div>
+      <div class="card-note">{% t "Due:" %} {{ invoice.due_date|default:"-" }}</div>
     </div>
   </section>
 
@@ -39,19 +39,19 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Details</h2>
-          <p class="section-subtitle">Core invoice and cost information</p>
+          <h2 class="section-title">{% t "Details" %}</h2>
+          <p class="section-subtitle">{% t "Core invoice and cost information" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <tbody>
-            <tr><th>Vendor</th><td>{{ invoice.vendor.name }}</td></tr>
-            <tr><th>Campaign</th><td>{{ invoice.campaign.name|default:"-" }}</td></tr>
-            <tr><th>Category</th><td>{{ invoice.category }}</td></tr>
-            <tr><th>Cost type</th><td>{{ invoice.cost_bucket|bucket_label }}</td></tr>
-            <tr><th>Description</th><td>{{ invoice.description|default:"-" }}</td></tr>
-            <tr><th>Import source</th><td>{{ invoice.source_sheet|default:"-" }} / {{ invoice.source_row_number|default:"-" }}</td></tr>
+            <tr><th>{% t "Vendor" %}</th><td>{{ invoice.vendor.name }}</td></tr>
+            <tr><th>{% t "Campaign" %}</th><td>{{ invoice.campaign.name|default:"-" }}</td></tr>
+            <tr><th>{% t "Category" %}</th><td>{{ invoice.category }}</td></tr>
+            <tr><th>{% t "Cost type" %}</th><td>{% t invoice.cost_bucket|bucket_label %}</td></tr>
+            <tr><th>{% t "Description" %}</th><td>{{ invoice.description|default:"-" }}</td></tr>
+            <tr><th>{% t "Import source" %}</th><td>{{ invoice.source_sheet|default:"-" }} / {{ invoice.source_row_number|default:"-" }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -60,8 +60,8 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Payment tracking</h2>
-          <p class="section-subtitle">Stage changes for permitted users</p>
+          <h2 class="section-title">{% t "Payment tracking" %}</h2>
+          <p class="section-subtitle">{% t "Stage changes for permitted users" %}</p>
         </div>
       </div>
       {% if can_edit %}
@@ -69,18 +69,18 @@
           {% csrf_token %}
           <div class="grid">
             <div class="field">
-              <label for="{{ status_form.payment_stage.id_for_label }}">{{ status_form.payment_stage.label }}</label>
+              <label for="{{ status_form.payment_stage.id_for_label }}">{% t status_form.payment_stage.label %}</label>
               {{ status_form.payment_stage }}
             </div>
             <div class="field">
-              <label for="{{ status_form.note.id_for_label }}">{{ status_form.note.label }}</label>
+              <label for="{{ status_form.note.id_for_label }}">{% t status_form.note.label %}</label>
               {{ status_form.note }}
             </div>
-            <button class="btn primary" type="submit">Save stage change</button>
+            <button class="btn primary" type="submit">{% t "Save stage change" %}</button>
           </div>
         </form>
       {% else %}
-        <div class="empty">You have view-only access to this invoice's status.</div>
+        <div class="empty">{% t "You have view-only access to this invoice's status." %}</div>
       {% endif %}
     </div>
   </section>
@@ -89,30 +89,30 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Files</h2>
-          <p class="section-subtitle">Invoice image, payment receipt and related documents</p>
+          <h2 class="section-title">{% t "Files" %}</h2>
+          <p class="section-subtitle">{% t "Invoice image, payment receipt and related documents" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Type</th>
-              <th>File</th>
-              <th>Uploaded by</th>
-              <th>Time</th>
+              <th>{% t "Type" %}</th>
+              <th>{% t "File" %}</th>
+              <th>{% t "Uploaded by" %}</th>
+              <th>{% t "Time" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for attachment in invoice.attachments.all %}
               <tr>
-                <td>{{ attachment.get_attachment_type_display }}</td>
+                <td>{% t attachment.get_attachment_type_display %}</td>
                 <td><a class="ltr" href="{{ attachment.file.url }}">{{ attachment.file.name }}</a></td>
                 <td>{{ attachment.uploaded_by.username }}</td>
                 <td class="number">{{ attachment.uploaded_at }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4" class="empty">No files uploaded.</td></tr>
+              <tr><td colspan="4" class="empty">{% t "No files uploaded." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -123,18 +123,18 @@
           {% csrf_token %}
           <div class="grid">
             <div class="field">
-              <label for="{{ attachment_form.attachment_type.id_for_label }}">{{ attachment_form.attachment_type.label }}</label>
+              <label for="{{ attachment_form.attachment_type.id_for_label }}">{% t attachment_form.attachment_type.label %}</label>
               {{ attachment_form.attachment_type }}
             </div>
             <div class="field">
-              <label for="{{ attachment_form.file.id_for_label }}">{{ attachment_form.file.label }}</label>
+              <label for="{{ attachment_form.file.id_for_label }}">{% t attachment_form.file.label %}</label>
               {{ attachment_form.file }}
             </div>
             <div class="field">
-              <label for="{{ attachment_form.notes.id_for_label }}">{{ attachment_form.notes.label }}</label>
+              <label for="{{ attachment_form.notes.id_for_label }}">{% t attachment_form.notes.label %}</label>
               {{ attachment_form.notes }}
             </div>
-            <button class="btn primary" type="submit">Upload file</button>
+            <button class="btn primary" type="submit">{% t "Upload file" %}</button>
           </div>
         </form>
       {% endif %}
@@ -143,25 +143,25 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Status history</h2>
-          <p class="section-subtitle">Payment stage changes are recorded automatically</p>
+          <h2 class="section-title">{% t "Status history" %}</h2>
+          <p class="section-subtitle">{% t "Payment stage changes are recorded automatically" %}</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>From</th>
-              <th>To</th>
-              <th>User</th>
-              <th>Time</th>
+              <th>{% t "From" %}</th>
+              <th>{% t "To" %}</th>
+              <th>{% t "User" %}</th>
+              <th>{% t "Time" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for item in invoice.status_history.all %}
               <tr>
-                <td>{{ item.old_stage|stage_label }}</td>
-                <td>{{ item.new_stage|stage_label }}</td>
+                <td>{% t item.old_stage|stage_label %}</td>
+                <td>{% t item.new_stage|stage_label %}</td>
                 <td>{{ item.changed_by.username|default:"-" }}</td>
                 <td class="number">{{ item.changed_at }}</td>
               </tr>
@@ -169,7 +169,7 @@
                 <tr><td colspan="4">{{ item.note }}</td></tr>
               {% endif %}
             {% empty %}
-              <tr><td colspan="4" class="empty">No status changes recorded.</td></tr>
+              <tr><td colspan="4" class="empty">{% t "No status changes recorded." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
