@@ -16,6 +16,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.datetime import from_excel
 
+from marketing.jalali import jalali_to_gregorian
 from marketing.models import (
     BudgetLine,
     Campaign,
@@ -182,50 +183,6 @@ def parse_jalali_date(value: str) -> date | None:
         return jalali_to_gregorian(year, month, day)
     except ValueError:
         return None
-
-
-def jalali_to_gregorian(jalali_year: int, jalali_month: int, jalali_day: int) -> date:
-    if not 1 <= jalali_month <= 12:
-        raise ValueError("Invalid Jalali month")
-    max_day = 31 if jalali_month <= 6 else 30
-    if jalali_month == 12:
-        max_day = 30
-    if not 1 <= jalali_day <= max_day:
-        raise ValueError("Invalid Jalali day")
-
-    jy = jalali_year + 1595
-    days = (
-        -355668
-        + (365 * jy)
-        + ((jy // 33) * 8)
-        + (((jy % 33) + 3) // 4)
-        + jalali_day
-        + ((jalali_month - 1) * 31 if jalali_month < 7 else ((jalali_month - 7) * 30) + 186)
-    )
-
-    gy = 400 * (days // 146097)
-    days %= 146097
-    if days > 36524:
-        gy += 100 * ((days - 1) // 36524)
-        days = (days - 1) % 36524
-        if days >= 365:
-            days += 1
-    gy += 4 * (days // 1461)
-    days %= 1461
-    if days > 365:
-        gy += (days - 1) // 365
-        days = (days - 1) % 365
-    gd = days + 1
-
-    leap = (gy % 4 == 0 and gy % 100 != 0) or (gy % 400 == 0)
-    month_lengths = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    gregorian_month = 1
-    for month_length in month_lengths:
-        if gd <= month_length:
-            return date(gy, gregorian_month, gd)
-        gd -= month_length
-        gregorian_month += 1
-    return None
 
 
 def normalize_currency(value: Any) -> str:

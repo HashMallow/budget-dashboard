@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 
-{% block title %}کاربران و دسترسی‌ها{% endblock %}
-{% block page_title %}کاربران و دسترسی‌ها{% endblock %}
-{% block page_subtitle %}تعریف کاربر، نقش، تیم مجاز، آپلود و خروجی{% endblock %}
+{% block title %}Users and access{% endblock %}
+{% block page_title %}Users and access{% endblock %}
+{% block page_subtitle %}Create users, roles, permitted teams, upload and export rights{% endblock %}
 
 {% block content %}
   <section class="section grid two">
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">کاربر جدید</h2>
-          <p class="section-subtitle">کاربر و دسترسی اولیه در دیتابیس ساخته می‌شود</p>
+          <h2 class="section-title">New user</h2>
+          <p class="section-subtitle">The user and initial access are created in the database</p>
         </div>
       </div>
       <form method="post">
@@ -50,38 +50,38 @@
           </div>
           <div class="field">
             <label>&nbsp;</label>
-            <label class="badge">{{ form.is_global }} همه تیم‌ها</label>
+            <label class="badge">{{ form.is_global }} All teams</label>
           </div>
           <div class="field wide">
-            <label>مجوزها</label>
+            <label>Permissions</label>
             <div class="actions">
-              <label class="badge">{{ form.can_view_referral_sms }} ریفرال و SMS</label>
-              <label class="badge">{{ form.can_export }} خروجی</label>
-              <label class="badge">{{ form.can_upload_invoice_files }} آپلود فاکتور</label>
-              <label class="badge">{{ form.can_upload_payment_proofs }} آپلود فیش</label>
+              <label class="badge">{{ form.can_view_referral_sms }} Referral &amp; SMS</label>
+              <label class="badge">{{ form.can_export }} Export</label>
+              <label class="badge">{{ form.can_upload_invoice_files }} Upload invoice</label>
+              <label class="badge">{{ form.can_upload_payment_proofs }} Upload receipt</label>
             </div>
           </div>
         </div>
         <div class="actions" style="margin-top: 18px;">
-          <button class="btn primary" type="submit">ساخت کاربر</button>
+          <button class="btn primary" type="submit">Create user</button>
         </div>
       </form>
     </div>
 
-    <div class="panel">
+    <div class="panel ltr" style="text-align: left;">
       <div class="section-header">
         <div>
-          <h2 class="section-title">روش مدیریت کاربران</h2>
-          <p class="section-subtitle">کاربران معمولی نباید در env تعریف شوند</p>
+          <h2 class="section-title">How user management works</h2>
+          <p class="section-subtitle">Regular users are not configured in environment variables</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <tbody>
-            <tr><th>ادمین اولیه</th><td>برای توسعه با make dev-admin ساخته می‌شود.</td></tr>
-            <tr><th>کاربران عادی</th><td>از همین صفحه ساخته و در دیتابیس ذخیره می‌شوند.</td></tr>
-            <tr><th>حذف امن</th><td>کاربر غیرفعال می‌شود تا تاریخچه فاکتورها خراب نشود.</td></tr>
-            <tr><th>env</th><td>برای SECRET_KEY، تنظیمات سرور و اتصال دیتابیس است، نه کاربران روزمره.</td></tr>
+            <tr><th>Bootstrap admin</th><td>Created for local development with <code>make dev-admin</code>.</td></tr>
+            <tr><th>Regular users</th><td>Created from this page and stored in the database.</td></tr>
+            <tr><th>Safe delete</th><td>A user is deactivated (not deleted) so invoice history stays intact.</td></tr>
+            <tr><th>.env file</th><td>Holds <code>SECRET_KEY</code>, server settings and the database connection — not day-to-day users.</td></tr>
           </tbody>
         </table>
       </div>
@@ -91,20 +91,20 @@
   <section class="section panel">
     <div class="section-header">
       <div>
-        <h2 class="section-title">کاربران فعلی</h2>
-        <p class="section-subtitle">نقش‌ها و دسترسی‌های تیمی</p>
+        <h2 class="section-title">Current users</h2>
+        <p class="section-subtitle">Roles and team-level access</p>
       </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>نام کاربری</th>
-            <th>نام</th>
-            <th>گروه</th>
-            <th>دسترسی‌ها</th>
-            <th>وضعیت</th>
-            <th>عملیات</th>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Group</th>
+            <th>Access</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -123,13 +123,13 @@
                 {% for access in item.team_access.all %}
                   <span class="badge">
                     {{ access.get_role_display }} /
-                    {% if access.is_global %}همه تیم‌ها{% else %}{{ access.team.name }}{% endif %}
+                    {% if access.is_global %}All teams{% else %}{{ access.team.name }}{% endif %}
                   </span>
                 {% empty %}
                   <span class="badge">-</span>
                 {% endfor %}
               </td>
-              <td>{% if item.is_active %}<span class="badge ok">فعال</span>{% else %}<span class="badge danger">غیرفعال</span>{% endif %}</td>
+              <td>{% if item.is_active %}<span class="badge ok">Active</span>{% else %}<span class="badge danger">Inactive</span>{% endif %}</td>
               <td>
                 {% if item != request.user %}
                   <form method="post">
@@ -137,19 +137,19 @@
                     <input type="hidden" name="user_id" value="{{ item.id }}">
                     {% if item.is_active %}
                       <input type="hidden" name="action" value="deactivate">
-                      <button class="btn danger" type="submit">غیرفعال</button>
+                      <button class="btn danger" type="submit">Deactivate</button>
                     {% else %}
                       <input type="hidden" name="action" value="activate">
-                      <button class="btn" type="submit">فعال</button>
+                      <button class="btn" type="submit">Activate</button>
                     {% endif %}
                   </form>
                 {% else %}
-                  <span class="badge">کاربر فعلی</span>
+                  <span class="badge">Current user</span>
                 {% endif %}
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="6" class="empty">کاربری وجود ندارد.</td></tr>
+            <tr><td colspan="6" class="empty">No users.</td></tr>
           {% endfor %}
         </tbody>
       </table>

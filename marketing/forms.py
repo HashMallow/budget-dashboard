@@ -53,7 +53,7 @@ class StyledFormMixin:
 
 
 class InvoiceForm(StyledFormMixin, forms.ModelForm):
-    new_vendor_name = forms.CharField(label="وندور جدید", required=False, max_length=255)
+    new_vendor_name = forms.CharField(label="New vendor", required=False, max_length=255)
 
     class Meta:
         model = Invoice
@@ -78,18 +78,18 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
         labels = {
-            "invoice_number": "شماره فاکتور",
-            "vendor": "وندور",
-            "team": "تیم",
-            "campaign": "کمپین",
-            "category": "دسته‌بندی / ردیف بودجه",
-            "cost_bucket": "نوع هزینه",
-            "description": "توضیحات",
-            "invoice_date": "تاریخ فاکتور",
-            "due_date": "سررسید",
-            "amount": "مبلغ",
-            "currency": "واحد پول",
-            "payment_stage": "مرحله پرداخت",
+            "invoice_number": "Invoice number",
+            "vendor": "Vendor",
+            "team": "Team",
+            "campaign": "Campaign",
+            "category": "Category / budget line",
+            "cost_bucket": "Cost type",
+            "description": "Description",
+            "invoice_date": "Invoice date",
+            "due_date": "Due date",
+            "amount": "Amount",
+            "currency": "Currency",
+            "payment_stage": "Payment stage",
         }
 
     def __init__(self, *args, user, **kwargs):
@@ -113,11 +113,11 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         cost_bucket = cleaned.get("cost_bucket") or CostBucket.TEAM
 
         if not vendor and not new_vendor_name:
-            raise ValidationError("یک وندور انتخاب کنید یا نام وندور جدید را وارد کنید.")
+            raise ValidationError("Select a vendor or enter a new vendor name.")
         if cost_bucket == CostBucket.TEAM and team is None:
-            raise ValidationError("برای هزینه تیمی، انتخاب تیم الزامی است.")
+            raise ValidationError("A team is required for team cost.")
         if not can_create_invoice_for_team(self.user, team, cost_bucket):
-            raise ValidationError("شما اجازه ثبت یا ویرایش فاکتور برای این تیم/نوع هزینه را ندارید.")
+            raise ValidationError("You are not allowed to add or edit invoices for this team/cost type.")
         return cleaned
 
     def save(self, commit=True):
@@ -140,8 +140,8 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
 
 
 class InvoiceStatusForm(StyledFormMixin, forms.Form):
-    payment_stage = forms.ChoiceField(label="مرحله پرداخت", choices=PaymentStage.choices)
-    note = forms.CharField(label="یادداشت", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+    payment_stage = forms.ChoiceField(label="Payment stage", choices=PaymentStage.choices)
+    note = forms.CharField(label="Note", required=False, widget=forms.Textarea(attrs={"rows": 2}))
 
     def __init__(self, *args, invoice: Invoice, **kwargs):
         super().__init__(*args, **kwargs)
@@ -154,9 +154,9 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
         model = InvoiceAttachment
         fields = ["attachment_type", "file", "notes"]
         labels = {
-            "attachment_type": "نوع فایل",
-            "file": "فایل",
-            "notes": "یادداشت",
+            "attachment_type": "File type",
+            "file": "File",
+            "notes": "Note",
         }
         widgets = {
             "notes": forms.Textarea(attrs={"rows": 2}),
@@ -169,11 +169,11 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
         choices = []
         if can_upload_invoice_file(user, invoice):
             choices.extend([
-                (AttachmentType.INVOICE_IMAGE, "تصویر / فایل فاکتور"),
-                (AttachmentType.OTHER, "سایر مدارک"),
+                (AttachmentType.INVOICE_IMAGE, "Invoice image / file"),
+                (AttachmentType.OTHER, "Other documents"),
             ])
         if can_upload_payment_proof(user, invoice):
-            choices.append((AttachmentType.PAYMENT_PROOF, "فیش / رسید پرداخت"))
+            choices.append((AttachmentType.PAYMENT_PROOF, "Payment receipt / proof"))
         self.fields["attachment_type"].choices = choices
         self._style_fields()
 
@@ -184,17 +184,17 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
     def clean_attachment_type(self):
         attachment_type = self.cleaned_data["attachment_type"]
         if attachment_type == AttachmentType.PAYMENT_PROOF and not can_upload_payment_proof(self.user, self.invoice):
-            raise ValidationError("اجازه آپلود فیش پرداخت ندارید.")
+            raise ValidationError("You are not allowed to upload payment receipts.")
         if attachment_type in {AttachmentType.INVOICE_IMAGE, AttachmentType.OTHER} and not can_upload_invoice_file(
             self.user,
             self.invoice,
         ):
-            raise ValidationError("اجازه آپلود فایل فاکتور ندارید.")
+            raise ValidationError("You are not allowed to upload invoice files.")
         return attachment_type
 
 
 class ExcelImportUploadForm(StyledFormMixin, forms.Form):
-    workbook = forms.FileField(label="فایل اکسل")
+    workbook = forms.FileField(label="Excel file")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -204,7 +204,7 @@ class ExcelImportUploadForm(StyledFormMixin, forms.Form):
         workbook = self.cleaned_data["workbook"]
         suffix = Path(workbook.name).suffix.lower()
         if suffix != ".xlsx":
-            raise ValidationError("فقط فایل xlsx قابل قبول است.")
+            raise ValidationError("Only .xlsx files are accepted.")
         return workbook
 
 
@@ -216,18 +216,18 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
         (Role.OBSERVER, "Observer"),
     ]
 
-    username = forms.CharField(label="نام کاربری", max_length=150)
-    password = forms.CharField(label="رمز عبور", widget=forms.PasswordInput)
-    first_name = forms.CharField(label="نام", required=False, max_length=150)
-    last_name = forms.CharField(label="نام خانوادگی", required=False, max_length=150)
-    email = forms.EmailField(label="ایمیل", required=False)
-    role = forms.ChoiceField(label="سطح دسترسی", choices=ROLE_CHOICES)
-    team = forms.ModelChoiceField(label="تیم", queryset=Team.objects.none(), required=False)
-    is_global = forms.BooleanField(label="دسترسی همه تیم‌ها", required=False)
-    can_view_referral_sms = forms.BooleanField(label="مشاهده ریفرال و SMS", required=False)
-    can_export = forms.BooleanField(label="خروجی اکسل/گزارش", required=False)
-    can_upload_invoice_files = forms.BooleanField(label="آپلود فایل فاکتور", required=False)
-    can_upload_payment_proofs = forms.BooleanField(label="آپلود فیش پرداخت", required=False)
+    username = forms.CharField(label="Username", max_length=150)
+    password = forms.CharField(label="Password", widget=forms.PasswordInput)
+    first_name = forms.CharField(label="First name", required=False, max_length=150)
+    last_name = forms.CharField(label="Last name", required=False, max_length=150)
+    email = forms.EmailField(label="Email", required=False)
+    role = forms.ChoiceField(label="Access level", choices=ROLE_CHOICES)
+    team = forms.ModelChoiceField(label="Team", queryset=Team.objects.none(), required=False)
+    is_global = forms.BooleanField(label="All-team access", required=False)
+    can_view_referral_sms = forms.BooleanField(label="View referral and SMS", required=False)
+    can_export = forms.BooleanField(label="Export Excel/reports", required=False)
+    can_upload_invoice_files = forms.BooleanField(label="Upload invoice files", required=False)
+    can_upload_payment_proofs = forms.BooleanField(label="Upload payment receipts", required=False)
 
     def __init__(self, *args, user, **kwargs):
         self.user = user
@@ -238,7 +238,7 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
         if User.objects.filter(username=username).exists():
-            raise ValidationError("این نام کاربری قبلا ثبت شده است.")
+            raise ValidationError("This username is already taken.")
         return username
 
     def clean(self):
@@ -247,7 +247,7 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
         team = cleaned.get("team")
         is_global = cleaned.get("is_global")
         if role != "ADMIN" and not is_global and team is None:
-            raise ValidationError("برای کاربر غیر ادمین، تیم را انتخاب کنید یا دسترسی همه تیم‌ها را فعال کنید.")
+            raise ValidationError("For a non-admin user, select a team or enable all-team access.")
         return cleaned
 
     def save(self):

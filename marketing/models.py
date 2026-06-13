@@ -240,6 +240,18 @@ class Invoice(TimestampedModel):
     def invoice_month(self) -> int:
         return self.invoice_date.month
 
+    @property
+    def jalali_year(self) -> int:
+        from marketing.jalali import jalali_year_of
+
+        return jalali_year_of(self.invoice_date)
+
+    @property
+    def jalali_month(self) -> int:
+        from marketing.jalali import jalali_month_of
+
+        return jalali_month_of(self.invoice_date)
+
     def set_payment_stage(self, new_stage: str, *, changed_by=None, note: str = "") -> None:
         self.payment_stage = new_stage
         self.updated_by = changed_by

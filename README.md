@@ -8,6 +8,7 @@ For a more visual explanation of the current structure, capabilities, run workfl
 docs/PROJECT_BLUEPRINT.md
 docs/CURRENT_STATE_AND_RUN_GUIDE.md
 docs/PROJECT_FILE_REFERENCE.md
+docs/DEPLOYMENT_AWS.md
 ```
 
 ## Current Status

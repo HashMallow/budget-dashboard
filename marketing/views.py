@@ -28,6 +28,7 @@ from .forms import (
     user_can_create_invoice,
 )
 from .importers.excel import ImportResult, import_marketing_workbook
+from .jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_year_bounds
 from .models import (
     BudgetLine,
     CostBucket,
@@ -48,23 +49,35 @@ from .permissions import (
 
 User = get_user_model()
 ZERO = Decimal("0")
-MONTHS = [
-    (1, "فروردین / Jan"),
-    (2, "اردیبهشت / Feb"),
-    (3, "خرداد / Mar"),
-    (4, "تیر / Apr"),
-    (5, "مرداد / May"),
-    (6, "شهریور / Jun"),
-    (7, "مهر / Jul"),
-    (8, "آبان / Aug"),
-    (9, "آذر / Sep"),
-    (10, "دی / Oct"),
-    (11, "بهمن / Nov"),
-    (12, "اسفند / Dec"),
-]
 
 
-def forbidden(message: str = "شما اجازه انجام این عملیات را ندارید.") -> HttpResponseForbidden:
+def get_months(request) -> list[tuple[int, str]]:
+    """Persian (Jalali) month labels, localized to the active UI language."""
+    if request.session.get("ui_lang", "en") == "fa":
+        return [(number, persian) for number, persian, _latin in JALALI_MONTHS]
+    return [(number, latin) for number, _persian, latin in JALALI_MONTHS]
+
+
+def filter_by_jalali_year(queryset, year: str):
+    """Filter invoices by a Jalali year using the matching Gregorian date range."""
+    if year and year.isdigit():
+        start, end = jalali_year_bounds(int(year))
+        return queryset.filter(invoice_date__range=(start, end))
+    return queryset
+
+
+def distinct_jalali_years(queryset) -> list[int]:
+    # Small datasets: convert each invoice date. Revisit with a stored Jalali year
+    # column if invoice volume grows large.
+    years = {
+        gregorian_to_jalali(value.year, value.month, value.day)[0]
+        for value in queryset.values_list("invoice_date", flat=True)
+        if value
+    }
+    return sorted(years, reverse=True)
+
+
+def forbidden(message: str = "You are not allowed to perform this action.") -> HttpResponseForbidden:
     return HttpResponseForbidden(message)
 
 
@@ -105,7 +118,7 @@ def filter_invoice_queryset(request, queryset):
             | Q(description__icontains=filters["q"])
         )
     if filters["year"].isdigit():
-        queryset = queryset.filter(invoice_date__year=int(filters["year"]))
+        queryset = filter_by_jalali_year(queryset, filters["year"])
     if filters["team"].isdigit():
         queryset = queryset.filter(team_id=int(filters["team"]))
     if filters["stage"]:
@@ -118,31 +131,31 @@ def filter_invoice_queryset(request, queryset):
 def result_summary(result: ImportResult) -> list[dict[str, int | str]]:
     return [
         {
-            "label": "تیم‌ها",
+            "label": "Teams",
             "created": result.teams.created,
             "updated": result.teams.updated,
             "skipped": result.teams.skipped,
         },
         {
-            "label": "وندورها",
+            "label": "Vendors",
             "created": result.vendors.created,
             "updated": result.vendors.updated,
             "skipped": result.vendors.skipped,
         },
         {
-            "label": "کمپین‌ها",
+            "label": "Campaigns",
             "created": result.campaigns.created,
             "updated": result.campaigns.updated,
             "skipped": result.campaigns.skipped,
         },
         {
-            "label": "فاکتورها",
+            "label": "Invoices",
             "created": result.invoices.created,
             "updated": result.invoices.updated,
             "skipped": result.invoices.skipped,
         },
         {
-            "label": "بودجه",
+            "label": "Budget",
             "created": result.budget_lines.created,
             "updated": result.budget_lines.updated,
             "skipped": result.budget_lines.skipped,
@@ -152,18 +165,15 @@ def result_summary(result: ImportResult) -> list[dict[str, int | str]]:
 
 @login_required
 def dashboard(request):
+    months = get_months(request)
     base_queryset = visible_invoice_queryset(request)
-    years = list(
-        base_queryset.order_by("-invoice_date__year")
-        .values_list("invoice_date__year", flat=True)
-        .distinct()
-    )
+    years = distinct_jalali_years(base_queryset)
     selected_year = request.GET.get("year", "").strip()
     selected_team = request.GET.get("team", "").strip()
 
     invoices = base_queryset
     if selected_year.isdigit():
-        invoices = invoices.filter(invoice_date__year=int(selected_year))
+        invoices = filter_by_jalali_year(invoices, selected_year)
     if selected_team.isdigit():
         invoices = invoices.filter(team_id=int(selected_team))
 
@@ -173,9 +183,11 @@ def dashboard(request):
     referral_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.REFERRAL))
     sms_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.SMS))
 
-    monthly_map = {month_number: ZERO for month_number, _label in MONTHS}
-    for row in invoices.values("invoice_date__month").annotate(total=Sum("amount")):
-        monthly_map[row["invoice_date__month"]] = row["total"] or ZERO
+    monthly_map = {month_number: ZERO for month_number, _label in months}
+    for row in invoices.values("invoice_date").annotate(total=Sum("amount")):
+        invoice_date = row["invoice_date"]
+        jalali_month = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)[1]
+        monthly_map[jalali_month] += row["total"] or ZERO
     max_monthly = max(monthly_map.values(), default=ZERO)
     monthly_rows = [
         {
@@ -184,7 +196,7 @@ def dashboard(request):
             "total": monthly_map[month_number],
             "percent": percent(monthly_map[month_number], max_monthly),
         }
-        for month_number, label in MONTHS
+        for month_number, label in months
     ]
 
     team_total_rows = list(
@@ -196,7 +208,7 @@ def dashboard(request):
     max_team_total = max((row["total"] or ZERO for row in team_total_rows), default=ZERO)
     for row in team_total_rows:
         row["percent"] = percent(row["total"] or ZERO, max_team_total)
-        row["team_name"] = row["team__name"] or "بدون تیم"
+        row["team_name"] = row["team__name"] or "No team"
 
     vendor_rows = list(
         invoices.values("vendor_id", "vendor__name")
@@ -255,7 +267,7 @@ def invoice_list(request):
         "page_obj": page_obj,
         "filters": filters,
         "teams": visible_team_queryset(request),
-        "years": queryset.order_by("-invoice_date__year").values_list("invoice_date__year", flat=True).distinct(),
+        "years": distinct_jalali_years(visible_invoice_queryset(request)),
         "payment_stages": PaymentStage.choices,
         "cost_buckets": CostBucket.choices,
         "can_create_invoice": user_can_create_invoice(request.user),
@@ -287,7 +299,7 @@ def invoice_create(request):
         form = InvoiceForm(request.POST, user=request.user)
         if form.is_valid():
             invoice = form.save()
-            messages.success(request, "فاکتور ثبت شد.")
+            messages.success(request, "Invoice saved.")
             return redirect("marketing:invoice_detail", pk=invoice.pk)
     else:
         form = InvoiceForm(user=request.user)
@@ -303,7 +315,7 @@ def invoice_edit(request, pk: int):
         form = InvoiceForm(request.POST, user=request.user, instance=invoice)
         if form.is_valid():
             invoice = form.save()
-            messages.success(request, "فاکتور به‌روزرسانی شد.")
+            messages.success(request, "Invoice updated.")
             return redirect("marketing:invoice_detail", pk=invoice.pk)
     else:
         form = InvoiceForm(user=request.user, instance=invoice)
@@ -323,9 +335,9 @@ def invoice_stage_update(request, pk: int):
             changed_by=request.user,
             note=form.cleaned_data.get("note", ""),
         )
-        messages.success(request, "مرحله پرداخت به‌روزرسانی شد.")
+        messages.success(request, "Payment stage updated.")
     else:
-        messages.error(request, "مرحله پرداخت معتبر نیست.")
+        messages.error(request, "Invalid payment stage.")
     return redirect("marketing:invoice_detail", pk=invoice.pk)
 
 
@@ -335,15 +347,15 @@ def invoice_attachment_upload(request, pk: int):
     invoice = get_object_or_404(visible_invoice_queryset(request), pk=pk)
     form = InvoiceAttachmentForm(request.POST, request.FILES, user=request.user, invoice=invoice)
     if not form.has_allowed_types:
-        return forbidden("برای این فاکتور اجازه آپلود فایل ندارید.")
+        return forbidden("You are not allowed to upload files for this invoice.")
     if form.is_valid():
         attachment = form.save(commit=False)
         attachment.invoice = invoice
         attachment.uploaded_by = request.user
         attachment.save()
-        messages.success(request, "فایل آپلود شد.")
+        messages.success(request, "File uploaded.")
     else:
-        messages.error(request, "آپلود فایل انجام نشد. نوع فایل یا دسترسی را بررسی کنید.")
+        messages.error(request, "Upload failed. Check the file type or your permissions.")
     return redirect("marketing:invoice_detail", pk=invoice.pk)
 
 
@@ -386,6 +398,7 @@ def vendor_report(request):
 
 @login_required
 def campaign_report(request):
+    months = get_months(request)
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     campaign_totals = list(
         queryset.filter(campaign__isnull=False)
@@ -397,20 +410,23 @@ def campaign_report(request):
     for row in campaign_totals:
         row["percent"] = percent(row["total"] or ZERO, max_total)
 
-    monthly_campaigns = defaultdict(lambda: {month: ZERO for month, _label in MONTHS})
+    monthly_campaigns = defaultdict(lambda: {month: ZERO for month, _label in months})
     for row in (
         queryset.filter(campaign__isnull=False)
-        .values("campaign__name", "invoice_date__month")
+        .values("campaign__name", "invoice_date")
         .annotate(total=Sum("amount"))
     ):
-        monthly_campaigns[row["campaign__name"]][row["invoice_date__month"]] = row["total"] or ZERO
+        invoice_date = row["invoice_date"]
+        jalali_month = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)[1]
+        monthly_campaigns[row["campaign__name"]][jalali_month] += row["total"] or ZERO
 
     context = {
         "campaign_rows": campaign_totals,
         "monthly_campaigns": dict(monthly_campaigns),
-        "months": MONTHS,
+        "months": months,
         "filters": filters,
         "teams": visible_team_queryset(request),
+        "years": distinct_jalali_years(visible_invoice_queryset(request)),
         "payment_stages": PaymentStage.choices,
         "cost_buckets": CostBucket.choices,
     }
@@ -419,6 +435,7 @@ def campaign_report(request):
 
 @login_required
 def budget_list(request):
+    months = get_months(request)
     queryset = filter_budget_lines_for_user(
         BudgetLine.objects.select_related("team", "campaign").order_by("year", "team__name", "category", "month"),
         request.user,
@@ -441,12 +458,12 @@ def budget_list(request):
     )
     pivot = {}
     for line in queryset:
-        key = (line.team.name if line.team else "بدون تیم", line.category)
+        key = (line.team.name if line.team else "No team", line.category)
         if key not in pivot:
             pivot[key] = {
                 "team": key[0],
                 "category": key[1],
-                "months": {month_number: ZERO for month_number, _label in MONTHS},
+                "months": {month_number: ZERO for month_number, _label in months},
                 "total": ZERO,
             }
         if line.month:
@@ -457,7 +474,7 @@ def budget_list(request):
     context = {
         "page_obj": paginator.get_page(request.GET.get("page")),
         "pivot_rows": sorted(pivot.values(), key=lambda item: (item["team"], item["category"])),
-        "months": MONTHS,
+        "months": months,
         "years": years,
         "teams": visible_team_queryset(request),
         "filters": {"year": year, "team": team, "q": q},
@@ -479,11 +496,11 @@ def import_workbook(request):
         action = request.POST.get("action")
         if action == "confirm":
             if not pending_path:
-                messages.error(request, "هیچ فایل آماده‌ای برای import وجود ندارد.")
+                messages.error(request, "There is no file ready to import.")
             else:
                 result = import_marketing_workbook(pending_path, dry_run=False)
                 summary = result_summary(result)
-                messages.success(request, "اطلاعات اکسل وارد دیتابیس شد.")
+                messages.success(request, "Excel data imported into the database.")
                 request.session.pop("pending_import_path", None)
                 pending_path = None
         else:
@@ -497,7 +514,7 @@ def import_workbook(request):
                 summary = result_summary(result)
                 request.session["pending_import_path"] = workbook_path
                 pending_path = workbook_path
-                messages.info(request, "Dry-run انجام شد. اگر نتیجه درست است، import را تایید کنید.")
+                messages.info(request, "Dry-run complete. If the result looks correct, confirm the import.")
 
     context = {
         "form": form,
@@ -520,18 +537,18 @@ def user_access(request):
         if action in {"deactivate", "activate"}:
             target = get_object_or_404(User, pk=request.POST.get("user_id"))
             if target == request.user and action == "deactivate":
-                messages.error(request, "نمی‌توانید کاربر فعلی خودتان را غیرفعال کنید.")
+                messages.error(request, "You cannot deactivate your own account.")
             else:
                 target.is_active = action == "activate"
                 target.save(update_fields=["is_active"])
                 UserTeamAccess.objects.filter(user=target).update(is_active=target.is_active)
-                messages.success(request, "وضعیت کاربر به‌روزرسانی شد.")
+                messages.success(request, "User status updated.")
             return redirect("marketing:user_access")
 
         form = UserAccessCreateForm(request.POST, user=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, "کاربر جدید ساخته شد.")
+            messages.success(request, "New user created.")
             return redirect("marketing:user_access")
 
     users = User.objects.prefetch_related("groups", "team_access__team").order_by("username")
@@ -541,7 +558,7 @@ def user_access(request):
 @login_required
 def export_invoices_excel(request):
     if not can_export(request.user):
-        return forbidden("برای خروجی گرفتن دسترسی ندارید.")
+        return forbidden("You do not have permission to export.")
     queryset, _filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     workbook = Workbook()
     sheet = workbook.active
@@ -585,7 +602,7 @@ def export_invoices_excel(request):
 @login_required
 def invoice_report_print(request):
     if not can_export(request.user):
-        return forbidden("برای گزارش گرفتن دسترسی ندارید.")
+        return forbidden("You do not have permission to view reports.")
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     vendor_rows = list(
         queryset.values("vendor__name")

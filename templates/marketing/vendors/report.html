@@ -1,13 +1,13 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}گزارش وندورها{% endblock %}
-{% block page_title %}گزارش وندورها{% endblock %}
-{% block page_subtitle %}مبلغ، تعداد فاکتور، مرحله پرداخت و شماره فاکتورهای هر وندور{% endblock %}
+{% block title %}Vendor report{% endblock %}
+{% block page_title %}Vendor report{% endblock %}
+{% block page_subtitle %}Amount, invoice count, payment stage and invoice numbers per vendor{% endblock %}
 {% block page_actions %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ اکسل</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ گزارش PDF</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ Excel</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ PDF report</a>
   {% endif %}
 {% endblock %}
 
@@ -15,41 +15,41 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="q">جستجو</label>
-        <input id="q" name="q" value="{{ filters.q }}" placeholder="وندور یا شماره فاکتور">
+        <label for="q">Search</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="Vendor or invoice number">
       </div>
       <div class="field">
-        <label for="team">تیم</label>
+        <label for="team">Team</label>
         <select id="team" name="team">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="stage">مرحله</label>
+        <label for="stage">Stage</label>
         <select id="stage" name="stage">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for value, label in payment_stages %}
             <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="bucket">نوع هزینه</label>
+        <label for="bucket">Cost type</label>
         <select id="bucket" name="bucket">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for value, label in cost_buckets %}
             <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="year">سال</label>
+        <label for="year">Year</label>
         <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
       </div>
-      <button class="btn primary" type="submit">فیلتر</button>
+      <button class="btn primary" type="submit">Filter</button>
     </form>
   </section>
 
@@ -58,11 +58,11 @@
       <table>
         <thead>
           <tr>
-            <th>وندور</th>
-            <th>تعداد فاکتور</th>
-            <th>شماره فاکتورها</th>
-            <th>مرحله‌ها</th>
-            <th>جمع هزینه</th>
+            <th>Vendor</th>
+            <th>Invoice count</th>
+            <th>Invoice numbers</th>
+            <th>Stages</th>
+            <th>Total spend</th>
           </tr>
         </thead>
         <tbody>
@@ -86,7 +86,7 @@
               <td class="number"><strong>{{ row.total|money }}</strong></td>
             </tr>
           {% empty %}
-            <tr><td colspan="5" class="empty">وندوری در این محدوده وجود ندارد.</td></tr>
+            <tr><td colspan="5" class="empty">No vendors in this range.</td></tr>
           {% endfor %}
         </tbody>
       </table>

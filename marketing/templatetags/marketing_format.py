@@ -6,8 +6,15 @@ from django import template
 
 from marketing.models import CostBucket, PaymentStage
 from marketing.permissions import user_has_admin_access
+from marketing.translations import translate
 
 register = template.Library()
+
+
+@register.simple_tag(takes_context=True)
+def t(context, text):
+    """Translate a UI string to the active language (English source is the key)."""
+    return translate(text, context.get("ui_lang", "en"))
 
 
 @register.filter

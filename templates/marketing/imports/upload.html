@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 
-{% block title %}ورود اکسل{% endblock %}
-{% block page_title %}ورود اکسل{% endblock %}
-{% block page_subtitle %}آپلود فایل xlsx، بررسی dry-run، سپس ثبت در دیتابیس{% endblock %}
+{% block title %}Excel import{% endblock %}
+{% block page_title %}Excel import{% endblock %}
+{% block page_subtitle %}Upload an xlsx file, review the dry-run, then commit to the database{% endblock %}
 
 {% block content %}
   <section class="section grid two">
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">آپلود فایل</h2>
-          <p class="section-subtitle">ابتدا فقط بررسی می‌شود و چیزی در دیتابیس تغییر نمی‌کند</p>
+          <h2 class="section-title">Upload file</h2>
+          <p class="section-subtitle">First a dry-run only; nothing in the database changes</p>
         </div>
       </div>
       <form method="post" enctype="multipart/form-data">
@@ -23,14 +23,14 @@
             {{ form.workbook }}
             {{ form.workbook.errors }}
           </div>
-          <button class="btn primary" type="submit">بررسی فایل</button>
+          <button class="btn primary" type="submit">Check file</button>
         </div>
       </form>
       {% if pending_path %}
         <form method="post" style="margin-top: 14px;">
           {% csrf_token %}
           <input type="hidden" name="action" value="confirm">
-          <button class="btn primary" type="submit">تایید و import به دیتابیس</button>
+          <button class="btn primary" type="submit">Confirm and import to database</button>
         </form>
       {% endif %}
     </div>
@@ -38,7 +38,7 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">نتیجه آخرین بررسی</h2>
+          <h2 class="section-title">Last check result</h2>
           <p class="section-subtitle">created / updated / skipped</p>
         </div>
       </div>
@@ -47,10 +47,10 @@
           <table>
             <thead>
               <tr>
-                <th>بخش</th>
-                <th>جدید</th>
-                <th>به‌روزرسانی</th>
-                <th>ردشده</th>
+                <th>Section</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th>Skipped</th>
               </tr>
             </thead>
             <tbody>
@@ -66,7 +66,7 @@
           </table>
         </div>
       {% else %}
-        <div class="empty">هنوز فایلی بررسی نشده است.</div>
+        <div class="empty">No file checked yet.</div>
       {% endif %}
     </div>
   </section>
@@ -75,17 +75,17 @@
     <section class="section panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">ردیف‌های ردشده</h2>
-          <p class="section-subtitle">۲۰ مورد اول برای بررسی سریع</p>
+          <h2 class="section-title">Skipped rows</h2>
+          <p class="section-subtitle">First 20 for a quick review</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>شیت</th>
-              <th>ردیف</th>
-              <th>دلیل</th>
+              <th>Sheet</th>
+              <th>Row</th>
+              <th>Reason</th>
             </tr>
           </thead>
           <tbody>

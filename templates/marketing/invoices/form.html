@@ -1,10 +1,10 @@
 {% extends "marketing/base.html" %}
 
-{% block title %}{% if mode == "edit" %}ویرایش فاکتور{% else %}ثبت فاکتور{% endif %}{% endblock %}
-{% block page_title %}{% if mode == "edit" %}ویرایش فاکتور{% else %}ثبت فاکتور{% endif %}{% endblock %}
-{% block page_subtitle %}اطلاعات فاکتور در دیتابیس ثبت می‌شود{% endblock %}
+{% block title %}{% if mode == "edit" %}Edit invoice{% else %}New invoice{% endif %}{% endblock %}
+{% block page_title %}{% if mode == "edit" %}Edit invoice{% else %}New invoice{% endif %}{% endblock %}
+{% block page_subtitle %}The invoice is saved to the database{% endblock %}
 {% block page_actions %}
-  <a class="btn" href="{% if invoice %}{% url 'marketing:invoice_detail' invoice.pk %}{% else %}{% url 'marketing:invoice_list' %}{% endif %}">بازگشت</a>
+  <a class="btn" href="{% if invoice %}{% url 'marketing:invoice_detail' invoice.pk %}{% else %}{% url 'marketing:invoice_list' %}{% endif %}">Back</a>
 {% endblock %}
 
 {% block content %}
@@ -82,8 +82,8 @@
         </div>
       </div>
       <div class="actions" style="margin-top: 18px;">
-        <button class="btn primary" type="submit">ذخیره</button>
-        <a class="btn" href="{% url 'marketing:invoice_list' %}">انصراف</a>
+        <button class="btn primary" type="submit">Save</button>
+        <a class="btn" href="{% url 'marketing:invoice_list' %}">Cancel</a>
       </div>
     </form>
   </section>

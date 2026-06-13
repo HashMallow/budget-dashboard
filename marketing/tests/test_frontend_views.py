@@ -61,7 +61,7 @@ def test_dashboard_renders_for_admin(client, frontend_data):
     response = client.get(reverse("marketing:dashboard"))
 
     assert response.status_code == 200
-    assert "داشبورد هزینه‌کرد" in response.content.decode()
+    assert "Spend Dashboard" in response.content.decode()
 
 
 def test_invoice_list_is_scoped_for_team_editor(client, frontend_data):
@@ -117,4 +117,4 @@ def test_admin_can_export_invoice_excel_and_print_report(client, frontend_data):
     assert excel_response.status_code == 200
     assert excel_response["Content-Type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     assert print_response.status_code == 200
-    assert "گزارش فاکتورها" in print_response.content.decode()
+    assert "Invoice report" in print_response.content.decode()

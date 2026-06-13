@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}فاکتورها{% endblock %}
-{% block page_title %}فاکتورها{% endblock %}
-{% block page_subtitle %}جستجو، فیلتر، پیگیری پرداخت و ورود اطلاعات هزینه{% endblock %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Invoices{% endblock %}
+{% block page_subtitle %}Search, filter, track payments and enter spend data{% endblock %}
 {% block page_actions %}
   {% if can_create_invoice %}
-    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ ثبت فاکتور</a>
+    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ New invoice</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ اکسل</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ گزارش PDF</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ Excel</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ PDF report</a>
   {% endif %}
 {% endblock %}
 
@@ -18,41 +18,41 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="q">جستجو</label>
-        <input id="q" name="q" value="{{ filters.q }}" placeholder="شماره، وندور، دسته‌بندی">
+        <label for="q">Search</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="Number, vendor, category">
       </div>
       <div class="field">
-        <label for="team">تیم</label>
+        <label for="team">Team</label>
         <select id="team" name="team">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="stage">مرحله پرداخت</label>
+        <label for="stage">Payment stage</label>
         <select id="stage" name="stage">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for value, label in payment_stages %}
             <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="bucket">نوع هزینه</label>
+        <label for="bucket">Cost type</label>
         <select id="bucket" name="bucket">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for value, label in cost_buckets %}
             <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="year">سال</label>
+        <label for="year">Year</label>
         <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
       </div>
-      <button class="btn primary" type="submit">فیلتر</button>
+      <button class="btn primary" type="submit">Filter</button>
     </form>
   </section>
 
@@ -61,14 +61,14 @@
       <table>
         <thead>
           <tr>
-            <th>شماره</th>
-            <th>وندور</th>
-            <th>تیم</th>
-            <th>دسته‌بندی</th>
-            <th>تاریخ</th>
-            <th>مبلغ</th>
-            <th>مرحله</th>
-            <th>روز</th>
+            <th>Number</th>
+            <th>Vendor</th>
+            <th>Team</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Stage</th>
+            <th>Days</th>
           </tr>
         </thead>
         <tbody>
@@ -84,7 +84,7 @@
               <td class="number">{{ invoice.days_in_current_stage }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="8" class="empty">فاکتوری برای نمایش وجود ندارد.</td></tr>
+            <tr><td colspan="8" class="empty">No invoices to display.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -92,11 +92,11 @@
     {% if page_obj.has_other_pages %}
       <div class="pagination">
         {% if page_obj.has_previous %}
-          <a class="btn" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">قبلی</a>
+          <a class="btn" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">Previous</a>
         {% endif %}
-        <span class="btn">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        <span class="btn">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="btn" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">بعدی</a>
+          <a class="btn" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">Next</a>
         {% endif %}
       </div>
     {% endif %}

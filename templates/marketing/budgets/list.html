@@ -1,56 +1,56 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}بودجه{% endblock %}
-{% block page_title %}بودجه{% endblock %}
-{% block page_subtitle %}ردیف‌های بودجه واردشده از شیت Budget{% endblock %}
+{% block title %}Budget{% endblock %}
+{% block page_title %}Budget{% endblock %}
+{% block page_subtitle %}Budget lines imported from the Budget sheet{% endblock %}
 
 {% block content %}
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="q">جستجو</label>
-        <input id="q" name="q" value="{{ filters.q }}" placeholder="تیم یا دسته‌بندی">
+        <label for="q">Search</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="Team or category">
       </div>
       <div class="field">
-        <label for="year">سال</label>
+        <label for="year">Year</label>
         <select id="year" name="year">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for year in years %}
             <option value="{{ year }}" {% if filters.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="team">تیم</label>
+        <label for="team">Team</label>
         <select id="team" name="team">
-          <option value="">همه</option>
+          <option value="">All</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <button class="btn primary" type="submit">فیلتر</button>
+      <button class="btn primary" type="submit">Filter</button>
     </form>
   </section>
 
   <section class="section panel">
     <div class="section-header">
       <div>
-        <h2 class="section-title">نمای اکسل‌مانند بودجه</h2>
-        <p class="section-subtitle">هر ردیف تیم/دسته‌بندی و هر ستون یک ماه است</p>
+        <h2 class="section-title">Spreadsheet-style budget view</h2>
+        <p class="section-subtitle">Each row is a team/category, each column is a month</p>
       </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>تیم</th>
-            <th>دسته‌بندی</th>
+            <th>Team</th>
+            <th>Category</th>
             {% for month, label in months %}
               <th>{{ label }}</th>
             {% endfor %}
-            <th>جمع</th>
+            <th>Total</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +64,7 @@
               <td class="number"><strong>{{ row.total|money }}</strong></td>
             </tr>
           {% empty %}
-            <tr><td colspan="15" class="empty">بودجه‌ای برای نمایش وجود ندارد.</td></tr>
+            <tr><td colspan="15" class="empty">No budget to display.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -74,20 +74,20 @@
   <section class="section panel">
     <div class="section-header">
       <div>
-        <h2 class="section-title">ردیف‌های دیتابیس</h2>
-        <p class="section-subtitle">ساختار نرمال‌شده برای import، گزارش و تحلیل</p>
+        <h2 class="section-title">Database rows</h2>
+        <p class="section-subtitle">Normalized structure for import, reporting and analysis</p>
       </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>سال</th>
-            <th>ماه</th>
-            <th>تیم</th>
-            <th>کمپین</th>
-            <th>دسته‌بندی</th>
-            <th>بودجه</th>
+            <th>Year</th>
+            <th>Month</th>
+            <th>Team</th>
+            <th>Campaign</th>
+            <th>Category</th>
+            <th>Budget</th>
           </tr>
         </thead>
         <tbody>
@@ -101,16 +101,16 @@
               <td class="number">{{ line.planned_amount|money }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="6" class="empty">ردیفی برای نمایش وجود ندارد.</td></tr>
+            <tr><td colspan="6" class="empty">No rows to display.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% if page_obj.has_other_pages %}
       <div class="pagination">
-        {% if page_obj.has_previous %}<a class="btn" href="?page={{ page_obj.previous_page_number }}">قبلی</a>{% endif %}
-        <span class="btn">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
-        {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}">بعدی</a>{% endif %}
+        {% if page_obj.has_previous %}<a class="btn" href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+        <span class="btn">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
       </div>
     {% endif %}
   </section>

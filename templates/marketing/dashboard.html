@@ -1,16 +1,16 @@
 {% extends "marketing/base.html" %}
 {% load marketing_format %}
 
-{% block title %}داشبورد هزینه‌کرد{% endblock %}
-{% block page_title %}داشبورد هزینه‌کرد{% endblock %}
-{% block page_subtitle %}نمای کلی هزینه مارکتینگ، پرداخت‌ها، و وضعیت تیم‌ها{% endblock %}
+{% block title %}Spend Dashboard{% endblock %}
+{% block page_title %}Spend Dashboard{% endblock %}
+{% block page_subtitle %}Overview of marketing spend, payments and team status{% endblock %}
 {% block page_actions %}
   {% if can_create_invoice %}
-    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ ثبت فاکتور</a>
+    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ New invoice</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ اکسل</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ گزارش PDF</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ Excel</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ PDF report</a>
   {% endif %}
 {% endblock %}
 
@@ -18,48 +18,48 @@
   <section class="section">
     <form class="filter-form" method="get">
       <div class="field">
-        <label for="year">سال</label>
+        <label for="year">Year</label>
         <select id="year" name="year">
-          <option value="">همه سال‌ها</option>
+          <option value="">All years</option>
           {% for year in years %}
             <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="field">
-        <label for="team">تیم</label>
+        <label for="team">Team</label>
         <select id="team" name="team">
-          <option value="">همه تیم‌های مجاز</option>
+          <option value="">All permitted teams</option>
           {% for team in teams %}
             <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <button class="btn primary" type="submit">اعمال فیلتر</button>
+      <button class="btn primary" type="submit">Apply filter</button>
     </form>
   </section>
 
   <section class="section">
     <div class="grid cards">
       <div class="card">
-        <div class="card-label">هزینه کل</div>
+        <div class="card-label">Total spend</div>
         <div class="card-value number">{{ total_spend|money }}</div>
         <div class="card-note">IRR</div>
       </div>
       <div class="card">
-        <div class="card-label">تعداد فاکتور</div>
+        <div class="card-label">Invoice count</div>
         <div class="card-value number">{{ invoice_count }}</div>
-        <div class="card-note">در محدوده انتخاب‌شده</div>
+        <div class="card-note">In selected range</div>
       </div>
       <div class="card">
-        <div class="card-label">پرداخت‌شده</div>
+        <div class="card-label">Paid</div>
         <div class="card-value number">{{ paid_spend|money }}</div>
-        <div class="card-note">فاکتورهای Paid</div>
+        <div class="card-note">Paid invoices</div>
       </div>
       <div class="card">
-        <div class="card-label">ریفرال / SMS</div>
+        <div class="card-label">Referral / SMS</div>
         <div class="card-value number">{{ referral_total|money }} / {{ sms_total|money }}</div>
-        <div class="card-note">جدا از شکست تیم‌ها</div>
+        <div class="card-note">Separate from team breakdown</div>
       </div>
     </div>
   </section>
@@ -68,8 +68,8 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">روند ماهانه</h2>
-          <p class="section-subtitle">آماده برای تبدیل به نمودار Chart.js</p>
+          <h2 class="section-title">Monthly trend</h2>
+          <p class="section-subtitle">By Persian (Jalali) month</p>
         </div>
       </div>
       <div class="bar-list">
@@ -86,8 +86,8 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">هزینه به تفکیک تیم</h2>
-          <p class="section-subtitle">ریفرال و SMS اینجا وارد شکست تیمی نشده‌اند</p>
+          <h2 class="section-title">Spend by team</h2>
+          <p class="section-subtitle">Referral and SMS are excluded from this breakdown</p>
         </div>
       </div>
       {% if team_total_rows %}
@@ -101,7 +101,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty">داده‌ای برای نمایش وجود ندارد.</div>
+        <div class="empty">No data to display.</div>
       {% endif %}
     </div>
   </section>
@@ -110,18 +110,18 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">وندورهای برتر</h2>
-          <p class="section-subtitle">مرتب‌شده از بیشترین هزینه به کمترین</p>
+          <h2 class="section-title">Top vendors</h2>
+          <p class="section-subtitle">Sorted from highest to lowest spend</p>
         </div>
-        <a class="btn" href="{% url 'marketing:vendor_report' %}">مشاهده کامل</a>
+        <a class="btn" href="{% url 'marketing:vendor_report' %}">View all</a>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>وندور</th>
-              <th>تعداد</th>
-              <th>مبلغ</th>
+              <th>Vendor</th>
+              <th>Count</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -132,7 +132,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">داده‌ای برای نمایش وجود ندارد.</td></tr>
+              <tr><td colspan="3" class="empty">No data to display.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -142,19 +142,19 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">کمپین‌ها</h2>
-          <p class="section-subtitle">هزینه کمپین‌های ثبت‌شده در فاکتورها</p>
+          <h2 class="section-title">Campaigns</h2>
+          <p class="section-subtitle">Spend on campaigns recorded on invoices</p>
         </div>
-        <a class="btn" href="{% url 'marketing:campaign_report' %}">مشاهده کامل</a>
+        <a class="btn" href="{% url 'marketing:campaign_report' %}">View all</a>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>کمپین</th>
-              <th>سال</th>
-              <th>فاکتور</th>
-              <th>مبلغ</th>
+              <th>Campaign</th>
+              <th>Year</th>
+              <th>Invoices</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -166,7 +166,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4" class="empty">کمپینی در این محدوده ثبت نشده است.</td></tr>
+              <tr><td colspan="4" class="empty">No campaigns recorded in this range.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -178,17 +178,17 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">وضعیت پرداخت</h2>
-          <p class="section-subtitle">تعداد فاکتور در هر مرحله</p>
+          <h2 class="section-title">Payment status</h2>
+          <p class="section-subtitle">Invoice count per stage</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>مرحله</th>
-              <th>تعداد</th>
-              <th>مبلغ</th>
+              <th>Stage</th>
+              <th>Count</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -199,7 +199,7 @@
                 <td class="number">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">داده‌ای برای نمایش وجود ندارد.</td></tr>
+              <tr><td colspan="3" class="empty">No data to display.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -209,17 +209,17 @@
     <div class="panel">
       <div class="section-header">
         <div>
-          <h2 class="section-title">فاکتورهای در مالی</h2>
-          <p class="section-subtitle">مرتب‌شده بر اساس روزهای مانده در مرحله</p>
+          <h2 class="section-title">Invoices in finance review</h2>
+          <p class="section-subtitle">Sorted by days waiting in stage</p>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>فاکتور</th>
-              <th>وندور</th>
-              <th>روز در مرحله</th>
+              <th>Invoice</th>
+              <th>Vendor</th>
+              <th>Days in stage</th>
             </tr>
           </thead>
           <tbody>
@@ -230,7 +230,7 @@
                 <td class="number">{{ invoice.days_in_current_stage }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">فاکتور معطل در مالی وجود ندارد.</td></tr>
+              <tr><td colspan="3" class="empty">No invoices waiting in finance review.</td></tr>
             {% endfor %}
           </tbody>
         </table>

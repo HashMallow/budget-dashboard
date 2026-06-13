@@ -4,7 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}پنل هزینه‌کرد مارکتینگ{% endblock %}</title>
+  <title>{% block title %}Marketing Spend Panel{% endblock %}</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <style>
     :root {
       color-scheme: light;
@@ -25,7 +27,7 @@
       --danger: #b42318;
       --ok: #15803d;
       --shadow: 0 10px 28px rgba(20, 32, 45, 0.08);
-      font-family: Tahoma, Arial, sans-serif;
+      font-family: "Vazirmatn", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif;
     }
     * { box-sizing: border-box; }
     body {
@@ -180,7 +182,7 @@
     th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
     th { background: #f8fafc; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; }
     tr:last-child td { border-bottom: 0; }
-    .number { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
+    .number { direction: ltr; unicode-bidi: isolate; text-align: left; font-variant-numeric: tabular-nums; }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -207,7 +209,8 @@
     .empty { color: var(--muted); padding: 18px; text-align: center; }
     .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
     .ltr { direction: ltr; unicode-bidi: plaintext; }
-    .digits-fa .number { direction: rtl; text-align: right; }
+    .ltr th, .ltr td { text-align: left; }
+    code { background: var(--surface-soft); padding: 1px 6px; border-radius: 5px; font-size: 12px; direction: ltr; unicode-bidi: isolate; }
     .print-only { display: none; }
     @media (max-width: 1100px) {
       .app-shell { grid-template-columns: 1fr; }
@@ -237,33 +240,33 @@
   <div class="app-shell">
     <aside class="sidebar no-print">
       <div class="brand">
-        <strong>{% if ui_lang == "en" %}Marketing Spend{% else %}هزینه‌کرد مارکتینگ{% endif %}</strong>
-        <span>{% if ui_lang == "en" %}Internal dashboard and invoice control{% else %}داشبورد داخلی و کنترل فاکتورها{% endif %}</span>
+        <strong>Marketing Spend</strong>
+        <span>Internal dashboard and invoice control</span>
       </div>
       {% if user.is_authenticated %}
         {% with current=request.resolver_match.url_name %}
           <nav class="nav">
             <a href="{% url 'marketing:dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}">
-              <span class="nav-icon">⌂</span><span>{% if ui_lang == "en" %}Dashboard{% else %}داشبورد{% endif %}</span>
+              <span class="nav-icon">⌂</span><span>Dashboard</span>
             </a>
             <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' %}active{% endif %}">
-              <span class="nav-icon">□</span><span>{% if ui_lang == "en" %}Invoices{% else %}فاکتورها{% endif %}</span>
+              <span class="nav-icon">□</span><span>Invoices</span>
             </a>
             <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
-              <span class="nav-icon">◫</span><span>{% if ui_lang == "en" %}Vendors{% else %}وندورها{% endif %}</span>
+              <span class="nav-icon">◫</span><span>Vendors</span>
             </a>
             <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
-              <span class="nav-icon">◇</span><span>{% if ui_lang == "en" %}Campaigns{% else %}کمپین‌ها{% endif %}</span>
+              <span class="nav-icon">◇</span><span>Campaigns</span>
             </a>
             <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
-              <span class="nav-icon">▦</span><span>{% if ui_lang == "en" %}Budget{% else %}بودجه{% endif %}</span>
+              <span class="nav-icon">▦</span><span>Budget</span>
             </a>
             {% if user|is_panel_admin %}
               <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
-                <span class="nav-icon">⇧</span><span>{% if ui_lang == "en" %}Excel Import{% else %}ورود اکسل{% endif %}</span>
+                <span class="nav-icon">⇧</span><span>Excel Import</span>
               </a>
               <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
-                <span class="nav-icon">◎</span><span>{% if ui_lang == "en" %}Users{% else %}کاربران{% endif %}</span>
+                <span class="nav-icon">◎</span><span>Users</span>
               </a>
             {% endif %}
           </nav>
@@ -271,15 +274,11 @@
         <div class="sidebar-footer">
           <div class="user-meta">
             <strong>{{ user.username }}</strong><br>
-            {% if user.is_superuser %}
-              {% if ui_lang == "en" %}Full admin{% else %}ادمین کامل{% endif %}
-            {% else %}
-              {% if ui_lang == "en" %}Panel user{% else %}کاربر پنل{% endif %}
-            {% endif %}
+            {% if user.is_superuser %}Full admin{% else %}Panel user{% endif %}
           </div>
           <form class="logout-form" method="post" action="{% url 'marketing:logout' %}">
             {% csrf_token %}
-            <button class="btn ghost" type="submit">{% if ui_lang == "en" %}Logout{% else %}خروج{% endif %}</button>
+            <button class="btn ghost" type="submit">Logout</button>
           </form>
         </div>
       {% endif %}
@@ -288,8 +287,8 @@
     <main class="main">
       <header class="topbar no-print">
         <div>
-          <h1>{% block page_title %}داشبورد{% endblock %}</h1>
-          <p>{% block page_subtitle %}مانیتورینگ هزینه، فاکتور، و وضعیت پرداخت{% endblock %}</p>
+          <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+          <p>{% block page_subtitle %}Monitor spend, invoices and payment status{% endblock %}</p>
         </div>
         <div class="actions">
           <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
@@ -297,24 +296,10 @@
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
             {% if ui_lang == "fa" %}
               <input type="hidden" name="ui_lang" value="en">
-              <input type="hidden" name="number_locale" value="en">
-              <button class="btn" type="submit">EN</button>
+              <button class="btn" type="submit">English</button>
             {% else %}
               <input type="hidden" name="ui_lang" value="fa">
-              <input type="hidden" name="number_locale" value="fa">
-              <button class="btn" type="submit">FA</button>
-            {% endif %}
-          </form>
-          <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            <input type="hidden" name="ui_lang" value="{{ ui_lang }}">
-            {% if number_locale == "fa" %}
-              <input type="hidden" name="number_locale" value="en">
-              <button class="btn" type="submit">123</button>
-            {% else %}
-              <input type="hidden" name="number_locale" value="fa">
-              <button class="btn" type="submit">۰۱۲</button>
+              <button class="btn" type="submit">فارسی</button>
             {% endif %}
           </form>
           {% block page_actions %}{% endblock %}
@@ -333,16 +318,5 @@
       </div>
     </main>
   </div>
-  {% if number_locale == "fa" %}
-    <script>
-      (() => {
-        const digits = {"0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴", "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹"};
-        const convert = (value) => value.replace(/[0-9]/g, (digit) => digits[digit]);
-        document.querySelectorAll(".number").forEach((node) => {
-          node.textContent = convert(node.textContent);
-        });
-      })();
-    </script>
-  {% endif %}
 </body>
 </html>
