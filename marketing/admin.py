@@ -5,6 +5,9 @@ from django.contrib import admin
 from .models import (
     BudgetLine,
     Campaign,
+    Contract,
+    ContractAttachment,
+    ContractStatusHistory,
     Invoice,
     InvoiceAttachment,
     InvoiceStatusHistory,
@@ -160,3 +163,63 @@ class InvoiceStatusHistoryAdmin(admin.ModelAdmin):
     search_fields = ("invoice__invoice_number", "invoice__vendor__name", "note")
     autocomplete_fields = ("invoice", "changed_by")
     readonly_fields = ("invoice", "old_stage", "new_stage", "changed_by", "changed_at", "note")
+
+
+class ContractAttachmentInline(admin.TabularInline):
+    model = ContractAttachment
+    extra = 0
+    fields = ("attachment_type", "file", "uploaded_by", "uploaded_at", "notes")
+    readonly_fields = ("uploaded_at",)
+    autocomplete_fields = ("uploaded_by",)
+
+
+class ContractStatusHistoryInline(admin.TabularInline):
+    model = ContractStatusHistory
+    extra = 0
+    fields = ("old_stage", "new_stage", "changed_by", "changed_at", "note")
+    readonly_fields = ("old_stage", "new_stage", "changed_by", "changed_at", "note")
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Contract)
+class ContractAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "vendor",
+        "team",
+        "stage",
+        "start_date",
+        "end_date",
+        "days_in_current_stage",
+    )
+    list_filter = ("stage", "team", "currency", "end_date")
+    search_fields = ("title", "contract_number", "vendor__name", "description")
+    autocomplete_fields = ("vendor", "team", "created_by", "updated_by")
+    readonly_fields = ("stage_changed_at", "days_in_current_stage")
+    inlines = (ContractAttachmentInline, ContractStatusHistoryInline)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ContractAttachment)
+class ContractAttachmentAdmin(admin.ModelAdmin):
+    list_display = ("contract", "attachment_type", "uploaded_by", "uploaded_at")
+    list_filter = ("attachment_type", "uploaded_at")
+    search_fields = ("contract__title", "contract__vendor__name", "notes")
+    autocomplete_fields = ("contract", "uploaded_by")
+
+
+@admin.register(ContractStatusHistory)
+class ContractStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = ("contract", "old_stage", "new_stage", "changed_by", "changed_at")
+    list_filter = ("old_stage", "new_stage", "changed_at")
+    search_fields = ("contract__title", "contract__vendor__name", "note")
+    autocomplete_fields = ("contract", "changed_by")
+    readonly_fields = ("contract", "old_stage", "new_stage", "changed_by", "changed_at", "note")

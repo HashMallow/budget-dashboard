@@ -27,6 +27,11 @@ def invoice_attachment_path(instance: InvoiceAttachment, filename: str) -> str:
     return f"invoices/{invoice_id}/{instance.attachment_type.lower()}/{filename}"
 
 
+def contract_attachment_path(instance: ContractAttachment, filename: str) -> str:
+    contract_id = instance.contract_id or "pending"
+    return f"contracts/{contract_id}/{instance.attachment_type.lower()}/{filename}"
+
+
 class TimestampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -62,6 +67,39 @@ class AttachmentType(models.TextChoices):
     INVOICE_IMAGE = "INVOICE_IMAGE", "Invoice image"
     PAYMENT_PROOF = "PAYMENT_PROOF", "Payment proof"
     OTHER = "OTHER", "Other"
+
+
+class ContractStage(models.TextChoices):
+    """Lifecycle of a vendor contract, including the legal review back-and-forth.
+
+    Stages model the draft "pass-kari" between our legal team and the counterparty's legal team,
+    then the signed/active lifecycle. Adjust the labels/values if the legal workflow differs.
+    """
+
+    DRAFT = "DRAFT", "Draft"
+    INTERNAL_LEGAL_REVIEW = "INTERNAL_LEGAL_REVIEW", "Internal legal review"
+    SENT_TO_COUNTERPARTY = "SENT_TO_COUNTERPARTY", "Sent to counterparty"
+    COUNTERPARTY_REVIEW = "COUNTERPARTY_REVIEW", "Counterparty legal review"
+    NEGOTIATION = "NEGOTIATION", "Negotiation / revisions"
+    PENDING_SIGNATURE = "PENDING_SIGNATURE", "Pending signature"
+    SIGNED = "SIGNED", "Signed / active"
+    EXPIRED = "EXPIRED", "Expired"
+    TERMINATED = "TERMINATED", "Terminated"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+# Stages that mean the contract is no longer an open legal/active item.
+CONTRACT_CLOSED_STAGES = frozenset({
+    ContractStage.EXPIRED,
+    ContractStage.TERMINATED,
+    ContractStage.CANCELLED,
+})
+
+
+class ContractAttachmentType(models.TextChoices):
+    DRAFT_VERSION = "DRAFT_VERSION", "Draft version"
+    FINAL_VERSION = "FINAL_VERSION", "Final signed version"
+    OTHER = "OTHER", "Other document"
 
 
 class Team(TimestampedModel):
@@ -238,6 +276,16 @@ class BudgetLine(TimestampedModel):
             models.Index(fields=["year", "month"]),
             models.Index(fields=["team", "year", "month"]),
             models.Index(fields=["category"]),
+        ]
+        constraints = [
+            # One budget line per workbook source row + month. Each Budget sheet row expands into
+            # one line per month, so this is the stable idempotency key. Manual lines (no source
+            # row number) are exempt so they never collide.
+            models.UniqueConstraint(
+                fields=["source_sheet", "source_row_number", "year", "month"],
+                condition=Q(source_row_number__isnull=False),
+                name="unique_budget_line_source_row_month",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -437,3 +485,149 @@ class InvoiceStatusHistory(models.Model):
 
     def __str__(self) -> str:
         return f"{self.invoice}: {self.old_stage} -> {self.new_stage}"
+
+
+class Contract(TimestampedModel):
+    """A vendor contract owned by a marketing team, tracked through legal review to signed/active."""
+
+    title = models.CharField(max_length=255)
+    contract_number = models.CharField(max_length=120, blank=True, db_index=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="contracts")
+    team = models.ForeignKey(Team, null=True, blank=True, on_delete=models.SET_NULL, related_name="contracts")
+    stage = models.CharField(max_length=32, choices=ContractStage.choices, default=ContractStage.DRAFT)
+    stage_changed_at = models.DateTimeField(default=timezone.now)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    signed_at = models.DateField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=16, default=settings.DEFAULT_CURRENCY)
+    counterparty_contact = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="created_contracts",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_contracts",
+    )
+
+    class Meta:
+        ordering = ["end_date", "vendor__name"]
+        indexes = [
+            models.Index(fields=["stage"]),
+            models.Index(fields=["team", "stage"]),
+            models.Index(fields=["vendor", "stage"]),
+            models.Index(fields=["end_date"]),
+        ]
+
+    @property
+    def days_in_current_stage(self) -> int:
+        changed_at = self.stage_changed_at or self.created_at
+        if not changed_at:
+            return 0
+        return max((timezone.now().date() - changed_at.date()).days, 0)
+
+    @property
+    def days_until_expiry(self) -> int | None:
+        if not self.end_date:
+            return None
+        return (self.end_date - timezone.now().date()).days
+
+    @property
+    def is_expired(self) -> bool:
+        days = self.days_until_expiry
+        return days is not None and days < 0
+
+    @property
+    def is_expiring_soon(self) -> bool:
+        """True when the contract expires within 30 days (and is not already expired)."""
+        days = self.days_until_expiry
+        return days is not None and 0 <= days <= 30
+
+    @property
+    def is_closed(self) -> bool:
+        return self.stage in CONTRACT_CLOSED_STAGES
+
+    def set_stage(self, new_stage: str, *, changed_by=None, note: str = "") -> None:
+        self.stage = new_stage
+        self.updated_by = changed_by
+        self._stage_change_note = note
+        self.save()
+
+    def save(self, *args, **kwargs):
+        old_stage = None
+        if self.pk:
+            old_stage = Contract.objects.filter(pk=self.pk).values_list("stage", flat=True).first()
+
+        stage_changed = old_stage is not None and old_stage != self.stage
+        if stage_changed or not self.stage_changed_at:
+            self.stage_changed_at = timezone.now()
+        if self.stage == ContractStage.SIGNED and self.signed_at is None:
+            self.signed_at = timezone.now().date()
+
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if stage_changed:
+                update_fields.add("stage_changed_at")
+            if self.stage == ContractStage.SIGNED:
+                update_fields.add("signed_at")
+            kwargs["update_fields"] = update_fields
+
+        super().save(*args, **kwargs)
+
+        if stage_changed:
+            ContractStatusHistory.objects.create(
+                contract=self,
+                old_stage=old_stage,
+                new_stage=self.stage,
+                changed_by=self.updated_by,
+                note=getattr(self, "_stage_change_note", ""),
+            )
+
+    def __str__(self) -> str:
+        return f"{self.title} - {self.vendor}"
+
+
+class ContractAttachment(models.Model):
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="attachments")
+    attachment_type = models.CharField(max_length=24, choices=ContractAttachmentType.choices)
+    file = models.FileField(upload_to=contract_attachment_path)
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="contract_attachments")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+        indexes = [
+            models.Index(fields=["contract", "attachment_type"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.contract} {self.attachment_type}"
+
+
+class ContractStatusHistory(models.Model):
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="status_history")
+    old_stage = models.CharField(max_length=32, choices=ContractStage.choices, blank=True)
+    new_stage = models.CharField(max_length=32, choices=ContractStage.choices)
+    changed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
+        indexes = [
+            models.Index(fields=["contract", "-changed_at"]),
+            models.Index(fields=["new_stage", "-changed_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.contract}: {self.old_stage} -> {self.new_stage}"

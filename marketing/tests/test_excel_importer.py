@@ -38,6 +38,8 @@ def write_mapping(path, workbook_path):
                     "invoice_number": "Invoice Number",
                     "amount": "Invoice Amount (IRR)",
                     "payment_stage": "payment state",
+                    "finance_sent_date_gregorian_serial": "MKT to Finance sent date in gregorian",
+                    "finance_sent_date_jalali_serial": "MKT to Finance sent date",
                     "jalali_invoice_date_text_candidate": "blank_AC",
                 },
                 "derived_values": {
@@ -108,6 +110,8 @@ def write_workbook(path):
             None,
             None,
             "blank_AC",
+            "MKT to Finance sent date in gregorian",
+            "MKT to Finance sent date",
         ]
     )
     invoices.append(
@@ -127,6 +131,8 @@ def write_workbook(path):
             None,
             None,
             "1405/01/10",
+            None,
+            None,
         ]
     )
     invoices.append(
@@ -146,6 +152,8 @@ def write_workbook(path):
             None,
             None,
             "1405/01/31",
+            date(2026, 5, 15),
+            None,
         ]
     )
 
@@ -241,6 +249,48 @@ def test_import_merges_workbook_team_spelling_variants(tmp_path):
     assert variant.is_active is False
     assert Invoice.objects.get(invoice_number="OA-1").team == canonical
     assert TeamAlias.objects.filter(raw_name="Operation & Analysis", team=canonical).exists()
+
+
+def test_finance_review_invoice_uses_finance_sent_date_for_stage_aging(tmp_path):
+    workbook_path = tmp_path / "marketing.xlsx"
+    mapping_path = tmp_path / "column_mapping.yml"
+    write_workbook(workbook_path)
+    write_mapping(mapping_path, workbook_path)
+
+    import_marketing_workbook(workbook_path, mapping_path=mapping_path)
+
+    finance_invoice = Invoice.objects.get(payment_stage=PaymentStage.FINANCE_REVIEW)
+    # Aging must come from the workbook's "MKT to Finance sent date", not the import timestamp.
+    assert finance_invoice.stage_changed_at.date() == date(2026, 5, 15)
+    paid_invoice = Invoice.objects.get(payment_stage=PaymentStage.PAID)
+    assert paid_invoice.stage_changed_at.date() != date(2026, 5, 15)
+
+
+def test_budget_reimport_is_idempotent_on_source_row_even_if_team_changes(tmp_path):
+    workbook_path = tmp_path / "marketing.xlsx"
+    mapping_path = tmp_path / "column_mapping.yml"
+    write_workbook(workbook_path)
+    write_mapping(mapping_path, workbook_path)
+
+    # A stale row from an earlier import with a different team/category for the same source cell.
+    BudgetLine.objects.create(
+        year=1405,
+        month=1,
+        team=None,
+        category="Stale category",
+        planned_amount=1,
+        currency="IRR",
+        source_sheet="Budget",
+        source_row_number=2,
+    )
+
+    import_marketing_workbook(workbook_path, mapping_path=mapping_path)
+
+    rows = BudgetLine.objects.filter(source_sheet="Budget", source_row_number=2, year=1405, month=1)
+    assert rows.count() == 1
+    # The stale row was updated in place, not duplicated.
+    assert rows.first().category == "Performance"
+    assert rows.first().team.name == "Growth"
 
 
 def test_import_resolves_team_aliases(tmp_path):

@@ -24,7 +24,7 @@ TRANSCRIPT_GPU_PACKAGES ?= --with faster-whisper
 TRANSCRIPT_OUTPUT_NAME ?= $(notdir $(basename $(AUDIO)))_transcript.$(TRANSCRIPT_LANG).md
 TRANSCRIPT_WAV_FLAG = $(if $(TRANSCRIPT_WAV_DIR),--wav-dir "$(TRANSCRIPT_WAV_DIR)",)
 
-.PHONY: help setup migrate superuser dev-admin groups import-dry-run import seed-reference seed-reference-dry-run load-data-dry-run load-data transcribe-audio transcribe-audio-gpu transcribe-audio-high transcribe-voice run dev panel first-run check test lint django-check shell clean-artifacts clean-local-db prod-install collectstatic prod-run
+.PHONY: help check-uv setup migrate superuser dev-admin groups import-dry-run import seed-reference seed-reference-dry-run load-data-dry-run load-data transcribe-audio transcribe-audio-gpu transcribe-audio-high transcribe-voice run dev panel first-run check test lint django-check shell clean-artifacts clean-local-db prod-install collectstatic prod-run
 
 help:
 	@echo "Marketing dashboard local commands"
@@ -61,47 +61,60 @@ help:
 	@echo "  make collectstatic         Collect static files into STATIC_ROOT"
 	@echo "  make prod-run              Run gunicorn (expects production .env: DEBUG=false, DATABASE_URL, etc.)"
 
-setup:
+check-uv:
+	@command -v "$(UV)" >/dev/null 2>&1 || ( \
+		echo "Error: uv is not installed or is not on PATH."; \
+		echo ""; \
+		echo "Install uv first:"; \
+		echo "  macOS with Homebrew: brew install uv"; \
+		echo "  macOS/Linux installer: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		echo ""; \
+		echo "After installing, restart the terminal or run:"; \
+		echo '  export PATH="$$HOME/.local/bin:$$PATH"'; \
+		exit 127; \
+	)
+
+setup: check-uv
 	$(UV_RUN) sync --all-groups
 	$(MANAGE) migrate
 	$(MANAGE) seed_auth_groups
 	@echo ""
 	@echo "Setup complete. Run 'make dev-admin' for the local admin login."
 
-migrate:
+migrate: check-uv
 	$(MANAGE) migrate
 
-groups:
+groups: check-uv
 	$(MANAGE) seed_auth_groups
 
-superuser:
+superuser: check-uv
 	$(MANAGE) createsuperuser
 
-dev-admin:
+dev-admin: check-uv
 	$(MANAGE) bootstrap_dev_admin --username "$(ADMIN_USER)" --email "$(ADMIN_EMAIL)" --password "$(ADMIN_PASSWORD)"
 	@echo "Local login: $(ADMIN_USER) / $(ADMIN_PASSWORD)"
 
-import-dry-run:
+import-dry-run: check-uv
 	$(MANAGE) import_marketing_excel --dry-run $(if $(FILE),--file "$(FILE)",)
 
-import:
+import: check-uv
 	$(MANAGE) import_marketing_excel $(if $(FILE),--file "$(FILE)",)
 
-seed-reference-dry-run:
+seed-reference-dry-run: check-uv
 	$(MANAGE) seed_reference_data --dry-run $(if $(FILE),--file "$(FILE)",)
 
-seed-reference:
+seed-reference: check-uv
 	$(MANAGE) seed_reference_data $(if $(FILE),--file "$(FILE)",)
 
 load-data-dry-run: import-dry-run seed-reference-dry-run
 
 load-data: import seed-reference
 
-transcribe-audio:
+transcribe-audio: check-uv
 	@test -n "$(AUDIO)" || (echo "Usage: make transcribe-audio AUDIO=path/to/audio.ogg" && exit 2)
 	$(UV_RUN) run $(TRANSCRIPT_PACKAGES) python .agents/skills/audio-transcription/scripts/transcribe_audio.py "$(AUDIO)" --out-dir "$(TRANSCRIPT_OUT)" --language "$(TRANSCRIPT_LANG)" --model "$(TRANSCRIPT_MODEL)" --device "$(TRANSCRIPT_DEVICE)" --compute-type "$(TRANSCRIPT_COMPUTE)" --output-name "$(TRANSCRIPT_OUTPUT_NAME)" $(TRANSCRIPT_WAV_FLAG)
 
-transcribe-audio-gpu:
+transcribe-audio-gpu: check-uv
 	@test -n "$(AUDIO)" || (echo "Usage: make transcribe-audio-gpu AUDIO=path/to/audio.ogg [TRANSCRIPT_MODEL=large-v3]" && exit 2)
 	$(UV_RUN) run $(TRANSCRIPT_GPU_PACKAGES) python .agents/skills/audio-transcription/scripts/transcribe_audio.py "$(AUDIO)" --out-dir "$(TRANSCRIPT_OUT)" --language "$(TRANSCRIPT_LANG)" --model "$(TRANSCRIPT_MODEL)" --device cuda --compute-type float16 --output-name "$(TRANSCRIPT_OUTPUT_NAME)" $(TRANSCRIPT_WAV_FLAG)
 
@@ -115,37 +128,37 @@ transcribe-voice:
 	@test -n "$(AUDIO)" || (echo "Usage: make transcribe-voice AUDIO=.artifacts/voice-feedback/audio/note.ogg" && exit 2)
 	$(MAKE) transcribe-audio AUDIO="$(AUDIO)" TRANSCRIPT_OUT=.artifacts/voice-feedback/transcripts TRANSCRIPT_WAV_DIR=.artifacts/voice-feedback/converted
 
-run:
+run: check-uv
 	$(MANAGE) runserver $(HOST):$(PORT) --noreload
 
-dev:
+dev: check-uv
 	$(MANAGE) runserver $(HOST):$(PORT)
 
 panel: dev-admin run
 
 first-run: setup dev-admin load-data run
 
-check: django-check test lint
+check: check-uv django-check test lint
 
-django-check:
+django-check: check-uv
 	$(MANAGE) check
 
-test:
+test: check-uv
 	$(UV_RUN) run pytest -q
 
-lint:
+lint: check-uv
 	$(UV_RUN) run ruff check .
 
-shell:
+shell: check-uv
 	$(MANAGE) shell
 
-prod-install:
+prod-install: check-uv
 	$(UV_RUN) sync --extra prod
 
-collectstatic:
+collectstatic: check-uv
 	$(MANAGE) collectstatic --noinput
 
-prod-run:
+prod-run: check-uv
 	$(UV_RUN) run gunicorn config.wsgi:application --bind $(HOST):$(PORT) --workers 3
 
 clean-artifacts:

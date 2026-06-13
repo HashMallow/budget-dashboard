@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -34,10 +35,14 @@ from .analytics import (
 from .cost_buckets import exclude_pseudo_teams, team_spend_cost_buckets
 from .exports.workbook import build_workbook_style_export
 from .forms import (
+    ContractAttachmentForm,
+    ContractForm,
+    ContractStageForm,
     ExcelImportUploadForm,
     InvoiceAttachmentForm,
     InvoiceForm,
     InvoiceStatusForm,
+    TeamAccessForm,
     UserAccessCreateForm,
     user_can_create_invoice,
 )
@@ -45,6 +50,8 @@ from .importers.excel import ImportResult, import_marketing_workbook
 from .jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_year_bounds, today_jalali
 from .models import (
     BudgetLine,
+    Contract,
+    ContractStage,
     CostBucket,
     Invoice,
     PaymentStage,
@@ -52,15 +59,24 @@ from .models import (
     UserTeamAccess,
 )
 from .permissions import (
+    can_edit_contract,
     can_edit_invoice,
     can_export,
+    can_upload_contract_file,
     filter_budget_lines_for_user,
+    filter_contracts_for_user,
     filter_invoices_for_user,
     filter_teams_for_user,
     get_user_scope,
+    user_can_create_contract,
     user_has_admin_access,
 )
-from .reports.pdf import build_dashboard_summary_pdf
+from .reports.pdf import (
+    build_campaign_report_pdf,
+    build_contract_report_pdf,
+    build_dashboard_summary_pdf,
+    build_vendor_report_pdf,
+)
 from .table_sort import SortState, apply_ordering, parse_sort, sort_rows
 
 User = get_user_model()
@@ -171,6 +187,23 @@ BUDGET_PIVOT_SORT_KEYS = {
     "total": lambda row: row["total"],
 }
 
+CONTRACT_SORT_FIELDS = {
+    "title": "title",
+    "vendor": "vendor__name",
+    "team": "team__name",
+    "stage": "stage",
+    "end": "end_date",
+    "days": "stage_changed_at",
+}
+CONTRACT_SORT_DEFAULTS = {
+    "title": "asc",
+    "vendor": "asc",
+    "team": "asc",
+    "stage": "asc",
+    "end": "asc",
+    "days": "desc",
+}
+
 
 def get_ui_lang(request) -> str:
     ui_lang = request.session.get("ui_lang", "en")
@@ -229,6 +262,11 @@ def visible_invoice_queryset(request):
 def visible_team_queryset(request):
     teams = exclude_pseudo_teams(Team.objects.filter(is_active=True))
     return filter_teams_for_user(teams, request.user).order_by("name")
+
+
+def visible_contract_queryset(request):
+    queryset = Contract.objects.select_related("vendor", "team").order_by("end_date", "id")
+    return filter_contracts_for_user(queryset, request.user)
 
 
 def filter_invoice_queryset(request, queryset):
@@ -313,6 +351,16 @@ def dashboard(request):
     referral_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.REFERRAL))
     sms_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.SMS))
 
+    contracts = filter_contracts_for_user(Contract.objects.all(), request.user)
+    if selected_team.isdigit():
+        contracts = contracts.filter(team_id=int(selected_team))
+    today = timezone.now().date()
+    contracts_expiring_soon = contracts.filter(
+        end_date__gte=today,
+        end_date__lte=today + timedelta(days=30),
+    ).count()
+    contracts_expired = contracts.filter(end_date__lt=today).exclude(stage=ContractStage.CANCELLED).count()
+
     end_year, end_month, window_count = monthly_trend_window(selected_year)
     monthly_rows = monthly_spend_window_rows(
         invoices,
@@ -326,11 +374,7 @@ def dashboard(request):
     team_total_rows = team_spend_rows(invoices)
     team_chart = team_chart_data(team_total_rows, get_ui_lang(request))
 
-    vendor_rows = list(
-        invoices.values("vendor_id", "vendor__name")
-        .annotate(total=Sum("amount"), invoice_count=Count("id"))
-        .order_by("-total")[:8]
-    )
+    vendor_rows = vendor_grouped_rows(invoices)[:8]
 
     campaign_rows = list(
         invoices.filter(campaign__isnull=False)
@@ -361,6 +405,8 @@ def dashboard(request):
         "invoice_count": invoice_count,
         "referral_total": referral_total,
         "sms_total": sms_total,
+        "contracts_expiring_soon": contracts_expiring_soon,
+        "contracts_expired": contracts_expired,
         "monthly_rows": monthly_rows,
         "team_total_rows": team_total_rows,
         "vendor_rows": vendor_rows,
@@ -501,6 +547,168 @@ def invoice_attachment_upload(request, pk: int):
     else:
         messages.error(request, "Upload failed. Check the file type or your permissions.")
     return redirect("marketing:invoice_detail", pk=invoice.pk)
+
+
+def filter_contract_queryset(request, queryset):
+    filters = {
+        "q": request.GET.get("q", "").strip(),
+        "team": request.GET.get("team", "").strip(),
+        "stage": request.GET.get("stage", "").strip(),
+        "expiring": request.GET.get("expiring", "").strip(),
+    }
+    if filters["q"]:
+        queryset = queryset.filter(
+            Q(title__icontains=filters["q"])
+            | Q(contract_number__icontains=filters["q"])
+            | Q(vendor__name__icontains=filters["q"])
+            | Q(counterparty_contact__icontains=filters["q"])
+            | Q(description__icontains=filters["q"])
+        )
+    if filters["team"].isdigit():
+        queryset = queryset.filter(team_id=int(filters["team"]))
+    if filters["stage"]:
+        queryset = queryset.filter(stage=filters["stage"])
+    if filters["expiring"] == "1":
+        today = timezone.now().date()
+        queryset = queryset.filter(end_date__gte=today, end_date__lte=today + timedelta(days=30))
+    return queryset, filters
+
+
+@login_required
+def contract_list(request):
+    base_queryset = visible_contract_queryset(request)
+    queryset, filters = filter_contract_queryset(request, base_queryset)
+    sort = parse_sort(
+        request,
+        allowed=CONTRACT_SORT_FIELDS,
+        default_field="end",
+        default_dir="asc",
+        default_dirs=CONTRACT_SORT_DEFAULTS,
+    )
+    queryset = apply_ordering(
+        queryset,
+        sort,
+        fields=CONTRACT_SORT_FIELDS,
+        default_field="end",
+        inverted={"days"},
+        tiebreaker="id",
+    )
+
+    today = timezone.now().date()
+    summary = {
+        "total": base_queryset.count(),
+        "active": base_queryset.filter(stage=ContractStage.SIGNED).count(),
+        "in_legal": base_queryset.filter(
+            stage__in=[
+                ContractStage.INTERNAL_LEGAL_REVIEW,
+                ContractStage.SENT_TO_COUNTERPARTY,
+                ContractStage.COUNTERPARTY_REVIEW,
+                ContractStage.NEGOTIATION,
+            ]
+        ).count(),
+        "expiring_soon": base_queryset.filter(
+            end_date__gte=today,
+            end_date__lte=today + timedelta(days=30),
+        ).count(),
+        "expired": base_queryset.filter(end_date__lt=today).exclude(stage=ContractStage.CANCELLED).count(),
+    }
+
+    paginator = Paginator(queryset, 25)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    context = {
+        "page_obj": page_obj,
+        "filters": filters,
+        "teams": visible_team_queryset(request),
+        "contract_stages": ContractStage.choices,
+        "summary": summary,
+        "can_create_contract": user_can_create_contract(request.user),
+        "table_sort": sort,
+        "table_sort_defaults": CONTRACT_SORT_DEFAULTS,
+    }
+    return render(request, "marketing/contracts/list.html", context)
+
+
+@login_required
+def contract_detail(request, pk: int):
+    contract = get_object_or_404(visible_contract_queryset(request), pk=pk)
+    stage_form = ContractStageForm(contract=contract, ui_lang=get_ui_lang(request))
+    attachment_form = ContractAttachmentForm(ui_lang=get_ui_lang(request))
+    context = {
+        "contract": contract,
+        "stage_form": stage_form,
+        "attachment_form": attachment_form,
+        "can_edit": can_edit_contract(request.user, contract),
+        "can_upload": can_upload_contract_file(request.user, contract),
+    }
+    return render(request, "marketing/contracts/detail.html", context)
+
+
+@login_required
+def contract_create(request):
+    if not user_can_create_contract(request.user):
+        return forbidden()
+    if request.method == "POST":
+        form = ContractForm(request.POST, user=request.user, ui_lang=get_ui_lang(request))
+        if form.is_valid():
+            contract = form.save()
+            messages.success(request, "Contract saved.")
+            return redirect("marketing:contract_detail", pk=contract.pk)
+    else:
+        form = ContractForm(user=request.user, ui_lang=get_ui_lang(request))
+    return render(request, "marketing/contracts/form.html", {"form": form, "mode": "create"})
+
+
+@login_required
+def contract_edit(request, pk: int):
+    contract = get_object_or_404(visible_contract_queryset(request), pk=pk)
+    if not can_edit_contract(request.user, contract):
+        return forbidden()
+    if request.method == "POST":
+        form = ContractForm(request.POST, user=request.user, instance=contract, ui_lang=get_ui_lang(request))
+        if form.is_valid():
+            contract = form.save()
+            messages.success(request, "Contract updated.")
+            return redirect("marketing:contract_detail", pk=contract.pk)
+    else:
+        form = ContractForm(user=request.user, instance=contract, ui_lang=get_ui_lang(request))
+    return render(request, "marketing/contracts/form.html", {"form": form, "contract": contract, "mode": "edit"})
+
+
+@login_required
+@require_POST
+def contract_stage_update(request, pk: int):
+    contract = get_object_or_404(visible_contract_queryset(request), pk=pk)
+    if not can_edit_contract(request.user, contract):
+        return forbidden()
+    form = ContractStageForm(request.POST, contract=contract, ui_lang=get_ui_lang(request))
+    if form.is_valid():
+        contract.set_stage(
+            form.cleaned_data["stage"],
+            changed_by=request.user,
+            note=form.cleaned_data.get("note", ""),
+        )
+        messages.success(request, "Contract stage updated.")
+    else:
+        messages.error(request, "Invalid contract stage.")
+    return redirect("marketing:contract_detail", pk=contract.pk)
+
+
+@login_required
+@require_POST
+def contract_attachment_upload(request, pk: int):
+    contract = get_object_or_404(visible_contract_queryset(request), pk=pk)
+    if not can_upload_contract_file(request.user, contract):
+        return forbidden("You are not allowed to upload documents for this contract.")
+    form = ContractAttachmentForm(request.POST, request.FILES, ui_lang=get_ui_lang(request))
+    if form.is_valid():
+        attachment = form.save(commit=False)
+        attachment.contract = contract
+        attachment.uploaded_by = request.user
+        attachment.save()
+        messages.success(request, "Document uploaded.")
+    else:
+        messages.error(request, "Upload failed. Check the file or your permissions.")
+    return redirect("marketing:contract_detail", pk=contract.pk)
 
 
 @login_required
@@ -816,6 +1024,7 @@ def user_access(request):
         return forbidden()
 
     form = UserAccessCreateForm(user=request.user, ui_lang=get_ui_lang(request))
+    access_form = TeamAccessForm(admin_user=request.user, ui_lang=get_ui_lang(request))
     if request.method == "POST":
         action = request.POST.get("action")
         if action in {"deactivate", "activate"}:
@@ -829,14 +1038,36 @@ def user_access(request):
                 messages.success(request, "User status updated.")
             return redirect("marketing:user_access")
 
-        form = UserAccessCreateForm(request.POST, user=request.user, ui_lang=get_ui_lang(request))
-        if form.is_valid():
-            form.save()
-            messages.success(request, "New user created.")
+        if action in {"access_enable", "access_disable", "access_remove"}:
+            access = get_object_or_404(UserTeamAccess, pk=request.POST.get("access_id"))
+            if action == "access_remove":
+                access.delete()
+                messages.success(request, "Access rule removed.")
+            else:
+                access.is_active = action == "access_enable"
+                access.save(update_fields=["is_active"])
+                messages.success(request, "Access rule updated.")
             return redirect("marketing:user_access")
 
+        if action == "grant_access":
+            access_form = TeamAccessForm(request.POST, admin_user=request.user, ui_lang=get_ui_lang(request))
+            if access_form.is_valid():
+                access_form.save()
+                messages.success(request, "Access rule added.")
+                return redirect("marketing:user_access")
+        else:
+            form = UserAccessCreateForm(request.POST, user=request.user, ui_lang=get_ui_lang(request))
+            if form.is_valid():
+                form.save()
+                messages.success(request, "New user created.")
+                return redirect("marketing:user_access")
+
     users = User.objects.prefetch_related("groups", "team_access__team").order_by("username")
-    return render(request, "marketing/users/access.html", {"form": form, "users": users})
+    return render(
+        request,
+        "marketing/users/access.html",
+        {"form": form, "access_form": access_form, "users": users},
+    )
 
 
 @login_required
@@ -984,6 +1215,102 @@ def dashboard_report_pdf(request):
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="marketing-dashboard-summary.pdf"'
+    return response
+
+
+@login_required
+def export_vendors_pdf(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    vendor_rows = vendor_grouped_rows(queryset)
+    pdf_bytes = build_vendor_report_pdf(
+        title="Vendor spend report",
+        generated_at=timezone.now(),
+        vendor_rows=vendor_rows,
+        filters=filters,
+    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="marketing-vendors.pdf"'
+    return response
+
+
+@login_required
+def export_campaigns_pdf(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    campaign_rows = list(
+        queryset.filter(campaign__isnull=False)
+        .values("campaign__name", "campaign__year", "campaign__team__name")
+        .annotate(total=Sum("amount"), invoice_count=Count("id"))
+        .order_by("-total")
+    )
+    pdf_bytes = build_campaign_report_pdf(
+        title="Campaign spend report",
+        generated_at=timezone.now(),
+        campaign_rows=campaign_rows,
+        filters=filters,
+    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="marketing-campaigns.pdf"'
+    return response
+
+
+@login_required
+def export_contracts_excel(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, _filters = filter_contract_queryset(request, visible_contract_queryset(request))
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Contracts"
+    sheet.append([
+        "Title",
+        "Contract number",
+        "Vendor",
+        "Team",
+        "Stage",
+        "Start date",
+        "End date",
+        "Days until expiry",
+        "Contract value",
+        "Currency",
+        "Counterparty contact",
+    ])
+    for contract in queryset:
+        sheet.append([
+            contract.title,
+            contract.contract_number,
+            contract.vendor.name,
+            contract.team.name if contract.team else "",
+            contract.get_stage_display(),
+            contract.start_date.isoformat() if contract.start_date else "",
+            contract.end_date.isoformat() if contract.end_date else "",
+            contract.days_until_expiry if contract.days_until_expiry is not None else "",
+            contract.amount if contract.amount is not None else "",
+            contract.currency,
+            contract.counterparty_contact,
+        ])
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="marketing-contracts.xlsx"'
+    workbook.save(response)
+    return response
+
+
+@login_required
+def export_contracts_pdf(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, filters = filter_contract_queryset(request, visible_contract_queryset(request))
+    pdf_bytes = build_contract_report_pdf(
+        title="Vendor contract report",
+        generated_at=timezone.now(),
+        contracts=queryset,
+        filters=filters,
+    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="marketing-contracts.pdf"'
     return response
 
 

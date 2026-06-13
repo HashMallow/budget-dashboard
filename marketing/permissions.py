@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from django.db.models import Q, QuerySet
 
 from .cost_buckets import REFERRAL_SMS_BUCKETS, exclude_pseudo_teams
-from .models import BudgetLine, Campaign, CostBucket, Invoice, Role, Team, UserTeamAccess
+from .models import BudgetLine, Campaign, Contract, CostBucket, Invoice, Role, Team, UserTeamAccess
 
 
 @dataclass(frozen=True)
@@ -173,3 +173,46 @@ def can_export(user, scope=None) -> bool:
     if user_has_admin_access(user):
         return True
     return active_access_for_user(user).filter(can_export=True).exists()
+
+
+def filter_contracts_for_user(queryset: QuerySet[Contract], user) -> QuerySet[Contract]:
+    scope = get_user_scope(user)
+    if scope.is_admin or scope.is_global:
+        return queryset
+    if not scope.team_ids:
+        return queryset.none()
+    return queryset.filter(team_id__in=scope.team_ids)
+
+
+def can_view_contract(user, contract: Contract) -> bool:
+    return filter_contracts_for_user(Contract.objects.filter(pk=contract.pk), user).exists()
+
+
+def can_create_contract_for_team(user, team: Team | None) -> bool:
+    if user_has_admin_access(user):
+        return True
+    accesses = active_access_for_user(user).filter(role=Role.EDITOR)
+    if team is None:
+        return accesses.filter(is_global=True).exists()
+    return accesses.filter(Q(is_global=True) | Q(team=team)).exists()
+
+
+def can_edit_contract(user, contract: Contract) -> bool:
+    if user_has_admin_access(user):
+        return True
+    accesses = active_access_for_user(user).filter(role=Role.EDITOR)
+    if contract.team_id:
+        accesses = accesses.filter(Q(is_global=True) | Q(team_id=contract.team_id))
+    else:
+        accesses = accesses.filter(is_global=True)
+    return accesses.exists()
+
+
+def can_upload_contract_file(user, contract: Contract) -> bool:
+    # Whoever may edit a contract may also attach its documents (drafts/final text).
+    return can_edit_contract(user, contract)
+
+
+def user_can_create_contract(user) -> bool:
+    scope = get_user_scope(user)
+    return scope.is_admin or Role.EDITOR in scope.roles

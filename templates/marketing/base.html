@@ -369,6 +369,9 @@
       gap: 4px;
       min-width: 0;
     }
+    .access-rule { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+    .access-rule .inline-action { display: inline-flex; gap: 4px; }
+    .btn.btn-xs { padding: 2px 8px; font-size: 11px; box-shadow: none; }
     .vendor-table { min-width: 920px; }
     .vendor-table .col-vendor { width: 22%; }
     .vendor-table .col-count { width: 80px; }
@@ -477,6 +480,9 @@
             <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
               <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
             </a>
+            <a href="{% url 'marketing:contract_list' %}" class="{% if current == 'contract_list' or current == 'contract_detail' or current == 'contract_create' or current == 'contract_edit' %}active{% endif %}">
+              <span class="nav-icon">✎</span><span>{% t "Contracts" %}</span>
+            </a>
             <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
               <span class="nav-icon">◇</span><span>{% t "Campaigns" %}</span>
             </a>
@@ -513,15 +519,17 @@
           <p>{% block page_subtitle %}{% t "Monitor spend, invoices and payment status" %}{% endblock %}</p>
         </div>
         <div class="actions">
-          {% if can_export_global %}
+          {% if page_exports|length == 1 %}
+            {% with export=page_exports.0 %}
+              <a class="btn" href="{% url export.url %}?{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
+            {% endwith %}
+          {% elif page_exports|length > 1 %}
             <details class="settings-menu">
               <summary class="btn" aria-haspopup="true">⇩ {% t "Exports" %}</summary>
               <div class="settings-panel menu-links">
-                <a class="menu-item" href="{% url 'marketing:export_invoices_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Invoices (Excel)" %}</a>
-                <a class="menu-item" href="{% url 'marketing:export_vendors_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Vendors (Excel)" %}</a>
-                <a class="menu-item" href="{% url 'marketing:export_campaigns_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Campaigns (Excel)" %}</a>
-                <a class="menu-item" href="{% url 'marketing:export_workbook_excel' %}?{{ export_query|default:request.GET.urlencode }}" title="{% t 'Excel shaped like the source workbook (all sheets)' %}">⇩ {% t "Workbook (.xlsx)" %}</a>
-                <a class="menu-item" href="{% url 'marketing:dashboard_report_pdf' %}?{{ export_query|default:request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
+                {% for export in page_exports %}
+                  <a class="menu-item" href="{% url export.url %}?{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
+                {% endfor %}
                 <span class="menu-note">{% t "Exports respect your current filters and access scope" %}</span>
               </div>
             </details>

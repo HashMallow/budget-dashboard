@@ -13,6 +13,9 @@ from .jalali import format_jalali_date, normalize_digits, parse_jalali_date_text
 from .models import (
     AttachmentType,
     Campaign,
+    Contract,
+    ContractAttachment,
+    ContractStage,
     CostBucket,
     Invoice,
     InvoiceAttachment,
@@ -24,6 +27,7 @@ from .models import (
     normalize_name,
 )
 from .permissions import (
+    can_create_contract_for_team,
     can_create_invoice_for_team,
     can_upload_invoice_file,
     can_upload_payment_proof,
@@ -265,6 +269,121 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
         return attachment_type
 
 
+class ContractForm(StyledFormMixin, forms.ModelForm):
+    new_vendor_name = forms.CharField(label="New vendor", required=False, max_length=255)
+    start_date = FlexibleDateField(label="Start date", required=False)
+    end_date = FlexibleDateField(label="End date", required=False)
+
+    class Meta:
+        model = Contract
+        fields = [
+            "title",
+            "contract_number",
+            "vendor",
+            "new_vendor_name",
+            "team",
+            "stage",
+            "start_date",
+            "end_date",
+            "amount",
+            "currency",
+            "counterparty_contact",
+            "description",
+        ]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+        labels = {
+            "title": "Contract title",
+            "contract_number": "Contract number",
+            "vendor": "Vendor",
+            "team": "Team",
+            "stage": "Stage",
+            "amount": "Contract value",
+            "currency": "Currency",
+            "counterparty_contact": "Counterparty contact",
+            "description": "Description",
+        }
+
+    def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+        self.fields["vendor"].queryset = Vendor.objects.order_by("name")
+        self.fields["vendor"].required = False
+        self.fields["team"].queryset = filter_teams_for_user(Team.objects.filter(is_active=True), user)
+        self.fields["team"].required = False
+        self.fields["amount"].required = False
+        display_jalali = ui_lang == "fa"
+        self.fields["start_date"].display_jalali = display_jalali
+        self.fields["end_date"].display_jalali = display_jalali
+        self._style_fields()
+        apply_ui_language(self, ui_lang)
+
+    def clean(self):
+        cleaned = super().clean()
+        vendor = cleaned.get("vendor")
+        new_vendor_name = (cleaned.get("new_vendor_name") or "").strip()
+        team = cleaned.get("team")
+        start_date = cleaned.get("start_date")
+        end_date = cleaned.get("end_date")
+
+        if not vendor and not new_vendor_name:
+            raise ValidationError("Select a vendor or enter a new vendor name.")
+        if start_date and end_date and end_date < start_date:
+            raise ValidationError("End date cannot be before the start date.")
+        if not can_create_contract_for_team(self.user, team):
+            raise ValidationError("You are not allowed to add or edit contracts for this team.")
+        return cleaned
+
+    def save(self, commit=True):
+        contract = super().save(commit=False)
+        new_vendor_name = (self.cleaned_data.get("new_vendor_name") or "").strip()
+        if new_vendor_name:
+            normalized = normalize_name(new_vendor_name)
+            vendor, _created = Vendor.objects.get_or_create(
+                normalized_name=normalized,
+                defaults={"name": new_vendor_name},
+            )
+            contract.vendor = vendor
+        if contract.pk is None:
+            contract.created_by = self.user
+        contract.updated_by = self.user
+        if commit:
+            contract.save()
+            self.save_m2m()
+        return contract
+
+
+class ContractStageForm(StyledFormMixin, forms.Form):
+    stage = forms.ChoiceField(label="Stage", choices=ContractStage.choices)
+    note = forms.CharField(label="Note", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+
+    def __init__(self, *args, contract: Contract, ui_lang: str = "en", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["stage"].initial = contract.stage
+        self._style_fields()
+        apply_ui_language(self, ui_lang)
+
+
+class ContractAttachmentForm(StyledFormMixin, forms.ModelForm):
+    class Meta:
+        model = ContractAttachment
+        fields = ["attachment_type", "file", "notes"]
+        labels = {
+            "attachment_type": "Document type",
+            "file": "File",
+            "notes": "Note",
+        }
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, ui_lang: str = "en", **kwargs):
+        super().__init__(*args, **kwargs)
+        self._style_fields()
+        apply_ui_language(self, ui_lang)
+
+
 class ExcelImportUploadForm(StyledFormMixin, forms.Form):
     workbook = forms.FileField(label="Excel file")
 
@@ -361,6 +480,65 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
         access.full_clean()
         access.save()
         return user
+
+
+class TeamAccessForm(StyledFormMixin, forms.ModelForm):
+    """Grant or update a single team-level access rule for an existing user.
+
+    Admins can attach several of these rows to one user, which is how multi-team access is built up
+    after the initial account is created.
+    """
+
+    class Meta:
+        model = UserTeamAccess
+        fields = [
+            "user",
+            "role",
+            "team",
+            "is_global",
+            "can_view_referral_sms",
+            "can_export",
+            "can_upload_invoice_files",
+            "can_upload_payment_proofs",
+        ]
+        labels = {
+            "user": "User",
+            "role": "Access level",
+            "team": "Team",
+            "is_global": "All-team access",
+            "can_view_referral_sms": "View referral and SMS",
+            "can_export": "Export Excel/reports",
+            "can_upload_invoice_files": "Upload invoice files",
+            "can_upload_payment_proofs": "Upload payment receipts",
+        }
+
+    def __init__(self, *args, admin_user, ui_lang: str = "en", **kwargs):
+        self.admin_user = admin_user
+        super().__init__(*args, **kwargs)
+        self.fields["user"].queryset = User.objects.order_by("username")
+        self.fields["team"].queryset = exclude_pseudo_teams(Team.objects.filter(is_active=True)).order_by("name")
+        self.fields["team"].required = False
+        self._style_fields()
+        apply_ui_language(self, ui_lang)
+
+    def clean(self):
+        cleaned = super().clean()
+        is_global = cleaned.get("is_global")
+        team = cleaned.get("team")
+        if is_global:
+            cleaned["team"] = None
+        elif team is None:
+            raise ValidationError("Select a team or enable all-team access.")
+        return cleaned
+
+    def save(self, commit=True):
+        if not user_has_admin_access(self.admin_user):
+            raise PermissionError("Only admins can manage access rules.")
+        access = super().save(commit=False)
+        access.is_active = True
+        if commit:
+            access.save()
+        return access
 
 
 def user_can_create_invoice(user) -> bool:

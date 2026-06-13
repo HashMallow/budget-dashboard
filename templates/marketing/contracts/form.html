@@ -1,0 +1,86 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% if mode == "edit" %}{% t "Edit contract" %}{% else %}{% t "New contract" %}{% endif %}{% endblock %}
+{% block page_title %}{% if mode == "edit" %}{% t "Edit contract" %}{% else %}{% t "New contract" %}{% endif %}{% endblock %}
+{% block page_subtitle %}{% t "The contract is saved to the database" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% if contract %}{% url 'marketing:contract_detail' contract.pk %}{% else %}{% url 'marketing:contract_list' %}{% endif %}">{% t "Back" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="message">{% form_errors form.non_field_errors %}</div>
+      {% endif %}
+      <div class="form-grid">
+        <div class="field wide">
+          <label for="{{ form.title.id_for_label }}">{% t form.title.label %}</label>
+          {{ form.title }}
+          {% form_errors form.title.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.contract_number.id_for_label }}">{% t form.contract_number.label %}</label>
+          {{ form.contract_number }}
+          {% form_errors form.contract_number.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.stage.id_for_label }}">{% t form.stage.label %}</label>
+          {{ form.stage }}
+          {% form_errors form.stage.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
+          {{ form.vendor }}
+          {% form_errors form.vendor.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.new_vendor_name.id_for_label }}">{% t form.new_vendor_name.label %}</label>
+          {{ form.new_vendor_name }}
+          {% form_errors form.new_vendor_name.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
+          {{ form.team }}
+          {% form_errors form.team.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.counterparty_contact.id_for_label }}">{% t form.counterparty_contact.label %}</label>
+          {{ form.counterparty_contact }}
+          {% form_errors form.counterparty_contact.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.start_date.id_for_label }}">{% t form.start_date.label %}</label>
+          {{ form.start_date }}
+          {% form_errors form.start_date.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.end_date.id_for_label }}">{% t form.end_date.label %}</label>
+          {{ form.end_date }}
+          {% form_errors form.end_date.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
+          {{ form.amount }}
+          {% form_errors form.amount.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.currency.id_for_label }}">{% t form.currency.label %}</label>
+          {{ form.currency }}
+          {% form_errors form.currency.errors %}
+        </div>
+        <div class="field wide">
+          <label for="{{ form.description.id_for_label }}">{% t form.description.label %}</label>
+          {{ form.description }}
+          {% form_errors form.description.errors %}
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 18px;">
+        <button class="btn primary" type="submit">{% t "Save" %}</button>
+        <a class="btn" href="{% url 'marketing:contract_list' %}">{% t "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

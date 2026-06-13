@@ -3,11 +3,50 @@ from __future__ import annotations
 from marketing.money_format import COMPACT, FULL, RIAL, TOMAN, unit_label
 from marketing.permissions import can_export
 
+# Catalog of every export link, keyed by a short id. ``title`` is an optional tooltip string.
+_EXPORT_LINKS: dict[str, dict[str, str]] = {
+    "invoices_excel": {"url": "marketing:export_invoices_excel", "label": "Invoices (Excel)", "icon": "⇩"},
+    "invoices_pdf": {"url": "marketing:invoice_report_print", "label": "PDF report", "icon": "⎙"},
+    "vendors_excel": {"url": "marketing:export_vendors_excel", "label": "Vendors (Excel)", "icon": "⇩"},
+    "vendors_pdf": {"url": "marketing:export_vendors_pdf", "label": "Vendors (PDF)", "icon": "⎙"},
+    "campaigns_excel": {"url": "marketing:export_campaigns_excel", "label": "Campaigns (Excel)", "icon": "⇩"},
+    "campaigns_pdf": {"url": "marketing:export_campaigns_pdf", "label": "Campaigns (PDF)", "icon": "⎙"},
+    "contracts_excel": {"url": "marketing:export_contracts_excel", "label": "Contracts (Excel)", "icon": "⇩"},
+    "contracts_pdf": {"url": "marketing:export_contracts_pdf", "label": "Contracts (PDF)", "icon": "⎙"},
+    "workbook_excel": {
+        "url": "marketing:export_workbook_excel",
+        "label": "Workbook (.xlsx)",
+        "icon": "⇩",
+        "title": "Excel shaped like the source workbook (all sheets)",
+    },
+    "dashboard_pdf": {"url": "marketing:dashboard_report_pdf", "label": "PDF summary", "icon": "⎙"},
+}
+
+# Only the exports relevant to each page are offered in the topbar (by resolved URL name).
+_PAGE_EXPORTS: dict[str, list[str]] = {
+    "dashboard": ["dashboard_pdf", "workbook_excel"],
+    "invoice_list": ["invoices_excel", "invoices_pdf"],
+    "vendor_report": ["vendors_excel", "vendors_pdf"],
+    "campaign_report": ["campaigns_excel", "campaigns_pdf"],
+    "contract_list": ["contracts_excel", "contracts_pdf"],
+    "team_list": ["workbook_excel"],
+    "team_dashboard": ["dashboard_pdf", "workbook_excel"],
+    "budget_list": ["workbook_excel"],
+}
+
 
 def export_access(request):
-    """Expose a global export flag so the topbar Exports menu can render consistently."""
+    """Expose only the exports relevant to the current page so the topbar isn't a dump of everything.
+
+    base.html renders a single button when there is one relevant export, a compact dropdown when
+    there are several, and nothing when the page has no exports (or the user cannot export).
+    """
     user = getattr(request, "user", None)
-    return {"can_export_global": bool(user and user.is_authenticated and can_export(user))}
+    if not (user and user.is_authenticated and can_export(user)):
+        return {"page_exports": []}
+    url_name = getattr(getattr(request, "resolver_match", None), "url_name", "")
+    keys = _PAGE_EXPORTS.get(url_name, [])
+    return {"page_exports": [_EXPORT_LINKS[key] for key in keys if key in _EXPORT_LINKS]}
 
 
 def display_preferences(request):

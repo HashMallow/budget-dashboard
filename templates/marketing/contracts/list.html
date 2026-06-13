@@ -1,0 +1,117 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Contracts" %}{% endblock %}
+{% block page_title %}{% t "Contracts" %}{% endblock %}
+{% block page_subtitle %}{% t "Track vendor contracts, legal review stage and expiry dates" %}{% endblock %}
+{% block page_actions %}
+  {% if can_create_contract %}
+    <a class="btn primary" href="{% url 'marketing:contract_create' %}">＋ {% t "New contract" %}</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="section grid cards">
+    <div class="card">
+      <div class="card-label">{% t "Total contracts" %}</div>
+      <div class="card-value number">{{ summary.total }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Signed / active" %}</div>
+      <div class="card-value number">{{ summary.active }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "In legal review" %}</div>
+      <div class="card-value number">{{ summary.in_legal }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Expiring within 30 days" %}</div>
+      <div class="card-value number">{{ summary.expiring_soon }}</div>
+      <div class="card-note">{% t "Expired:" %} {{ summary.expired }}</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="{% t 'Title, number, vendor' %}">
+      </div>
+      <div class="field">
+        <label for="team">{% t "Team" %}</label>
+        <select id="team" name="team">
+          <option value="">{% t "All" %}</option>
+          {% for team in teams %}
+            <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="stage">{% t "Stage" %}</label>
+        <select id="stage" name="stage">
+          <option value="">{% t "All" %}</option>
+          {% for value, label in contract_stages %}
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{% t label %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="expiring">{% t "Expiry" %}</label>
+        <select id="expiring" name="expiring">
+          <option value="">{% t "All" %}</option>
+          <option value="1" {% if filters.expiring == "1" %}selected{% endif %}>{% t "Expiring within 30 days" %}</option>
+        </select>
+      </div>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
+    </form>
+  </section>
+
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% sortable_th "Title" "title" %}</th>
+            <th>{% sortable_th "Vendor" "vendor" %}</th>
+            <th>{% sortable_th "Team" "team" %}</th>
+            <th>{% sortable_th "Stage" "stage" %}</th>
+            <th class="col-num">{% sortable_th "End date" "end" %}</th>
+            <th class="col-num">{% sortable_th "Days in stage" "days" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contract in page_obj %}
+            <tr>
+              <td><a href="{% url 'marketing:contract_detail' contract.pk %}">{{ contract.title }}</a></td>
+              <td>{{ contract.vendor.name }}</td>
+              <td>{{ contract.team.name|default:"-" }}</td>
+              <td><span class="badge">{% t contract.stage|contract_stage_label %}</span></td>
+              <td class="col-num">
+                {% display_date contract.end_date %}
+                {% if contract.is_expired %}
+                  <span class="badge danger">{% t "Expired" %}</span>
+                {% elif contract.is_expiring_soon %}
+                  <span class="badge warn">{% t "Soon" %}</span>
+                {% endif %}
+              </td>
+              <td class="col-num">{{ contract.days_in_current_stage }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty">{% t "No contracts to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+      <div class="pagination">
+        {% if page_obj.has_previous %}
+          <a class="btn" href="?{% qs page=page_obj.previous_page_number %}">{% t "Previous" %}</a>
+        {% endif %}
+        <span class="btn">{% t "Page" %} {{ page_obj.number }} {% t "of" %} {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="btn" href="?{% qs page=page_obj.next_page_number %}">{% t "Next" %}</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

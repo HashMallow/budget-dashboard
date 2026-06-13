@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from django.utils.text import slugify
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
@@ -180,6 +181,16 @@ def parse_excel_date(value: Any, workbook_epoch) -> date | None:
         except ValueError:
             pass
     return None
+
+
+def aware_datetime_from_date(value: date | None) -> datetime | None:
+    """Convert a date into a timezone-aware datetime (anchored at midday to avoid TZ edge cases)."""
+    if value is None:
+        return None
+    naive = datetime(value.year, value.month, value.day, 12, 0)
+    if timezone.is_naive(naive):
+        return timezone.make_aware(naive, timezone.get_current_timezone())
+    return naive
 
 
 def normalize_currency(value: Any) -> str:
@@ -506,6 +517,7 @@ def update_or_create_invoice(
     raw_data: dict[str, Any],
     result: ImportResult,
     dry_run: bool,
+    stage_changed_at: datetime | None = None,
     allow_invoice_vendor_fallback: bool = True,
 ) -> None:
     existing = find_existing_invoice(
@@ -536,6 +548,11 @@ def update_or_create_invoice(
         "source_row_number": source_row,
         "raw_data_json": raw_data,
     }
+    # Aging ("days in current stage") must reflect when the invoice actually entered its stage.
+    # The workbook records when MKT sent the invoice to Finance, so use that as the stage start
+    # for finance-review rows; otherwise Invoice.save() would stamp it with the import time.
+    if stage_changed_at is not None and payment_stage == PaymentStage.FINANCE_REVIEW:
+        values["stage_changed_at"] = stage_changed_at
     if existing:
         for key, value in values.items():
             setattr(existing, key, value)
@@ -612,6 +629,13 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
         campaign = get_or_create_campaign(campaign_name, year, team, result, dry_run) if year else None
         description = cell_to_text(mapped_value(raw, columns, "description"))
         payment_stage = map_payment_stage(mapped_value(raw, columns, "payment_stage"), stage_mapping)
+        finance_sent_date = parse_excel_date(
+            mapped_value(raw, columns, "finance_sent_date_gregorian_serial"),
+            workbook.epoch,
+        ) or parse_excel_date(
+            mapped_value(raw, columns, "finance_sent_date_jalali_serial"),
+            workbook.epoch,
+        )
 
         update_or_create_invoice(
             vendor=vendor,
@@ -630,6 +654,7 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
             raw_data=raw,
             result=result,
             dry_run=dry_run,
+            stage_changed_at=aware_datetime_from_date(finance_sent_date),
             allow_invoice_vendor_fallback=invoice_key not in duplicate_invoice_keys,
         )
 
@@ -640,18 +665,18 @@ def find_existing_budget_line(
     source_row: int,
     year: int,
     month: int,
-    team: Team | None,
-    category: str,
 ) -> BudgetLine | None:
-    queryset = BudgetLine.objects.filter(
+    # Idempotency key is the workbook source row + month only. Team/category are derived from the
+    # row and can change between imports (e.g. team alias merges), so they must NOT be part of the
+    # lookup — otherwise a re-import would create a duplicate instead of updating the existing line.
+    if source_row is None:
+        return None
+    return BudgetLine.objects.filter(
         source_sheet=source_sheet,
         source_row_number=source_row,
         year=year,
         month=month,
-        category=category,
-    )
-    queryset = queryset.filter(team=team) if team and team.pk else queryset.filter(team__isnull=True)
-    return queryset.first()
+    ).first()
 
 
 def update_or_create_budget_line(
@@ -673,8 +698,6 @@ def update_or_create_budget_line(
         source_row=source_row,
         year=year,
         month=month,
-        team=team,
-        category=category,
     )
     if dry_run:
         if existing:

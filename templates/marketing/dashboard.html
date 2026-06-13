@@ -62,6 +62,14 @@
         <div class="card-value number">{{ sms_total|money }}</div>
         <div class="card-note">{% t "Part of Retention, shown separately" %}</div>
       </div>
+      <div class="card">
+        <div class="card-label">{% t "Contracts expiring soon" %}</div>
+        <div class="card-value number">
+          {{ contracts_expiring_soon }}
+          <a class="btn" style="padding:2px 6px;font-size:11px;" href="{% url 'marketing:contract_list' %}?expiring=1">{% t "View" %}</a>
+        </div>
+        <div class="card-note">{% t "Within 30 days" %}{% if contracts_expired %} · {% t "Expired:" %} {{ contracts_expired }}{% endif %}</div>
+      </div>
     </div>
   </section>
 
@@ -139,23 +147,31 @@
         <a class="btn" href="{% url 'marketing:vendor_report' %}">{% t "View all" %}</a>
       </div>
       <div class="table-wrap">
-        <table class="data-table">
+        <table class="data-table vendor-table">
           <thead>
             <tr>
-              <th>{% t "Vendor" %}</th>
-              <th class="col-num">{% t "Count" %}</th>
-              <th class="col-num">{% t "Amount" %}</th>
+              <th class="col-vendor">{% t "Vendor" %}</th>
+              <th class="col-num col-count">{% t "Count" %}</th>
+              <th class="col-invoices">{% t "Invoice numbers" %}</th>
+              <th class="col-stages">{% t "Stages" %}</th>
+              <th class="col-num col-amount">{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in vendor_rows %}
               <tr>
-                <td>{{ row.vendor__name }}</td>
+                <td>{{ row.vendor.name }}</td>
                 <td class="col-num">{{ row.invoice_count }}</td>
+                <td>
+                  {{ row.visible_invoice_numbers|join:", " }}{% if row.remaining_invoice_count %} +{{ row.remaining_invoice_count }}{% endif %}
+                </td>
+                <td>
+                  {% for stage in row.stages %}<span class="badge">{% t stage %}</span> {% endfor %}
+                </td>
                 <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
+              <tr><td colspan="5" class="empty">{% t "No data to display." %}</td></tr>
             {% endfor %}
           </tbody>
         </table>

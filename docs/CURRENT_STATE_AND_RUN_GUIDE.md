@@ -367,8 +367,38 @@ Dates and amounts
 Run these commands from the project root:
 
 ```bash
-cd /home/workplace/Documents/Projects/Alireza
+cd /path/to/Alireza
 ```
+
+### Prerequisites
+
+The repo uses a `Makefile` for common tasks (`make setup`, `make run`, `make check`, etc.). Install `make` before running those commands.
+
+**macOS** — if `make` is missing (`command not found: make`), install developer tools first:
+
+```bash
+xcode-select --install
+```
+
+Or with Homebrew:
+
+```bash
+brew install make
+```
+
+Check:
+
+```bash
+make --version
+```
+
+Also install [uv](https://docs.astral.sh/uv/) if you do not have it yet:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Without `make`, use the raw `uv run python manage.py …` commands documented under each section below and in [`../README.md`](../README.md).
 
 ### First-Time Setup
 

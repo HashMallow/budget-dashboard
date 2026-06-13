@@ -5,7 +5,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from marketing.jalali import format_jalali_date
-from marketing.models import CostBucket, PaymentStage
+from marketing.models import ContractStage, CostBucket, PaymentStage
 from marketing.money_format import (
     COMPACT,
     FULL,
@@ -87,6 +87,12 @@ def stage_label(value: str) -> str:
 @register.filter
 def bucket_label(value: str) -> str:
     labels = dict(CostBucket.choices)
+    return labels.get(value, value or "")
+
+
+@register.filter
+def contract_stage_label(value: str) -> str:
+    labels = dict(ContractStage.choices)
     return labels.get(value, value or "")
 
 

@@ -16,7 +16,8 @@ docs/PHASE_2.md
 
 ## Current Status
 
-- Discovery is complete under `docs/discovery/`.
+- Discovery is complete under `docs/discovery/` (audio transcript/summary/requirements, workbook
+  structure/sample rows, `column_mapping.yml`, and import risks).
 - Django project and `marketing` app are scaffolded.
 - Core models, admin registration, baseline auth groups, permission helpers, and initial tests are in place.
 - The Excel importer works from `docs/discovery/column_mapping.yml`.
@@ -26,8 +27,61 @@ docs/PHASE_2.md
 - The dashboard includes Chart.js visuals for overall spend, monthly trend, and per-team spend.
 - Dedicated team dashboards show team spend, vendors, campaigns, monthly trend, and attention invoices.
 - The workbook `Data` sheet can seed lookup rows for vendors, categories, sub-teams, and requesters.
-- Invoices, vendor reports, and campaign reports can be exported to Excel; the dashboard summary can be exported to a server-rendered PDF.
+- Invoices, vendor reports, and campaign reports export to Excel; the dashboard summary, vendor spend, and campaign spend export to server-rendered PDF.
 - Production settings are wired (DATABASE_URL/Postgres switch, WhiteNoise, HTTPS headers, logging) behind a `prod` dependency extra — see `docs/DEPLOYMENT_AWS.md`.
+
+## Prerequisites
+
+Most local workflows use the project `Makefile`. You need `make` available in your shell.
+
+**macOS** — a fresh Mac often does not include `make` until developer tools are installed. Pick one:
+
+```bash
+# Recommended: Apple Command Line Tools (includes make, git, clang)
+xcode-select --install
+```
+
+Or, if you use Homebrew:
+
+```bash
+brew install make
+```
+
+Verify:
+
+```bash
+make --version
+```
+
+You also need [uv](https://docs.astral.sh/uv/) (Python dependency runner). If `make setup`
+prints `/bin/sh: uv: command not found`, install it first.
+
+On macOS with Homebrew:
+
+```bash
+brew install uv
+```
+
+Or with the official installer:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+After installing with the official installer, restart the terminal. If `uv --version` still does
+not work, run:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Verify:
+
+```bash
+uv --version
+```
+
+If you prefer not to install `make`, every `make` target has a `uv run python manage.py …` equivalent — see **Fallback without `make`** below.
 
 ## Local Setup
 
@@ -62,6 +116,24 @@ Full first-run shortcut:
 
 ```bash
 make first-run
+```
+
+Copy-paste-safe first run, without shell comments. Paste only these command lines:
+
+```bash
+make setup
+make dev-admin
+make load-data-dry-run
+make load-data
+make check
+make dev
+```
+
+If there is more than one `.xlsx` file in the project, pass the workbook explicitly:
+
+```bash
+make load-data-dry-run FILE=./marketing_spend_workbook.xlsx
+make load-data FILE=./marketing_spend_workbook.xlsx
 ```
 
 Fallback without `make`:

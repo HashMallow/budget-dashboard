@@ -54,6 +54,12 @@ FA: dict[str, str] = {
     "Invoices (Excel)": "فاکتورها (اکسل)",
     "Vendors (Excel)": "تأمین‌کنندگان (اکسل)",
     "Campaigns (Excel)": "کمپین‌ها (اکسل)",
+    "Vendors (PDF)": "تأمین‌کنندگان (PDF)",
+    "Campaigns (PDF)": "کمپین‌ها (PDF)",
+    "Contracts (Excel)": "قراردادها (اکسل)",
+    "Contracts (PDF)": "قراردادها (PDF)",
+    "Contracts expiring soon": "قراردادهای رو به انقضا",
+    "Within 30 days": "ظرف ۳۰ روز آینده",
     "Exports respect your current filters and access scope": "خروجی‌ها بر اساس فیلتر و دسترسی فعلی شما هستند",
     "Workbook (.xlsx)": "فایل اکسل کامل",
     "Excel shaped like the source workbook (all sheets)": "اکسل با ساختار فایل اصلی (همه شیت‌ها)",
@@ -337,6 +343,18 @@ FA: dict[str, str] = {
     "You cannot deactivate your own account.": "نمی‌توانید حساب خودتان را غیرفعال کنید.",
     "User status updated.": "وضعیت کاربر به‌روزرسانی شد.",
     "New user created.": "کاربر جدید ساخته شد.",
+    "Grant team access": "اعطای دسترسی تیم",
+    "Add another team or role to an existing user (multi-team access)": (
+        "افزودن تیم یا نقش دیگر به یک کاربر موجود (دسترسی چند-تیمی)"
+    ),
+    "Add access rule": "افزودن قانون دسترسی",
+    "Enable": "فعال‌سازی",
+    "Disable": "غیرفعال‌سازی",
+    "Remove": "حذف",
+    "Access rule added.": "قانون دسترسی اضافه شد.",
+    "Access rule removed.": "قانون دسترسی حذف شد.",
+    "Access rule updated.": "قانون دسترسی به‌روزرسانی شد.",
+    "Select a team or enable all-team access.": "یک تیم انتخاب کنید یا دسترسی همه‌تیمی را فعال کنید.",
     # --- Misc data fallbacks ---
     "No team": "بدون تیم",
     "Team dashboard": "داشبورد تیم",
@@ -352,6 +370,77 @@ FA: dict[str, str] = {
     "No teams in your access scope.": "تیمی در محدوده دسترسی شما نیست.",
     "PDF summary": "خلاصه PDF",
     "View": "مشاهده",
+    # --- Contracts: navigation + pages ---
+    "Contracts": "قراردادها",
+    "Track vendor contracts, legal review stage and expiry dates": (
+        "پیگیری قراردادهای وندورها، مرحله بررسی حقوقی و تاریخ انقضا"
+    ),
+    "New contract": "قرارداد جدید",
+    "Edit contract": "ویرایش قرارداد",
+    "The contract is saved to the database": "قرارداد در دیتابیس ذخیره می‌شود",
+    "Total contracts": "کل قراردادها",
+    "Signed / active": "امضا شده / فعال",
+    "In legal review": "در حال بررسی حقوقی",
+    "Expiring within 30 days": "انقضا تا ۳۰ روز آینده",
+    "Expired:": "منقضی‌شده:",
+    "Title, number, vendor": "عنوان، شماره، وندور",
+    "Expiry": "انقضا",
+    "Title": "عنوان",
+    "End date": "تاریخ پایان",
+    "Soon": "به‌زودی",
+    "No contracts to display.": "قراردادی برای نمایش وجود ندارد.",
+    "Contract": "قرارداد",
+    "days left": "روز باقی‌مانده",
+    "Contract value": "ارزش قرارداد",
+    "Core contract information": "اطلاعات اصلی قرارداد",
+    "Contract number": "شماره قرارداد",
+    "Start date": "تاریخ شروع",
+    "Signed at": "تاریخ امضا",
+    "Counterparty contact": "رابط طرف مقابل",
+    "Legal review tracking": "پیگیری بررسی حقوقی",
+    "Where the draft currently sits between the legal teams": (
+        "اینکه پیش‌نویس اکنون بین تیم‌های حقوقی در چه مرحله‌ای است"
+    ),
+    "You have view-only access to this contract's status.": (
+        "شما فقط دسترسی مشاهده وضعیت این قرارداد را دارید."
+    ),
+    "Documents": "اسناد",
+    "Drafts and the final signed contract text": "پیش‌نویس‌ها و متن نهایی امضا شده قرارداد",
+    "No documents uploaded.": "سندی آپلود نشده است.",
+    "Upload document": "آپلود سند",
+    "Stage history": "تاریخچه مراحل",
+    "Stage changes are recorded automatically": "تغییرات مرحله به‌صورت خودکار ثبت می‌شوند",
+    "No stage changes recorded.": "تغییر مرحله‌ای ثبت نشده است.",
+    "Contract title": "عنوان قرارداد",
+    "Document type": "نوع سند",
+    # --- Contract stages (ContractStage.choices labels) ---
+    "Internal legal review": "بررسی حقوقی داخلی",
+    "Sent to counterparty": "ارسال به طرف مقابل",
+    "Counterparty legal review": "بررسی حقوقی طرف مقابل",
+    "Negotiation / revisions": "مذاکره / اصلاحات",
+    "Pending signature": "در انتظار امضا",
+    "Expired": "منقضی‌شده",
+    "Terminated": "فسخ‌شده",
+    # --- Contract attachment types ---
+    "Draft version": "نسخه پیش‌نویس",
+    "Final signed version": "نسخه نهایی امضا شده",
+    "Other document": "سند دیگر",
+    # --- Contract flash + validation messages ---
+    "Contract saved.": "قرارداد ثبت شد.",
+    "Contract updated.": "قرارداد به‌روزرسانی شد.",
+    "Contract stage updated.": "مرحله قرارداد به‌روزرسانی شد.",
+    "Invalid contract stage.": "مرحله قرارداد معتبر نیست.",
+    "Document uploaded.": "سند آپلود شد.",
+    "Upload failed. Check the file or your permissions.": (
+        "آپلود انجام نشد. فایل یا دسترسی خود را بررسی کنید."
+    ),
+    "You are not allowed to upload documents for this contract.": (
+        "شما اجازه آپلود سند برای این قرارداد را ندارید."
+    ),
+    "End date cannot be before the start date.": "تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.",
+    "You are not allowed to add or edit contracts for this team.": (
+        "شما اجازه افزودن یا ویرایش قرارداد برای این تیم را ندارید."
+    ),
 }
 
 TRANSLATIONS: dict[str, dict[str, str]] = {"fa": FA}
