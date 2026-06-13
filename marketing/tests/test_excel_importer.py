@@ -7,7 +7,7 @@ import yaml
 from openpyxl import Workbook
 
 from marketing.importers.excel import import_marketing_workbook
-from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage, Team, TeamAlias, Vendor
+from marketing.models import BudgetLine, Campaign, CostBucket, Invoice, PaymentStage, Team, TeamAlias, Vendor
 
 pytestmark = pytest.mark.django_db
 
@@ -169,6 +169,9 @@ def test_import_workbook_creates_invoices_budget_lines_and_preserves_duplicates(
     assert Invoice.objects.filter(payment_stage=PaymentStage.PAID).count() == 1
     assert Invoice.objects.filter(payment_stage=PaymentStage.FINANCE_REVIEW).count() == 1
     assert BudgetLine.objects.count() == 2
+    # Free-text "on going" from the workbook is canonicalized to a consistent campaign name.
+    assert Campaign.objects.filter(name="Ongoing").exists()
+    assert not Campaign.objects.filter(name="on going").exists()
 
     second_result = import_marketing_workbook(workbook_path, mapping_path=mapping_path)
 

@@ -64,6 +64,22 @@
     </div>
   </section>
 
+  <section class="section">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Overall spend share" %}</h2>
+          <p class="section-subtitle">{% t "Team spend with referral and SMS shown separately" %}</p>
+        </div>
+      </div>
+      {% if spend_pie_has_data %}
+        <div class="chart-wrap"><canvas id="spendPie" height="300"></canvas></div>
+      {% else %}
+        <div class="empty">{% t "No data to display." %}</div>
+      {% endif %}
+    </div>
+  </section>
+
   <section class="section grid two">
     <div class="panel">
       <div class="section-header">
@@ -237,4 +253,52 @@
       </div>
     </div>
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if spend_pie_has_data %}
+    {{ spend_pie|json_script:"spend-pie-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      (function () {
+        var el = document.getElementById("spendPie");
+        if (!el || typeof Chart === "undefined") { return; }
+        var data = JSON.parse(document.getElementById("spend-pie-data").textContent);
+        var palette = [
+          "#0f766e", "#2563eb", "#d97706", "#7c3aed", "#0891b2",
+          "#be123c", "#15803d", "#b45309", "#475569", "#9333ea",
+          "#0d9488", "#dc2626"
+        ];
+        new Chart(el, {
+          type: "doughnut",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              data: data.values,
+              backgroundColor: data.labels.map(function (_, i) { return palette[i % palette.length]; }),
+              borderColor: "#ffffff",
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "bottom", labels: { font: { family: "Vazirmatn, Segoe UI, sans-serif" } } },
+              tooltip: {
+                callbacks: {
+                  label: function (ctx) {
+                    var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+                    var pct = total ? Math.round((ctx.parsed / total) * 100) : 0;
+                    var value = ctx.parsed.toLocaleString("en-US");
+                    return " " + ctx.label + ": " + value + " (" + pct + "%)";
+                  }
+                }
+              }
+            }
+          }
+        });
+      })();
+    </script>
+  {% endif %}
 {% endblock %}

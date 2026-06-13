@@ -198,6 +198,7 @@
     .badge.warn { background: #fef3c7; color: var(--accent); }
     .badge.danger { background: #fee2e2; color: var(--danger); }
     .badge.info { background: #dbeafe; color: var(--blue); }
+    .chart-wrap { position: relative; max-width: 420px; margin: 4px auto 0; }
     .bar-list { display: grid; gap: 12px; }
     .bar-row { display: grid; grid-template-columns: 150px 1fr 120px; align-items: center; gap: 12px; }
     .bar-track { height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
@@ -318,5 +319,30 @@
       </div>
     </main>
   </div>
+  {% block extra_scripts %}{% endblock %}
+  {% if number_locale == "fa" %}
+  <script>
+    // Display Latin digits as Persian digits in Persian mode. Only display text nodes are
+    // touched; form controls (input/select/textarea) keep their Latin values so server-side
+    // parsing and form submission are unaffected.
+    (function () {
+      var map = { "0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴", "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹" };
+      var skip = { SCRIPT: 1, STYLE: 1, INPUT: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1 };
+      function toFa(text) {
+        return text.replace(/[0-9]/g, function (d) { return map[d]; });
+      }
+      function walk(node) {
+        for (var child = node.firstChild; child; child = child.nextSibling) {
+          if (child.nodeType === 3) {
+            if (/[0-9]/.test(child.nodeValue)) { child.nodeValue = toFa(child.nodeValue); }
+          } else if (child.nodeType === 1 && !skip[child.tagName]) {
+            walk(child);
+          }
+        }
+      }
+      walk(document.body);
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>

@@ -264,6 +264,24 @@ def get_or_create_vendor(name: str, result: ImportResult, dry_run: bool) -> Vend
     return vendor
 
 
+# Canonical spellings for free-text campaign names coming from the workbook, keyed by the
+# normalized (casefolded, whitespace-collapsed) form so variants like "on going" / "on-going" /
+# "ongoing" all resolve to a single consistent display value.
+CAMPAIGN_NAME_ALIASES = {
+    "on going": "Ongoing",
+    "ongoing": "Ongoing",
+    "on going campaign": "Ongoing",
+}
+
+
+def canonical_campaign_name(name: str) -> str:
+    """Return a consistent spelling for known free-text campaign-name variants."""
+    text = " ".join((name or "").split())
+    if not text:
+        return ""
+    return CAMPAIGN_NAME_ALIASES.get(normalize_name(text), text)
+
+
 def get_or_create_campaign(
     name: str,
     year: int,
@@ -271,6 +289,7 @@ def get_or_create_campaign(
     result: ImportResult,
     dry_run: bool,
 ) -> Campaign | None:
+    name = canonical_campaign_name(name)
     if not name:
         return None
     campaign = Campaign.objects.filter(name=name, year=year, team=team if team and team.pk else None).first()

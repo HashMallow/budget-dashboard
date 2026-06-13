@@ -11,7 +11,7 @@
       <form method="post">
         {% csrf_token %}
         {% if form.non_field_errors %}
-          <div class="message">{{ form.non_field_errors }}</div>
+          <div class="message">{% form_errors form.non_field_errors %}</div>
         {% endif %}
         <div class="grid">
           <div class="field">

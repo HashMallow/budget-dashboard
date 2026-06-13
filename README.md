@@ -5,9 +5,11 @@ Local Django app for importing, monitoring, entering, reporting, and exporting m
 For a more visual explanation of the current structure, capabilities, run workflow, and roadmap, see:
 
 ```text
+docs/PROJECT_EXPLAINED.md
 docs/PROJECT_BLUEPRINT.md
 docs/CURRENT_STATE_AND_RUN_GUIDE.md
 docs/PROJECT_FILE_REFERENCE.md
+docs/ACCESS_BY_ROLE.md
 docs/DEPLOYMENT_AWS.md
 ```
 
@@ -18,8 +20,10 @@ docs/DEPLOYMENT_AWS.md
 - Core models, admin registration, baseline auth groups, permission helpers, and initial tests are in place.
 - The Excel importer works from `docs/discovery/column_mapping.yml`.
 - The project now uses `uv` as the standard dependency and command runner.
-- A minimal custom UI is available for dashboard, invoices, vendors, campaigns, budgets, imports, and users.
-- Chart.js-style visualization endpoints and deeper analysis are the next implementation phases.
+- A custom UI is available for dashboard, invoices, vendors, campaigns, budgets, imports, and users.
+- The UI is fully bilingual (FA/EN) with Persian-digit display in Persian mode.
+- The dashboard includes an overall-spend pie chart (Chart.js); more charts are planned.
+- Production settings are wired (DATABASE_URL/Postgres switch, WhiteNoise, HTTPS headers, logging) behind a `prod` dependency extra — see `docs/DEPLOYMENT_AWS.md`.
 
 ## Local Setup
 
@@ -130,4 +134,16 @@ uv run python manage.py import_marketing_excel
 make check
 ```
 
-This currently runs Django checks, 12 pytest tests, and ruff through uv.
+This currently runs Django checks, 14 pytest tests, and ruff through uv.
+
+## Production / Deployment
+
+Production dependencies live in an optional extra so local dev stays lean:
+
+```bash
+make prod-install      # uv sync --extra prod (gunicorn, psycopg, whitenoise, dj-database-url)
+make collectstatic
+make prod-run          # gunicorn, expects a production .env (DEBUG=false, DATABASE_URL, ...)
+```
+
+See `docs/DEPLOYMENT_AWS.md` for the full CLI-first AWS roadmap and cheaper alternatives.

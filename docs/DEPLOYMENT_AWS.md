@@ -1,138 +1,156 @@
-# Deployment Guide (AWS + cheaper alternatives)
+# Deploying *this* dashboard
 
-This guide explains how to deploy the **Marketing Spend Dashboard** to AWS, and lists
-simpler/cheaper alternatives.
+A concrete, copy-pasteable runbook for putting **this** project — the Marketing Spend Dashboard
+(Django + gunicorn, server-rendered templates) — online. It is written around what is already in
+this repo, not a generic tutorial.
 
-> **Important reality check.** The `AWS_Infrastructure_Research_Project.pdf` whitepaper
-> describes a **FastAPI + React + PostgreSQL** learning project. This repository is a
-> **Django (server-rendered templates) + SQLite** app. The PDF's *roadmap and AWS
-> service choices still apply*, but the implementation details below are written for the
-> stack that actually exists here. Where the PDF says "FastAPI", read "Django/gunicorn";
-> where it says "React dashboard", this app already renders its own HTML.
+The AWS learning whitepaper in the repo
+(`AWS_Infrastructure_Research_Project_Combined_CLI_UI_Go_Worker_Edition.pdf`) is used only as
+**background** (cost discipline, CLI-first habits, the "add managed services later" philosophy).
+Where its assumptions differ from this app, see [§9 — How this maps to the PDF](#9-how-this-maps-to-the-pdf).
 
-> **Pricing note (from the PDF).** Do not trust any fixed price. AWS prices and free-tier
-> rules change by Region, account age, and configuration. Verify on the official AWS
-> pricing pages before creating always-on resources (EC2, RDS, ALB, NAT Gateway, ElastiCache).
-
----
-
-## 0. Where this project already is on the PDF roadmap
-
-The PDF's path is: `local -> Docker -> EC2 -> RDS -> S3 -> CloudWatch -> CI/CD -> ALB -> Terraform -> ECS -> Valkey -> SQS -> EKS`.
-
-Already done in this repo (no AWS needed):
-- Core app, models, migrations, tests, lint.
-- Backend-enforced RBAC (admin / manager / editor / observer) — the PDF's #1 security rule.
-- XLSX import with raw-row traceability + Excel export.
-- "Excel is an import format, not the runtime database" (matches PDF §11.2).
-
-Not done yet (needed before/at deploy):
-- Production settings (`DEBUG=False`, real `ALLOWED_HOSTS`, secret from env).
-- A real database (move off SQLite to PostgreSQL/RDS).
-- Static files served properly (`collectstatic` + WhiteNoise or S3/CloudFront).
-- Uploaded files (invoice/payment images) on durable storage (local disk is fine on one box; S3 is better).
-- A WSGI server (gunicorn) behind a reverse proxy (nginx/Caddy) with HTTPS.
+> **Pricing note.** Don't trust any fixed price below. AWS pricing and free-tier rules change by
+> Region, account age, and configuration. Check the official AWS pricing pages before creating
+> **always-on** resources (EC2, RDS, ALB, NAT Gateway, ElastiCache).
 
 ---
 
-## 1. Make the app production-ready (do this regardless of host)
+## 1. What you're actually deploying
 
-These changes are required for **any** real deployment.
+These are the deployment-relevant facts about this codebase (don't assume the generic Django defaults):
 
-### 1.1 Add production dependencies
+| Thing | This project |
+|---|---|
+| Web app | Django 5, WSGI entrypoint `config.wsgi:application` |
+| App server | `gunicorn` (in the `prod` extra; run via `make prod-run`) |
+| Python | 3.13, managed by **`uv`** (see `.python-version`, `uv.lock`) |
+| Static files | **WhiteNoise** — gunicorn serves them itself; no separate static server/CDN needed |
+| Uploaded media | invoice images + payment proofs + raw XLSX, on disk under `media/` (move to S3 later, §6) |
+| DB (dev) | SQLite (`db.sqlite3`) |
+| DB (prod) | any Postgres via `DATABASE_URL` (psycopg3 is in the `prod` extra) |
+| Initial data | imported from the workbook (`your_workbook.xlsx`) via a management command |
+| Config | all via env vars (see §3); `config/settings.py` flips to "prod mode" when `DJANGO_DEBUG=false` |
+| Locale defaults | `TIME_ZONE=Asia/Tehran`, `DEFAULT_CURRENCY=IRR` (both env-overridable) |
 
-```bash
-uv add gunicorn "psycopg[binary]" whitenoise dj-database-url
-# Optional, only if you store uploads/static on S3:
-uv add django-storages boto3
-```
+**Implication:** because WhiteNoise handles static files and the app is a single long-running WSGI
+process, the simplest correct deploy is **one small Linux box running gunicorn behind a reverse
+proxy that terminates HTTPS**. You do *not* need ECS/EKS/CloudFront/an S3 static site to go live.
 
-### 1.2 Settings changes (`config/settings.py`)
+---
 
-- `DEBUG` already reads `DJANGO_DEBUG` — set it to `false` in production.
-- `ALLOWED_HOSTS` already reads `DJANGO_ALLOWED_HOSTS` — set your domain/IP.
-- `SECRET_KEY` already reads `DJANGO_SECRET_KEY` — **always set a fixed value in prod**
-  (the current fallback generates a new key each boot, which would invalidate every session).
-- Add WhiteNoise so the single server can serve CSS/JS without nginx static config:
+## 2. Pick a path
 
-```python
-# In MIDDLEWARE, right after SecurityMiddleware:
-"whitenoise.middleware.WhiteNoiseMiddleware",
+| Option | Effort | Rough cost | Choose when |
+|---|---|---|---|
+| **PaaS** (Render / Railway / Fly.io) | Lowest | Free → low | You just want it live fast; platform gives HTTPS + managed Postgres |
+| **AWS — single EC2 + Caddy** (this guide, §4) | Medium | One small instance | You want AWS specifically and full control / learning value |
+| **AWS Lightsail** | Low | Flat, predictable | You want AWS but a fixed monthly bill |
+| **Docker on a cheap VPS** (Hetzner/DigitalOcean) | Medium | Very low | Cost is the top priority |
 
-# Near static settings:
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-}
-```
+This guide walks the **single EC2 + Caddy** path in full because it's the most instructive AWS
+option and maps cleanly onto how the app actually runs. §7 lists the managed-AWS upgrades
+(RDS, S3, CloudWatch, CI/CD, ALB) to add **only when you need them**. §8 covers the PaaS shortcut.
 
-- Switch the database to read a URL (so SQLite stays for local, Postgres for prod):
+> If you want the absolute fastest route and don't specifically need AWS, jump to
+> [§8 — PaaS shortcut](#8-paas-shortcut-fastest-to-live).
 
-```python
-import dj_database_url
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-    )
-}
-```
+---
 
-- Production security headers (only when not DEBUG):
+## 3. Production environment variables
 
-```python
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    CSRF_TRUSTED_ORIGINS = [
-        o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
-    ]
-```
-
-### 1.3 Production `.env`
+`config/settings.py` already reads all of these. Create a production `.env` (this exact set is
+what the app consumes — anything else is ignored):
 
 ```env
+# Core
 DJANGO_DEBUG=false
-DJANGO_SECRET_KEY=<a long random string, keep it stable>
+DJANGO_SECRET_KEY=<a long, STABLE random string>   # set once; never regenerate per boot in prod
 DJANGO_ALLOWED_HOSTS=dashboard.example.com
 DJANGO_CSRF_TRUSTED_ORIGINS=https://dashboard.example.com
+
+# Database (omit entirely to keep SQLite; set it to use Postgres/RDS)
 DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/marketing
+
+# Locale
 DJANGO_TIME_ZONE=Asia/Tehran
 DJANGO_DEFAULT_CURRENCY=IRR
+
+# HTTPS hardening (active only because DEBUG=false)
+DJANGO_SECURE_SSL_REDIRECT=true
+DJANGO_SECURE_HSTS_SECONDS=31536000     # enable HSTS once HTTPS is confirmed working
+DJANGO_LOG_LEVEL=INFO
 ```
 
-### 1.4 Build/run commands in production
-
-```bash
-uv sync --no-dev
-uv run python manage.py migrate
-uv run python manage.py collectstatic --noinput
-uv run python manage.py seed_auth_groups
-uv run python manage.py createsuperuser        # real admin; do NOT use make dev-admin in prod
-uv run gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
-```
+What flips on automatically when `DJANGO_DEBUG=false`:
+- `SECURE_SSL_REDIRECT`, secure session/CSRF cookies, and `SECURE_PROXY_SSL_HEADER`
+  (so a TLS-terminating proxy like Caddy doesn't cause a redirect loop), plus optional HSTS.
+- WhiteNoise compressed/hashed static storage (only if the `prod` extra is installed).
 
 ---
 
-## 2. Recommended AWS path (matches the PDF, simplest first)
+## 4. Walkthrough: single EC2 + Caddy
 
-The PDF strongly recommends **not** starting with ECS/Fargate/EKS. Start with one EC2 box.
+A single always-on Linux VM running gunicorn, with Caddy in front for automatic HTTPS.
 
-### Phase A — single EC2 + Caddy (cheapest real AWS deploy)
+### 4.0 Before anything — guardrails (PDF §11)
+- Set an **AWS Budget alert** in Billing so a mistake can't run up a surprise bill.
+- Decide on tags and apply them to every resource: `Project=marketing-dashboard`, `Environment=prod`, `Owner=alireza`.
+- Confirm which account/region you're in before creating anything:
 
-Goal: one always-on Linux VM running gunicorn behind Caddy (which auto-provisions HTTPS).
-Database can stay SQLite at first or be a local Postgres on the same box.
+```bash
+aws configure --profile dashboard          # keys, region (e.g. eu-central-1 / me-central-1), output json
+aws sts get-caller-identity --profile dashboard
+```
 
-1. **AWS Budgets alert first** (PDF §9): set a monthly budget + email alert before anything.
-2. Launch an EC2 instance (e.g. a small `t3.small`/`t4g.small`), Ubuntu LTS, in a default VPC.
-3. Security group: allow inbound `80`, `443`, and `22` (SSH) **from your IP only**.
-4. Install Python 3.13 + `uv`, clone the repo, create the production `.env`.
-5. Run gunicorn as a `systemd` service (sample below).
-6. Put **Caddy** in front for automatic HTTPS (sample below). Point your domain's DNS at the EC2 public IP (Route 53 or any registrar).
+### 4.1 Launch the instance
+- EC2 → Ubuntu LTS, `t3.small` or `t4g.small` (1–2 GB RAM is plenty for low internal traffic), default VPC.
+- Tag it as above.
+- **Security group:** inbound `80` and `443` from anywhere; `22` (SSH) **from your IP only**.
 
-`systemd` unit (`/etc/systemd/system/marketing.service`):
+```bash
+aws ec2 describe-instances \
+  --filters 'Name=tag:Project,Values=marketing-dashboard' \
+  --query 'Reservations[*].Instances[*].{Id:InstanceId,State:State.Name,PublicIp:PublicIpAddress}' \
+  --output table
+```
+
+### 4.2 Install runtime + the app
+SSH in, then:
+
+```bash
+sudo apt update && sudo apt install -y git curl
+curl -LsSf https://astral.sh/uv/install.sh | sh        # installs uv (+ manages Python 3.13)
+exec $SHELL                                             # reload PATH so `uv` is found
+
+git clone <your-repo-url> /home/ubuntu/marketing
+cd /home/ubuntu/marketing
+
+# Create the production env file from §3
+nano .env                                               # paste + edit the values
+
+make prod-install                                       # uv sync --extra prod (gunicorn, psycopg, whitenoise, dj-database-url)
+```
+
+### 4.3 Initialize the database + load data
+
+```bash
+set -a; source .env; set +a                             # export the env for these one-off commands
+
+uv run python manage.py migrate
+uv run python manage.py seed_auth_groups                # creates the RBAC groups
+uv run python manage.py collectstatic --noinput         # = make collectstatic
+uv run python manage.py createsuperuser                 # REAL admin — never ship admin/admin12345
+
+# Load the initial spend data from the workbook (preview first)
+uv run python manage.py import_marketing_excel --dry-run --file "marketing_spend_workbook.xlsx"
+uv run python manage.py import_marketing_excel          --file "marketing_spend_workbook.xlsx"
+```
+
+> The importer is idempotent on `invoice_number + vendor`, so re-running it updates rather than
+> duplicates. Excel is an import format only — after this, the database is the source of truth.
+
+### 4.4 Run gunicorn as a service
+`/etc/systemd/system/marketing.service`:
 
 ```ini
 [Unit]
@@ -150,79 +168,164 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-`Caddyfile`:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now marketing
+sudo systemctl status marketing            # confirm it's running
+```
+
+### 4.5 HTTPS + media with Caddy
+Install Caddy (`sudo apt install caddy`), then `/etc/caddy/Caddyfile`:
 
 ```text
 dashboard.example.com {
+    encode zstd gzip
+
+    # Serve uploaded invoice/payment images straight from disk (MEDIA_ROOT)
+    handle_path /media/* {
+        root * /home/ubuntu/marketing/media
+        file_server
+    }
+
+    # Everything else (incl. WhiteNoise-served /static/) goes to gunicorn
     reverse_proxy 127.0.0.1:8000
 }
 ```
 
-Caddy handles TLS certificates automatically, so you get HTTPS with no extra config.
-This single-box setup is the cheapest legitimate AWS deployment and covers everything an
-internal dashboard needs.
+```bash
+sudo systemctl reload caddy
+```
 
-### Phase B — add RDS PostgreSQL (PDF milestone 3)
+Caddy automatically obtains a Let's Encrypt cert and forwards `X-Forwarded-Proto`, which Django
+trusts via `SECURE_PROXY_SSL_HEADER` — so the `SECURE_SSL_REDIRECT` setting won't loop.
 
-When you want managed backups and to stop worrying about the DB:
-1. Create an RDS PostgreSQL instance (smallest dev size) in a **private** subnet.
+### 4.6 DNS + verify
+- Point an `A` record for `dashboard.example.com` at the instance's public IP (Route 53 or any registrar).
+- Browse to `https://dashboard.example.com`, log in as the superuser, confirm the dashboard, charts,
+  an invoice with an uploaded image, and an Excel export all work.
+
+### 4.7 Deploying updates later
+```bash
+cd /home/ubuntu/marketing
+git pull
+make prod-install                     # only if dependencies changed
+set -a; source .env; set +a
+uv run python manage.py migrate
+uv run python manage.py collectstatic --noinput
+sudo systemctl restart marketing
+```
+
+> **Cost hygiene:** stop the instance when it's idle for long periods; watch EBS volume and public
+> IPv4 charges. Snapshot before risky changes.
+
+---
+
+## 5. SQLite vs. Postgres on this box
+
+For a single low-traffic internal box, **SQLite on the instance can be enough** (leave `DATABASE_URL`
+unset). Move to Postgres when you want concurrent writers, backups/PITR, or you outgrow one box.
+Two options:
+- **Local Postgres** on the same EC2 instance (`apt install postgresql`), set `DATABASE_URL=postgres://…@127.0.0.1:5432/marketing`.
+- **Managed RDS** — §6.
+
+Either way, after pointing `DATABASE_URL` at Postgres: `migrate`, then re-run the workbook import.
+
+---
+
+## 6. Managed-AWS upgrades (add only when needed)
+
+### 6A. RDS PostgreSQL
+Use when you want managed backups, failover, or to separate DB from the web box.
+1. Create the smallest dev-size RDS PostgreSQL in a **private** subnet; tag it.
 2. Security group: allow `5432` **only** from the EC2 instance's security group.
-3. Set `DATABASE_URL` to the RDS endpoint, run `migrate`, then re-import the workbook.
-4. Take a snapshot before big changes. **Delete it when idle** — RDS bills while running.
+3. Set `DATABASE_URL=postgres://USER:PASSWORD@<rds-endpoint>:5432/marketing?sslmode=require`,
+   then `migrate` and re-import.
+4. Snapshot before big changes; **stop/delete when idle** — RDS bills while running.
 
-### Phase C — add S3 for uploads (PDF milestone 4)
+```bash
+aws rds describe-db-instances \
+  --query 'DBInstances[*].{DB:DBInstanceIdentifier,Status:DBInstanceStatus,Endpoint:Endpoint.Address}' \
+  --output table
+```
 
-Invoice/payment-proof images and the raw XLSX uploads are the natural fit for S3 so they
-survive instance replacement:
-1. Create a bucket with **Block Public Access ON**.
-2. Give the EC2 instance an IAM **role** (not access keys) with least-privilege bucket access.
-3. Configure `django-storages` so `MEDIA` (and optionally static) live in S3.
+### 6B. S3 for uploaded media
+Use when uploads must survive instance replacement, or when you run more than one web box.
+1. Create a bucket with **Block Public Access ON**; tag it.
+2. Give the EC2 instance an IAM **role** (not access keys) with least-privilege access to that bucket.
+3. Add `django-storages` + `boto3`, set the default file storage to S3, and serve `/media/` from
+   there instead of the Caddy `file_server` block.
 
-### Phase D — CloudWatch, CI/CD, ALB, Terraform (PDF milestones 5–8)
+```bash
+aws s3api head-object --bucket YOUR-BUCKET --key imports/sample.xlsx
+```
 
-Only once the above is stable:
-- **CloudWatch**: ship gunicorn/nginx logs and add an alarm on 5xx + a budget alarm.
-- **CI/CD**: GitHub Actions with **OIDC** (no long-lived AWS keys) to run tests and deploy.
-- **ALB + 2 instances**: only if you need zero-downtime/redundancy (ALB has idle cost).
-- **Terraform**: codify the VPC/EC2/RDS/S3 once you understand them manually.
+### 6C. Operations layer (later, in order)
+- **CloudWatch:** ship gunicorn/Caddy logs; alarm on 5xx; **set log retention** (otherwise it bills forever).
+- **CI/CD:** GitHub Actions with **OIDC** (no long-lived AWS keys) running `make check` then deploying over SSH.
+- **ALB + 2 instances:** only for zero-downtime/redundancy (the ALB has a standing hourly cost).
+- **Terraform:** codify VPC/EC2/RDS/S3 once the manual version is stable.
 
-Valkey/ElastiCache, SQS, ECS/Fargate, and EKS are explicitly **later/optional** in the PDF.
-This dashboard has low traffic, so you very likely never need them.
-
----
-
-## 3. Cheaper / easier alternatives (often better for an internal dashboard)
-
-Ranked roughly from least to most ops effort. All are valid; AWS is not required.
-
-| Option | What it is | Effort | Rough monthly cost | Best when |
-|---|---|---|---|---|
-| **Render / Railway / Fly.io** (PaaS) | Push the repo; the platform builds, runs gunicorn, gives HTTPS + managed Postgres | **Lowest** | Free tier → low | You want it live fast with the least DevOps |
-| **AWS Lightsail** | Fixed-price AWS VPS with a predictable bill | Low | Low, flat | You want AWS but predictable pricing, not metered surprises |
-| **Single EC2 + Caddy** (Phase A above) | One VM you manage | Medium | Low (one small instance) | You want the PDF's learning value + control |
-| **EC2 + RDS + S3 + ALB** (Phase B–D) | Full managed AWS | High | Medium+ (several always-on services) | You need the portfolio evidence or real scale |
-| **Docker on any VPS** (DigitalOcean/Hetzner) | `docker compose up` on a cheap droplet | Medium | Very low | Cost is the top priority |
-
-### Recommendations
-
-- **If the goal is a working internal tool quickly and cheaply:** use a PaaS
-  (Render/Railway/Fly.io) with managed Postgres. You skip servers, TLS, and OS patching
-  entirely, and the free/low tiers fit a small internal dashboard.
-- **If the goal is the AWS/DevOps portfolio** described in the PDF: do **Phase A → B → C**
-  on AWS, write an ADR per phase, and capture CloudWatch/cost screenshots. That produces
-  exactly the artifacts the whitepaper asks for, without the expensive ECS/EKS detour.
-- **Either way:** keep PostgreSQL as the source of truth, keep secrets in env/SSM/Secrets
-  Manager, set a budget alert first, and tear down idle managed services.
+ElastiCache/Valkey, SQS, ECS/Fargate, and EKS are **not needed** for this app's traffic. Skip them.
 
 ---
 
-## 4. Pre-deploy checklist
+## 7. Background jobs (only if imports get slow)
 
-- [ ] `DEBUG=false`, fixed `SECRET_KEY`, correct `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS`.
-- [ ] Database is PostgreSQL (not SQLite) for anything multi-user/long-lived.
-- [ ] `collectstatic` runs and static files are served (WhiteNoise or S3/CloudFront).
-- [ ] Uploaded media persists across restarts (durable disk or S3).
-- [ ] HTTPS enabled (Caddy/ALB/PaaS).
+Today the XLSX import runs **synchronously** inside the Django request, which is fine at the current
+volume. Only if imports grow large enough to time out a request (or you want progress/retries) should
+you move imports to a queue: store the upload in S3, create an import row (`status=queued`), send an
+SQS message, and have a small worker process it idempotently with a DLQ. The PDF builds this as a Go
+service; a Django management command or a tiny Python consumer would be the natural fit here. This is
+explicitly a *future* concern, not a launch requirement.
+
+---
+
+## 8. PaaS shortcut (fastest to live)
+
+If you don't specifically need AWS, a PaaS removes servers, TLS, and OS patching:
+1. Push the repo to GitHub.
+2. On Render/Railway/Fly.io: create a **Web Service** from the repo.
+   - Build: install `uv`, then `uv sync --extra prod` and `uv run python manage.py collectstatic --noinput`.
+   - Start: `uv run gunicorn config.wsgi:application`.
+   - Add a **managed Postgres** add-on; the platform injects `DATABASE_URL` automatically.
+   - Set the §3 env vars (`DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`=the platform domain, `DJANGO_CSRF_TRUSTED_ORIGINS`).
+3. Run `migrate` + `seed_auth_groups` + `createsuperuser` from the platform's shell, then import the workbook.
+4. Free/low tiers fit a small internal dashboard. Note: ephemeral disks mean **uploaded media needs
+   S3** (§6B) on most PaaS plans.
+
+---
+
+## 9. How this maps to the PDF
+
+The whitepaper describes a learning project built around **FastAPI + a Go SQS worker + React +
+PostgreSQL**. This repo is **Django (server-rendered) + WhiteNoise + SQLite-for-dev**. The PDF's
+*roadmap, CLI-first discipline, tagging/budget rules, and "managed services later" philosophy apply
+directly*; only the runtime specifics differ:
+
+| PDF | This project |
+|---|---|
+| FastAPI app | Django + gunicorn (`config.wsgi`) |
+| React dashboard | Django templates (a React front-end is a separate, later project) |
+| Static site on S3/CloudFront | WhiteNoise serves static from the app — none needed |
+| Go SQS worker | Not needed; imports are synchronous (see §7) |
+| Alembic migrations | Django migrations (`manage.py migrate`) |
+| SQLAlchemy models | Django ORM models |
+
+The PDF's recommended progression — `local → EC2 → RDS → S3 → CloudWatch → CI/CD → ALB → Terraform`,
+adding each piece only when it earns its keep — is exactly the order of §4 → §6 here.
+
+---
+
+## 10. Pre-deploy checklist
+
+- [ ] `DJANGO_DEBUG=false`, fixed `DJANGO_SECRET_KEY`, correct `DJANGO_ALLOWED_HOSTS` + `DJANGO_CSRF_TRUSTED_ORIGINS`.
+- [ ] `make prod-install` then `collectstatic` run; `/static/` loads over HTTPS.
+- [ ] DB chosen: SQLite-on-box for tiny use, or `DATABASE_URL` → Postgres/RDS for multi-user.
+- [ ] Workbook imported (`import_marketing_excel`); spot-check totals against the source.
+- [ ] Uploaded media persists across restarts (Caddy `file_server` on durable disk, or S3).
+- [ ] HTTPS works (Caddy/ALB/PaaS) with no redirect loop.
 - [ ] A **real** admin created via `createsuperuser` (never ship `admin/admin12345`).
-- [ ] Budget alert + log retention configured.
-- [ ] `make check` passes (Django checks + tests + ruff) in CI before deploy.
+- [ ] AWS Budget alert set; CloudWatch log retention configured if logs are shipped.
+- [ ] Every AWS resource tagged `Project=marketing-dashboard`.
+- [ ] `make check` (Django checks + tests + ruff) passes before deploying.
+- [ ] A short note lists idle resources to stop/delete after labs.

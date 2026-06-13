@@ -46,9 +46,15 @@ from .permissions import (
     get_user_scope,
     user_has_admin_access,
 )
+from .translations import translate
 
 User = get_user_model()
 ZERO = Decimal("0")
+
+
+def get_ui_lang(request) -> str:
+    ui_lang = request.session.get("ui_lang", "en")
+    return ui_lang if ui_lang in {"fa", "en"} else "en"
 
 
 def get_months(request) -> list[tuple[int, str]]:
@@ -241,6 +247,23 @@ def dashboard(request):
         reverse=True,
     )[:6]
 
+    # Overall-spend pie: one slice per team plus separate Referral/SMS slices, so referral and
+    # SMS stay visible outside the team breakdown while still being part of total spend.
+    ui_lang = get_ui_lang(request)
+    pie_segments = [
+        (translate(row["team_name"], ui_lang), row["total"])
+        for row in team_total_rows
+        if row["total"]
+    ]
+    if referral_total:
+        pie_segments.append((translate("Referral", ui_lang), referral_total))
+    if sms_total:
+        pie_segments.append((translate("SMS", ui_lang), sms_total))
+    spend_pie = {
+        "labels": [label for label, _ in pie_segments],
+        "values": [float(value) for _, value in pie_segments],
+    }
+
     context = {
         "scope": get_user_scope(request.user),
         "years": years,
@@ -258,6 +281,8 @@ def dashboard(request):
         "campaign_rows": campaign_rows,
         "stage_rows": stage_rows,
         "attention_invoices": attention_invoices,
+        "spend_pie": spend_pie,
+        "spend_pie_has_data": bool(spend_pie["values"]),
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
     }
@@ -285,8 +310,8 @@ def invoice_list(request):
 @login_required
 def invoice_detail(request, pk: int):
     invoice = get_object_or_404(visible_invoice_queryset(request), pk=pk)
-    status_form = InvoiceStatusForm(invoice=invoice)
-    attachment_form = InvoiceAttachmentForm(user=request.user, invoice=invoice)
+    status_form = InvoiceStatusForm(invoice=invoice, ui_lang=get_ui_lang(request))
+    attachment_form = InvoiceAttachmentForm(user=request.user, invoice=invoice, ui_lang=get_ui_lang(request))
     context = {
         "invoice": invoice,
         "status_form": status_form,
@@ -302,13 +327,13 @@ def invoice_create(request):
     if not user_can_create_invoice(request.user):
         return forbidden()
     if request.method == "POST":
-        form = InvoiceForm(request.POST, user=request.user)
+        form = InvoiceForm(request.POST, user=request.user, ui_lang=get_ui_lang(request))
         if form.is_valid():
             invoice = form.save()
             messages.success(request, "Invoice saved.")
             return redirect("marketing:invoice_detail", pk=invoice.pk)
     else:
-        form = InvoiceForm(user=request.user)
+        form = InvoiceForm(user=request.user, ui_lang=get_ui_lang(request))
     return render(request, "marketing/invoices/form.html", {"form": form, "mode": "create"})
 
 
@@ -318,13 +343,13 @@ def invoice_edit(request, pk: int):
     if not can_edit_invoice(request.user, invoice):
         return forbidden()
     if request.method == "POST":
-        form = InvoiceForm(request.POST, user=request.user, instance=invoice)
+        form = InvoiceForm(request.POST, user=request.user, instance=invoice, ui_lang=get_ui_lang(request))
         if form.is_valid():
             invoice = form.save()
             messages.success(request, "Invoice updated.")
             return redirect("marketing:invoice_detail", pk=invoice.pk)
     else:
-        form = InvoiceForm(user=request.user, instance=invoice)
+        form = InvoiceForm(user=request.user, instance=invoice, ui_lang=get_ui_lang(request))
     return render(request, "marketing/invoices/form.html", {"form": form, "invoice": invoice, "mode": "edit"})
 
 
@@ -334,7 +359,7 @@ def invoice_stage_update(request, pk: int):
     invoice = get_object_or_404(visible_invoice_queryset(request), pk=pk)
     if not can_edit_invoice(request.user, invoice):
         return forbidden()
-    form = InvoiceStatusForm(request.POST, invoice=invoice)
+    form = InvoiceStatusForm(request.POST, invoice=invoice, ui_lang=get_ui_lang(request))
     if form.is_valid():
         invoice.set_payment_stage(
             form.cleaned_data["payment_stage"],
@@ -351,7 +376,13 @@ def invoice_stage_update(request, pk: int):
 @require_POST
 def invoice_attachment_upload(request, pk: int):
     invoice = get_object_or_404(visible_invoice_queryset(request), pk=pk)
-    form = InvoiceAttachmentForm(request.POST, request.FILES, user=request.user, invoice=invoice)
+    form = InvoiceAttachmentForm(
+        request.POST,
+        request.FILES,
+        user=request.user,
+        invoice=invoice,
+        ui_lang=get_ui_lang(request),
+    )
     if not form.has_allowed_types:
         return forbidden("You are not allowed to upload files for this invoice.")
     if form.is_valid():
@@ -493,7 +524,7 @@ def import_workbook(request):
     if not user_has_admin_access(request.user):
         return forbidden()
 
-    form = ExcelImportUploadForm()
+    form = ExcelImportUploadForm(ui_lang=get_ui_lang(request))
     result = None
     summary = None
     pending_path = request.session.get("pending_import_path")
@@ -510,7 +541,7 @@ def import_workbook(request):
                 request.session.pop("pending_import_path", None)
                 pending_path = None
         else:
-            form = ExcelImportUploadForm(request.POST, request.FILES)
+            form = ExcelImportUploadForm(request.POST, request.FILES, ui_lang=get_ui_lang(request))
             if form.is_valid():
                 storage = FileSystemStorage(location=Path(settings.MEDIA_ROOT) / "imports")
                 filename = f"{uuid4().hex}.xlsx"
@@ -537,7 +568,7 @@ def user_access(request):
     if not user_has_admin_access(request.user):
         return forbidden()
 
-    form = UserAccessCreateForm(user=request.user)
+    form = UserAccessCreateForm(user=request.user, ui_lang=get_ui_lang(request))
     if request.method == "POST":
         action = request.POST.get("action")
         if action in {"deactivate", "activate"}:
@@ -551,7 +582,7 @@ def user_access(request):
                 messages.success(request, "User status updated.")
             return redirect("marketing:user_access")
 
-        form = UserAccessCreateForm(request.POST, user=request.user)
+        form = UserAccessCreateForm(request.POST, user=request.user, ui_lang=get_ui_lang(request))
         if form.is_valid():
             form.save()
             messages.success(request, "New user created.")

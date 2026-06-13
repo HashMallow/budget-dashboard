@@ -17,17 +17,17 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="create">
-        {% if form.non_field_errors %}<div class="message">{{ form.non_field_errors }}</div>{% endif %}
+        {% if form.non_field_errors %}<div class="message">{% form_errors form.non_field_errors %}</div>{% endif %}
         <div class="form-grid">
           <div class="field">
             <label for="{{ form.username.id_for_label }}">{% t form.username.label %}</label>
             {{ form.username }}
-            {{ form.username.errors }}
+            {% form_errors form.username.errors %}
           </div>
           <div class="field">
             <label for="{{ form.password.id_for_label }}">{% t form.password.label %}</label>
             {{ form.password }}
-            {{ form.password.errors }}
+            {% form_errors form.password.errors %}
           </div>
           <div class="field">
             <label for="{{ form.first_name.id_for_label }}">{% t form.first_name.label %}</label>

@@ -13,73 +13,73 @@
     <form method="post">
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <div class="message">{{ form.non_field_errors }}</div>
+        <div class="message">{% form_errors form.non_field_errors %}</div>
       {% endif %}
       <div class="form-grid">
         <div class="field">
           <label for="{{ form.invoice_number.id_for_label }}">{% t form.invoice_number.label %}</label>
           {{ form.invoice_number }}
-          {{ form.invoice_number.errors }}
+          {% form_errors form.invoice_number.errors %}
         </div>
         <div class="field">
           <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
           {{ form.amount }}
-          {{ form.amount.errors }}
+          {% form_errors form.amount.errors %}
         </div>
         <div class="field">
           <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
           {{ form.vendor }}
-          {{ form.vendor.errors }}
+          {% form_errors form.vendor.errors %}
         </div>
         <div class="field">
           <label for="{{ form.new_vendor_name.id_for_label }}">{% t form.new_vendor_name.label %}</label>
           {{ form.new_vendor_name }}
-          {{ form.new_vendor_name.errors }}
+          {% form_errors form.new_vendor_name.errors %}
         </div>
         <div class="field">
           <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
           {{ form.team }}
-          {{ form.team.errors }}
+          {% form_errors form.team.errors %}
         </div>
         <div class="field">
           <label for="{{ form.campaign.id_for_label }}">{% t form.campaign.label %}</label>
           {{ form.campaign }}
-          {{ form.campaign.errors }}
+          {% form_errors form.campaign.errors %}
         </div>
         <div class="field">
           <label for="{{ form.category.id_for_label }}">{% t form.category.label %}</label>
           {{ form.category }}
-          {{ form.category.errors }}
+          {% form_errors form.category.errors %}
         </div>
         <div class="field">
           <label for="{{ form.cost_bucket.id_for_label }}">{% t form.cost_bucket.label %}</label>
           {{ form.cost_bucket }}
-          {{ form.cost_bucket.errors }}
+          {% form_errors form.cost_bucket.errors %}
         </div>
         <div class="field">
           <label for="{{ form.invoice_date.id_for_label }}">{% t form.invoice_date.label %}</label>
           {{ form.invoice_date }}
-          {{ form.invoice_date.errors }}
+          {% form_errors form.invoice_date.errors %}
         </div>
         <div class="field">
           <label for="{{ form.due_date.id_for_label }}">{% t form.due_date.label %}</label>
           {{ form.due_date }}
-          {{ form.due_date.errors }}
+          {% form_errors form.due_date.errors %}
         </div>
         <div class="field">
           <label for="{{ form.currency.id_for_label }}">{% t form.currency.label %}</label>
           {{ form.currency }}
-          {{ form.currency.errors }}
+          {% form_errors form.currency.errors %}
         </div>
         <div class="field">
           <label for="{{ form.payment_stage.id_for_label }}">{% t form.payment_stage.label %}</label>
           {{ form.payment_stage }}
-          {{ form.payment_stage.errors }}
+          {% form_errors form.payment_stage.errors %}
         </div>
         <div class="field wide">
           <label for="{{ form.description.id_for_label }}">{% t form.description.label %}</label>
           {{ form.description }}
-          {{ form.description.errors }}
+          {% form_errors form.description.errors %}
         </div>
       </div>
       <div class="actions" style="margin-top: 18px;">

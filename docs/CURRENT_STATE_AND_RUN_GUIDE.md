@@ -121,12 +121,18 @@ Alireza/
 [x] Server-side permission helper functions
 [x] Tests for permissions, status history, and importer behavior
 [x] Makefile command pipeline
+[x] Full bilingual (FA/EN) UI: static text, form labels/choices, and validation messages
+[x] Persian-digit display in FA mode (display-only; form inputs stay Latin)
+[x] Overall-spend pie chart (Chart.js doughnut, server-aggregated, team + referral/SMS)
+[x] Production settings wiring: DATABASE_URL switch, WhiteNoise, HTTPS/security headers, logging
+[x] Optional 'prod' dependency extra (gunicorn, psycopg, whitenoise, dj-database-url)
+[x] Make targets for dev auto-reload and production (dev, prod-install, collectstatic, prod-run)
 ```
 
 ### Partially Working
 
 ```text
-[~] The custom UI is functional, but visual analytics are still simple table/bar views.
+[~] The custom UI is functional; visual analytics now include a pie chart plus table/bar views.
 [~] Roles and permissions are applied to the main user-facing screens.
 [~] Data is imported and viewable in the custom panel and Django Admin.
 [~] Team aliases are implemented for the obvious workbook duplicates; future aliases can be added in Django Admin.
@@ -138,10 +144,10 @@ Alireza/
 ```text
 [ ] Data sheet reference seeding for vendors/categories/sub-teams/requesters
 [ ] Dedicated team dashboard pages
-[ ] Chart.js visual analysis endpoints
+[ ] More Chart.js charts (monthly trend / per-team) — pie chart is done
+[ ] Separate React front-end (planned later, consumes the same data)
 [ ] Server-rendered PDF export
-[ ] Production deployment configuration
-[ ] AWS deployment
+[ ] Live AWS deployment (settings are ready; infra not provisioned yet)
 ```
 
 ## Data Model Overview
@@ -496,7 +502,7 @@ Ruff lint passes
 Current result:
 
 ```text
-12 tests passed
+14 tests passed
 ```
 
 ## Current Make Commands
@@ -518,7 +524,10 @@ make import
   Import/update Excel data into the database.
 
 make run
-  Start local Django server.
+  Start local Django server (no auto-reload).
+
+make dev
+  Start local Django server WITH auto-reload (picks up code changes automatically).
 
 make panel
   Create/update local admin and start server.
@@ -531,6 +540,15 @@ make check
 
 make shell
   Open Django shell.
+
+make prod-install
+  uv sync with the 'prod' extra (gunicorn, psycopg, whitenoise, dj-database-url).
+
+make collectstatic
+  Collect static files into STATIC_ROOT (for production static serving).
+
+make prod-run
+  Run gunicorn for production (expects a production .env). See docs/DEPLOYMENT_AWS.md.
 ```
 
 Raw command equivalent when you do not want to use `make`:
@@ -558,7 +576,7 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 
 Users are database records, not environment variables. Use `/users/` as an admin to create users, assign Admin/Manager/Editor/Observer roles, grant team/global access, and deactivate users. `.env` is for deployment settings and secrets such as `DJANGO_SECRET_KEY`, database URLs, and allowed hosts.
 
-Use the `EN/FA` button in the top bar to switch the shell language. Use the `123/۰۱۲` button to switch number display. The shell/navigation switches now; full page-by-page English copy can be expanded later.
+Use the `FA/EN` toggle in the top bar to switch the UI language. The whole UI is translated — navigation, page headers, table columns, card labels, form field labels and choices, and validation messages. In Persian mode, displayed numbers are rendered as Persian digits (display only; form inputs keep Latin digits so submitted data is unaffected).
 
 ## Development Roadmap
 

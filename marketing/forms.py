@@ -29,8 +29,25 @@ from .permissions import (
     get_user_scope,
     user_has_admin_access,
 )
+from .translations import translate
 
 User = get_user_model()
+
+
+def apply_ui_language(form: forms.BaseForm, ui_lang: str) -> None:
+    """Translate labels and static choice text for the active UI language."""
+    if ui_lang == "en":
+        return
+    for field in form.fields.values():
+        if field.label:
+            field.label = translate(field.label, ui_lang)
+        if isinstance(field, forms.ModelChoiceField):
+            if field.empty_label:
+                field.empty_label = translate(field.empty_label, ui_lang)
+            continue
+        choices = getattr(field, "choices", None)
+        if choices:
+            field.choices = [(value, translate(str(label), ui_lang)) for value, label in choices]
 
 
 class DateInput(forms.DateInput):
@@ -92,7 +109,7 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "payment_stage": "Payment stage",
         }
 
-    def __init__(self, *args, user, **kwargs):
+    def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
         self.user = user
         super().__init__(*args, **kwargs)
         self.fields["vendor"].queryset = Vendor.objects.order_by("name")
@@ -104,6 +121,7 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         self.fields["invoice_date"].input_formats = ["%Y-%m-%d"]
         self.fields["due_date"].input_formats = ["%Y-%m-%d"]
         self._style_fields()
+        apply_ui_language(self, ui_lang)
 
     def clean(self):
         cleaned = super().clean()
@@ -143,10 +161,11 @@ class InvoiceStatusForm(StyledFormMixin, forms.Form):
     payment_stage = forms.ChoiceField(label="Payment stage", choices=PaymentStage.choices)
     note = forms.CharField(label="Note", required=False, widget=forms.Textarea(attrs={"rows": 2}))
 
-    def __init__(self, *args, invoice: Invoice, **kwargs):
+    def __init__(self, *args, invoice: Invoice, ui_lang: str = "en", **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["payment_stage"].initial = invoice.payment_stage
         self._style_fields()
+        apply_ui_language(self, ui_lang)
 
 
 class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
@@ -162,7 +181,7 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
-    def __init__(self, *args, user, invoice: Invoice, **kwargs):
+    def __init__(self, *args, user, invoice: Invoice, ui_lang: str = "en", **kwargs):
         self.user = user
         self.invoice = invoice
         super().__init__(*args, **kwargs)
@@ -176,6 +195,7 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
             choices.append((AttachmentType.PAYMENT_PROOF, "Payment receipt / proof"))
         self.fields["attachment_type"].choices = choices
         self._style_fields()
+        apply_ui_language(self, ui_lang)
 
     @property
     def has_allowed_types(self) -> bool:
@@ -196,9 +216,10 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
 class ExcelImportUploadForm(StyledFormMixin, forms.Form):
     workbook = forms.FileField(label="Excel file")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, ui_lang: str = "en", **kwargs):
         super().__init__(*args, **kwargs)
         self._style_fields()
+        apply_ui_language(self, ui_lang)
 
     def clean_workbook(self):
         workbook = self.cleaned_data["workbook"]
@@ -229,11 +250,12 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
     can_upload_invoice_files = forms.BooleanField(label="Upload invoice files", required=False)
     can_upload_payment_proofs = forms.BooleanField(label="Upload payment receipts", required=False)
 
-    def __init__(self, *args, user, **kwargs):
+    def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
         self.user = user
         super().__init__(*args, **kwargs)
         self.fields["team"].queryset = Team.objects.filter(is_active=True).order_by("name")
         self._style_fields()
+        apply_ui_language(self, ui_lang)
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()

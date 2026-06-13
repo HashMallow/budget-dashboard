@@ -49,6 +49,8 @@ FA: dict[str, str] = {
     "Monthly trend": "روند ماهانه",
     "By Persian (Jalali) month": "بر اساس ماه شمسی",
     "Spend by team": "هزینه به تفکیک تیم",
+    "Overall spend share": "سهم کلی هزینه",
+    "Team spend with referral and SMS shown separately": "هزینه تیم‌ها به همراه ریفرال و پیامک به‌صورت جداگانه",
     "Referral and SMS are excluded from this breakdown": "ریفرال و پیامک در این شکست لحاظ نشده‌اند",
     "No data to display.": "داده‌ای برای نمایش وجود ندارد.",
     "Top vendors": "وندورهای برتر",
@@ -143,6 +145,26 @@ FA: dict[str, str] = {
     "Invoice image": "تصویر فاکتور",
     "Payment proof": "رسید پرداخت",
     "Other": "سایر",
+    "Invoice image / file": "تصویر / فایل فاکتور",
+    "Other documents": "سایر مدارک",
+    "Payment receipt / proof": "رسید پرداخت",
+    # --- Form / auth validation messages ---
+    "Select a vendor or enter a new vendor name.": "یک وندور انتخاب کنید یا نام وندور جدید وارد کنید.",
+    "A team is required for team cost.": "برای هزینه تیمی، انتخاب تیم الزامی است.",
+    "You are not allowed to add or edit invoices for this team/cost type.": (
+        "اجازه ثبت یا ویرایش فاکتور برای این تیم/نوع هزینه را ندارید."
+    ),
+    "You are not allowed to upload payment receipts.": "اجازه آپلود رسید پرداخت را ندارید.",
+    "You are not allowed to upload invoice files.": "اجازه آپلود فایل فاکتور را ندارید.",
+    "Only .xlsx files are accepted.": "فقط فایل‌های .xlsx پذیرفته می‌شوند.",
+    "This username is already taken.": "این نام کاربری قبلاً استفاده شده است.",
+    "For a non-admin user, select a team or enable all-team access.": (
+        "برای کاربر غیرادمین، یک تیم انتخاب کنید یا دسترسی همه تیم‌ها را فعال کنید."
+    ),
+    "This field is required.": "پر کردن این فیلد الزامی است.",
+    "Please enter a correct username and password. Note that both fields may be case-sensitive.": (
+        "نام کاربری یا رمز عبور اشتباه است. هر دو فیلد به حروف بزرگ و کوچک حساس هستند."
+    ),
     # --- Vendor report ---
     "Vendor report": "گزارش وندورها",
     "Amount, invoice count, payment stage and invoice numbers per vendor": (
@@ -206,7 +228,7 @@ FA: dict[str, str] = {
     "Referral & SMS": "ریفرال و پیامک",
     "Export": "خروجی",
     "Upload invoice": "آپلود فاکتور",
-    "Upload receipt": "آپلود فیش",
+    "Upload receipt": "آپلود رسید",
     "Create user": "ساخت کاربر",
     "How user management works": "روش مدیریت کاربران",
     "Regular users are not configured in environment variables": "کاربران معمولی در متغیرهای محیطی تعریف نمی‌شوند",

@@ -110,6 +110,16 @@ python tools/inspect_xlsx_structure.py --file ./data/marketing.xlsx
 3. Add import error download/report.
 4. Add useful sample data generation command.
 5. Add final README.
+6. Bilingual (FA/EN) UI with a toggle, translated labels/choices/validation, and Persian-digit display. (done)
+
+## Phase 9 — Production and Deployment
+
+1. Read `DATABASE_URL` so prod uses PostgreSQL while dev stays on SQLite. (done)
+2. WhiteNoise static serving + compressed/hashed static storage. (done)
+3. HTTPS/security headers and console logging when `DEBUG=false`. (done)
+4. Optional `prod` dependency extra (gunicorn, psycopg, whitenoise, dj-database-url). (done)
+5. Provision AWS (EC2 → RDS → S3) per `docs/DEPLOYMENT_AWS.md`, or deploy to a PaaS.
+6. CI runs `make check`; deploy via GitHub Actions OIDC (no long-lived keys).
 
 ## Suggested Local Commands
 

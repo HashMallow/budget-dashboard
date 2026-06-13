@@ -10,7 +10,7 @@ ADMIN_USER ?= admin
 ADMIN_PASSWORD ?= admin12345
 ADMIN_EMAIL ?= admin@example.com
 
-.PHONY: help setup migrate superuser dev-admin groups import-dry-run import run panel first-run check test lint django-check shell clean-artifacts clean-local-db
+.PHONY: help setup migrate superuser dev-admin groups import-dry-run import run dev panel first-run check test lint django-check shell clean-artifacts clean-local-db prod-install collectstatic prod-run
 
 help:
 	@echo "Marketing dashboard local commands"
@@ -21,13 +21,19 @@ help:
 	@echo "  make import-dry-run        Preview Excel import using auto-detected workbook"
 	@echo "  make import                Import Excel using auto-detected workbook"
 	@echo "  make import FILE=path.xlsx Import a specific workbook"
-	@echo "  make run                   Start local server at http://127.0.0.1:8000/"
+	@echo "  make run                   Start local server (no auto-reload)"
+	@echo "  make dev                   Start local server WITH auto-reload"
 	@echo "  make panel                 Ensure local admin, then start server"
 	@echo "  make first-run             Setup, create local admin, import workbook, start server"
 	@echo "  make check                 Run Django checks, tests, and lint"
 	@echo "  make shell                 Open Django shell"
 	@echo "  make clean-artifacts       Remove caches and generated local artifacts"
 	@echo "  make clean-local-db        Remove local SQLite DB (destructive)"
+	@echo ""
+	@echo "  Production (see docs/DEPLOYMENT_AWS.md):"
+	@echo "  make prod-install          uv sync with the 'prod' extra (gunicorn/psycopg/whitenoise/dj-database-url)"
+	@echo "  make collectstatic         Collect static files into STATIC_ROOT"
+	@echo "  make prod-run              Run gunicorn (expects production .env: DEBUG=false, DATABASE_URL, etc.)"
 
 setup:
 	$(UV_RUN) sync --all-groups
@@ -58,6 +64,9 @@ import:
 run:
 	$(MANAGE) runserver $(HOST):$(PORT) --noreload
 
+dev:
+	$(MANAGE) runserver $(HOST):$(PORT)
+
 panel: dev-admin run
 
 first-run: setup dev-admin import run
@@ -75,6 +84,15 @@ lint:
 
 shell:
 	$(MANAGE) shell
+
+prod-install:
+	$(UV_RUN) sync --extra prod
+
+collectstatic:
+	$(MANAGE) collectstatic --noinput
+
+prod-run:
+	$(UV_RUN) run gunicorn config.wsgi:application --bind $(HOST):$(PORT) --workers 3
 
 clean-artifacts:
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +

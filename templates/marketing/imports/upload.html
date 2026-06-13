@@ -22,7 +22,7 @@
           <div class="field">
             <label for="{{ form.workbook.id_for_label }}">{% t form.workbook.label %}</label>
             {{ form.workbook }}
-            {{ form.workbook.errors }}
+            {% form_errors form.workbook.errors %}
           </div>
           <button class="btn primary" type="submit">{% t "Check file" %}</button>
         </div>
