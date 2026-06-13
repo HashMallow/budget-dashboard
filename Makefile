@@ -1,7 +1,8 @@
-PYTHON ?= python
-VENV := .venv
-BIN := $(VENV)/bin
-MANAGE := $(BIN)/python manage.py
+UV ?= uv
+UV_CONFIG ?= uv.toml
+UV_CACHE ?= .uv-cache
+UV_RUN := UV_CONFIG_FILE=$(UV_CONFIG) UV_CACHE_DIR=$(UV_CACHE) $(UV)
+MANAGE := $(UV_RUN) run python manage.py
 FILE ?=
 HOST ?= 127.0.0.1
 PORT ?= 8000
@@ -14,7 +15,7 @@ ADMIN_EMAIL ?= admin@example.com
 help:
 	@echo "Marketing dashboard local commands"
 	@echo ""
-	@echo "  make setup                 Create .venv, install deps, migrate, seed groups"
+	@echo "  make setup                 uv sync, migrate, seed groups"
 	@echo "  make superuser             Create an admin login"
 	@echo "  make dev-admin             Create/update local admin admin/admin12345"
 	@echo "  make import-dry-run        Preview Excel import using auto-detected workbook"
@@ -28,15 +29,12 @@ help:
 	@echo "  make clean-artifacts       Remove caches and generated local artifacts"
 	@echo "  make clean-local-db        Remove local SQLite DB (destructive)"
 
-$(BIN)/python:
-	$(PYTHON) -m venv $(VENV)
-
-setup: $(BIN)/python
-	$(BIN)/python -m pip install -r requirements.txt
+setup:
+	$(UV_RUN) sync --all-groups
 	$(MANAGE) migrate
 	$(MANAGE) seed_auth_groups
 	@echo ""
-	@echo "Setup complete. Run 'make superuser' once if you do not have an admin login."
+	@echo "Setup complete. Run 'make dev-admin' for the local admin login."
 
 migrate:
 	$(MANAGE) migrate
@@ -70,10 +68,10 @@ django-check:
 	$(MANAGE) check
 
 test:
-	$(BIN)/pytest -q
+	$(UV_RUN) run pytest -q
 
 lint:
-	$(BIN)/ruff check .
+	$(UV_RUN) run ruff check .
 
 shell:
 	$(MANAGE) shell
@@ -81,7 +79,7 @@ shell:
 clean-artifacts:
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
 	rm -rf .pytest_cache .ruff_cache staticfiles
-	rm -f docs/discovery/audio.wav
+	rm -f docs/discovery/*.wav
 
 clean-local-db:
 	rm -f db.sqlite3

@@ -1,0 +1,95 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}گزارش وندورها{% endblock %}
+{% block page_title %}گزارش وندورها{% endblock %}
+{% block page_subtitle %}مبلغ، تعداد فاکتور، مرحله پرداخت و شماره فاکتورهای هر وندور{% endblock %}
+{% block page_actions %}
+  {% if can_export_data %}
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ اکسل</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ گزارش PDF</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">جستجو</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="وندور یا شماره فاکتور">
+      </div>
+      <div class="field">
+        <label for="team">تیم</label>
+        <select id="team" name="team">
+          <option value="">همه</option>
+          {% for team in teams %}
+            <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="stage">مرحله</label>
+        <select id="stage" name="stage">
+          <option value="">همه</option>
+          {% for value, label in payment_stages %}
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="bucket">نوع هزینه</label>
+        <select id="bucket" name="bucket">
+          <option value="">همه</option>
+          {% for value, label in cost_buckets %}
+            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="year">سال</label>
+        <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
+      </div>
+      <button class="btn primary" type="submit">فیلتر</button>
+    </form>
+  </section>
+
+  <section class="section panel">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>وندور</th>
+            <th>تعداد فاکتور</th>
+            <th>شماره فاکتورها</th>
+            <th>مرحله‌ها</th>
+            <th>جمع هزینه</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in vendor_rows %}
+            <tr>
+              <td>{{ row.vendor.name }}</td>
+              <td class="number">{{ row.invoice_count }}</td>
+              <td>
+                {% for number in row.visible_invoice_numbers %}
+                  <span class="badge ltr">{{ number }}</span>
+                {% endfor %}
+                {% if row.remaining_invoice_count %}
+                  <span class="badge">+{{ row.remaining_invoice_count }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% for stage in row.stages %}
+                  <span class="badge">{{ stage }}</span>
+                {% endfor %}
+              </td>
+              <td class="number"><strong>{{ row.total|money }}</strong></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="empty">وندوری در این محدوده وجود ندارد.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

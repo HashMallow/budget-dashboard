@@ -1,0 +1,4 @@
+# Project-local uv config.
+#
+# This file is intentionally minimal. The Makefile points uv at this file so
+# project commands do not depend on any user-level uv configuration.

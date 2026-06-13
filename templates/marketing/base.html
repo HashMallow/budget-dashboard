@@ -1,0 +1,348 @@
+{% load marketing_format %}
+<!doctype html>
+<html lang="{{ html_lang|default:'fa' }}" dir="{{ html_dir|default:'rtl' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}پنل هزینه‌کرد مارکتینگ{% endblock %}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --surface: #ffffff;
+      --surface-soft: #eef3f7;
+      --text: #17212b;
+      --muted: #667789;
+      --line: #d9e1e8;
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --blue: #2563eb;
+      --cyan: #0891b2;
+      --rose: #be123c;
+      --violet: #7c3aed;
+      --amber: #d97706;
+      --accent: #b45309;
+      --danger: #b42318;
+      --ok: #15803d;
+      --shadow: 0 10px 28px rgba(20, 32, 45, 0.08);
+      font-family: Tahoma, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, #eef7f5 0, #f7f8fb 230px, #f6f8fb 100%);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 260px 1fr; }
+    .sidebar {
+      background: #111827;
+      color: #f8fafc;
+      padding: 20px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .brand { display: grid; gap: 4px; padding: 8px 8px 20px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .brand strong { font-size: 18px; letter-spacing: 0; }
+    .brand span { color: #b7c6cf; font-size: 12px; }
+    .nav { display: grid; gap: 6px; margin-top: 20px; }
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 40px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      color: #d8e2e8;
+    }
+    .nav a:hover, .nav a.active { background: rgba(255,255,255,.12); color: #fff; }
+    .nav a:nth-child(2n) .nav-icon { color: #fbbf24; }
+    .nav a:nth-child(3n) .nav-icon { color: #a78bfa; }
+    .nav a:nth-child(4n) .nav-icon { color: #fb7185; }
+    .nav-icon { width: 22px; text-align: center; color: #7dd3fc; }
+    .sidebar-footer { margin-top: 28px; padding: 12px 8px; border-top: 1px solid rgba(255,255,255,.12); }
+    .user-meta { color: #c6d3da; font-size: 12px; margin-bottom: 10px; }
+    .logout-form { margin: 0; }
+    .main { min-width: 0; }
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 28px;
+      background: rgba(255,255,255,.9);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .topbar h1 { margin: 0; font-size: 20px; letter-spacing: 0; }
+    .topbar p { margin: 0; color: var(--muted); font-size: 12px; }
+    .content { padding: 28px; max-width: 1480px; margin: 0 auto; }
+    .messages { display: grid; gap: 8px; margin-bottom: 16px; }
+    .message {
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      color: #164e63;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .section { margin-bottom: 24px; }
+    .section-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .section-title { margin: 0; font-size: 17px; letter-spacing: 0; }
+    .section-subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .grid { display: grid; gap: 14px; }
+    .grid.cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card, .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .card { padding: 16px; min-height: 118px; border-top: 4px solid var(--primary); }
+    .card:nth-child(4n+1) { border-top-color: var(--blue); }
+    .card:nth-child(4n+2) { border-top-color: var(--primary); }
+    .card:nth-child(4n+3) { border-top-color: var(--amber); }
+    .card:nth-child(4n+4) { border-top-color: var(--rose); }
+    .card-label { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .card-value { font-size: 25px; font-weight: 700; letter-spacing: 0; white-space: nowrap; }
+    .card-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .panel { padding: 16px; border-top: 3px solid #e2e8f0; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .inline-form { display: inline-flex; margin: 0; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      white-space: nowrap;
+    }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: var(--primary-dark); }
+    .btn.danger { color: var(--danger); border-color: #fecaca; background: #fff7f7; }
+    .btn.ghost { box-shadow: none; background: transparent; color: inherit; }
+    .filter-form {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+    .field { display: grid; gap: 5px; }
+    .field label { color: var(--muted); font-size: 12px; }
+    .form-control, input, select, textarea {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+    textarea { resize: vertical; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .form-grid .wide { grid-column: 1 / -1; }
+    .form-errors, .errorlist { color: var(--danger); margin: 4px 0 0; padding: 0; list-style: none; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+    th { background: #f8fafc; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    tr:last-child td { border-bottom: 0; }
+    .number { direction: ltr; text-align: left; font-variant-numeric: tabular-nums; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: #334155;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .badge.ok { background: #dcfce7; color: var(--ok); }
+    .badge.warn { background: #fef3c7; color: var(--accent); }
+    .badge.danger { background: #fee2e2; color: var(--danger); }
+    .badge.info { background: #dbeafe; color: var(--blue); }
+    .bar-list { display: grid; gap: 12px; }
+    .bar-row { display: grid; grid-template-columns: 150px 1fr 120px; align-items: center; gap: 12px; }
+    .bar-track { height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .bar-fill { height: 100%; width: var(--w); border-radius: inherit; background: var(--primary); }
+    .bar-row:nth-child(4n+1) .bar-fill { background: var(--blue); }
+    .bar-row:nth-child(4n+2) .bar-fill { background: var(--primary); }
+    .bar-row:nth-child(4n+3) .bar-fill { background: var(--amber); }
+    .bar-row:nth-child(4n+4) .bar-fill { background: var(--violet); }
+    .empty { color: var(--muted); padding: 18px; text-align: center; }
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+    .ltr { direction: ltr; unicode-bidi: plaintext; }
+    .digits-fa .number { direction: rtl; text-align: right; }
+    .print-only { display: none; }
+    @media (max-width: 1100px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid.cards, .grid.two, .grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .topbar { height: auto; padding: 16px; align-items: start; flex-direction: column; }
+      .content { padding: 16px; }
+      .grid.cards, .grid.two, .grid.three, .form-grid, .filter-form { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 1fr; gap: 6px; }
+      table { min-width: 680px; }
+    }
+    @media print {
+      .sidebar, .topbar, .no-print { display: none !important; }
+      .app-shell { display: block; }
+      .content { padding: 0; max-width: none; }
+      body { background: #fff; }
+      .panel, .card { box-shadow: none; border-color: #ddd; }
+      .print-only { display: block; }
+    }
+  </style>
+</head>
+<body class="ui-{{ ui_lang|default:'fa' }} digits-{{ number_locale|default:'fa' }}">
+  <div class="app-shell">
+    <aside class="sidebar no-print">
+      <div class="brand">
+        <strong>{% if ui_lang == "en" %}Marketing Spend{% else %}هزینه‌کرد مارکتینگ{% endif %}</strong>
+        <span>{% if ui_lang == "en" %}Internal dashboard and invoice control{% else %}داشبورد داخلی و کنترل فاکتورها{% endif %}</span>
+      </div>
+      {% if user.is_authenticated %}
+        {% with current=request.resolver_match.url_name %}
+          <nav class="nav">
+            <a href="{% url 'marketing:dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}">
+              <span class="nav-icon">⌂</span><span>{% if ui_lang == "en" %}Dashboard{% else %}داشبورد{% endif %}</span>
+            </a>
+            <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' %}active{% endif %}">
+              <span class="nav-icon">□</span><span>{% if ui_lang == "en" %}Invoices{% else %}فاکتورها{% endif %}</span>
+            </a>
+            <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
+              <span class="nav-icon">◫</span><span>{% if ui_lang == "en" %}Vendors{% else %}وندورها{% endif %}</span>
+            </a>
+            <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
+              <span class="nav-icon">◇</span><span>{% if ui_lang == "en" %}Campaigns{% else %}کمپین‌ها{% endif %}</span>
+            </a>
+            <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
+              <span class="nav-icon">▦</span><span>{% if ui_lang == "en" %}Budget{% else %}بودجه{% endif %}</span>
+            </a>
+            {% if user|is_panel_admin %}
+              <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
+                <span class="nav-icon">⇧</span><span>{% if ui_lang == "en" %}Excel Import{% else %}ورود اکسل{% endif %}</span>
+              </a>
+              <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
+                <span class="nav-icon">◎</span><span>{% if ui_lang == "en" %}Users{% else %}کاربران{% endif %}</span>
+              </a>
+            {% endif %}
+          </nav>
+        {% endwith %}
+        <div class="sidebar-footer">
+          <div class="user-meta">
+            <strong>{{ user.username }}</strong><br>
+            {% if user.is_superuser %}
+              {% if ui_lang == "en" %}Full admin{% else %}ادمین کامل{% endif %}
+            {% else %}
+              {% if ui_lang == "en" %}Panel user{% else %}کاربر پنل{% endif %}
+            {% endif %}
+          </div>
+          <form class="logout-form" method="post" action="{% url 'marketing:logout' %}">
+            {% csrf_token %}
+            <button class="btn ghost" type="submit">{% if ui_lang == "en" %}Logout{% else %}خروج{% endif %}</button>
+          </form>
+        </div>
+      {% endif %}
+    </aside>
+
+    <main class="main">
+      <header class="topbar no-print">
+        <div>
+          <h1>{% block page_title %}داشبورد{% endblock %}</h1>
+          <p>{% block page_subtitle %}مانیتورینگ هزینه، فاکتور، و وضعیت پرداخت{% endblock %}</p>
+        </div>
+        <div class="actions">
+          <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if ui_lang == "fa" %}
+              <input type="hidden" name="ui_lang" value="en">
+              <input type="hidden" name="number_locale" value="en">
+              <button class="btn" type="submit">EN</button>
+            {% else %}
+              <input type="hidden" name="ui_lang" value="fa">
+              <input type="hidden" name="number_locale" value="fa">
+              <button class="btn" type="submit">FA</button>
+            {% endif %}
+          </form>
+          <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <input type="hidden" name="ui_lang" value="{{ ui_lang }}">
+            {% if number_locale == "fa" %}
+              <input type="hidden" name="number_locale" value="en">
+              <button class="btn" type="submit">123</button>
+            {% else %}
+              <input type="hidden" name="number_locale" value="fa">
+              <button class="btn" type="submit">۰۱۲</button>
+            {% endif %}
+          </form>
+          {% block page_actions %}{% endblock %}
+        </div>
+      </header>
+
+      <div class="content">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  {% if number_locale == "fa" %}
+    <script>
+      (() => {
+        const digits = {"0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴", "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹"};
+        const convert = (value) => value.replace(/[0-9]/g, (digit) => digits[digit]);
+        document.querySelectorAll(".number").forEach((node) => {
+          node.textContent = convert(node.textContent);
+        });
+      })();
+    </script>
+  {% endif %}
+</body>
+</html>

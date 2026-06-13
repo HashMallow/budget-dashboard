@@ -1,0 +1,179 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
+{% block page_title %}فاکتور {{ invoice.invoice_number }}{% endblock %}
+{% block page_subtitle %}{{ invoice.vendor.name }}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:invoice_list' %}">فهرست</a>
+  {% if can_edit %}
+    <a class="btn primary" href="{% url 'marketing:invoice_edit' invoice.pk %}">ویرایش</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="section grid cards">
+    <div class="card">
+      <div class="card-label">مبلغ</div>
+      <div class="card-value number">{{ invoice.amount|money }}</div>
+      <div class="card-note">{{ invoice.currency }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">مرحله پرداخت</div>
+      <div class="card-value"><span class="badge warn">{{ invoice.payment_stage|stage_label }}</span></div>
+      <div class="card-note">{{ invoice.days_in_current_stage }} روز در این مرحله</div>
+    </div>
+    <div class="card">
+      <div class="card-label">تیم</div>
+      <div class="card-value">{{ invoice.team.name|default:"-" }}</div>
+      <div class="card-note">{{ invoice.cost_bucket|bucket_label }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">تاریخ فاکتور</div>
+      <div class="card-value number">{{ invoice.invoice_date }}</div>
+      <div class="card-note">سررسید: {{ invoice.due_date|default:"-" }}</div>
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">مشخصات</h2>
+          <p class="section-subtitle">اطلاعات اصلی فاکتور و هزینه</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th>وندور</th><td>{{ invoice.vendor.name }}</td></tr>
+            <tr><th>کمپین</th><td>{{ invoice.campaign.name|default:"-" }}</td></tr>
+            <tr><th>دسته‌بندی</th><td>{{ invoice.category }}</td></tr>
+            <tr><th>نوع هزینه</th><td>{{ invoice.cost_bucket|bucket_label }}</td></tr>
+            <tr><th>توضیحات</th><td>{{ invoice.description|default:"-" }}</td></tr>
+            <tr><th>منبع import</th><td>{{ invoice.source_sheet|default:"-" }} / {{ invoice.source_row_number|default:"-" }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">پیگیری پرداخت</h2>
+          <p class="section-subtitle">تغییر مرحله برای کاربران مجاز</p>
+        </div>
+      </div>
+      {% if can_edit %}
+        <form method="post" action="{% url 'marketing:invoice_stage_update' invoice.pk %}">
+          {% csrf_token %}
+          <div class="grid">
+            <div class="field">
+              <label for="{{ status_form.payment_stage.id_for_label }}">{{ status_form.payment_stage.label }}</label>
+              {{ status_form.payment_stage }}
+            </div>
+            <div class="field">
+              <label for="{{ status_form.note.id_for_label }}">{{ status_form.note.label }}</label>
+              {{ status_form.note }}
+            </div>
+            <button class="btn primary" type="submit">ثبت تغییر مرحله</button>
+          </div>
+        </form>
+      {% else %}
+        <div class="empty">شما فقط امکان مشاهده وضعیت این فاکتور را دارید.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">فایل‌ها</h2>
+          <p class="section-subtitle">تصویر فاکتور، رسید پرداخت، و مدارک مرتبط</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>نوع</th>
+              <th>فایل</th>
+              <th>آپلودکننده</th>
+              <th>زمان</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attachment in invoice.attachments.all %}
+              <tr>
+                <td>{{ attachment.get_attachment_type_display }}</td>
+                <td><a class="ltr" href="{{ attachment.file.url }}">{{ attachment.file.name }}</a></td>
+                <td>{{ attachment.uploaded_by.username }}</td>
+                <td class="number">{{ attachment.uploaded_at }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="empty">فایلی ثبت نشده است.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if can_upload %}
+        <form method="post" enctype="multipart/form-data" action="{% url 'marketing:invoice_attachment_upload' invoice.pk %}" style="margin-top: 14px;">
+          {% csrf_token %}
+          <div class="grid">
+            <div class="field">
+              <label for="{{ attachment_form.attachment_type.id_for_label }}">{{ attachment_form.attachment_type.label }}</label>
+              {{ attachment_form.attachment_type }}
+            </div>
+            <div class="field">
+              <label for="{{ attachment_form.file.id_for_label }}">{{ attachment_form.file.label }}</label>
+              {{ attachment_form.file }}
+            </div>
+            <div class="field">
+              <label for="{{ attachment_form.notes.id_for_label }}">{{ attachment_form.notes.label }}</label>
+              {{ attachment_form.notes }}
+            </div>
+            <button class="btn primary" type="submit">آپلود فایل</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">تاریخچه وضعیت</h2>
+          <p class="section-subtitle">ثبت خودکار تغییرات مرحله پرداخت</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>از</th>
+              <th>به</th>
+              <th>کاربر</th>
+              <th>زمان</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in invoice.status_history.all %}
+              <tr>
+                <td>{{ item.old_stage|stage_label }}</td>
+                <td>{{ item.new_stage|stage_label }}</td>
+                <td>{{ item.changed_by.username|default:"-" }}</td>
+                <td class="number">{{ item.changed_at }}</td>
+              </tr>
+              {% if item.note %}
+                <tr><td colspan="4">{{ item.note }}</td></tr>
+              {% endif %}
+            {% empty %}
+              <tr><td colspan="4" class="empty">تغییر وضعیتی ثبت نشده است.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+{% endblock %}

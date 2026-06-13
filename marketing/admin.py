@@ -9,6 +9,7 @@ from .models import (
     InvoiceAttachment,
     InvoiceStatusHistory,
     Team,
+    TeamAlias,
     UserTeamAccess,
     Vendor,
 )
@@ -20,6 +21,15 @@ class TeamAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(TeamAlias)
+class TeamAliasAdmin(admin.ModelAdmin):
+    list_display = ("raw_name", "team", "is_active", "updated_at")
+    list_filter = ("is_active", "team")
+    search_fields = ("raw_name", "normalized_raw_name", "team__name")
+    autocomplete_fields = ("team",)
+    readonly_fields = ("normalized_raw_name",)
 
 
 @admin.register(Vendor)

@@ -1,0 +1,139 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}گزارش کمپین‌ها{% endblock %}
+{% block page_title %}گزارش کمپین‌ها{% endblock %}
+{% block page_subtitle %}هزینه کمپین‌ها در طول سال و به تفکیک ماه{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">جستجو</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="نام کمپین، وندور یا فاکتور">
+      </div>
+      <div class="field">
+        <label for="team">تیم</label>
+        <select id="team" name="team">
+          <option value="">همه</option>
+          {% for team in teams %}
+            <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="stage">مرحله</label>
+        <select id="stage" name="stage">
+          <option value="">همه</option>
+          {% for value, label in payment_stages %}
+            <option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="bucket">نوع هزینه</label>
+        <select id="bucket" name="bucket">
+          <option value="">همه</option>
+          {% for value, label in cost_buckets %}
+            <option value="{{ value }}" {% if filters.bucket == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="year">سال</label>
+        <input id="year" name="year" value="{{ filters.year }}" inputmode="numeric">
+      </div>
+      <button class="btn primary" type="submit">فیلتر</button>
+    </form>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">جدول کمپین‌ها</h2>
+          <p class="section-subtitle">از بیشترین هزینه به کمترین</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>کمپین</th>
+              <th>سال</th>
+              <th>تیم</th>
+              <th>فاکتور</th>
+              <th>مبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in campaign_rows %}
+              <tr>
+                <td>{{ row.campaign__name }}</td>
+                <td class="number">{{ row.campaign__year }}</td>
+                <td>{{ row.campaign__team__name|default:"-" }}</td>
+                <td class="number">{{ row.invoice_count }}</td>
+                <td class="number">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="empty">کمپینی در این محدوده وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">نمودار ساده هزینه</h2>
+          <p class="section-subtitle">نمای فعلی بر اساس جمع کل کمپین</p>
+        </div>
+      </div>
+      <div class="bar-list">
+        {% for row in campaign_rows|slice:":12" %}
+          <div class="bar-row">
+            <span>{{ row.campaign__name }}</span>
+            <div class="bar-track"><div class="bar-fill" style="--w: {{ row.percent }}%;"></div></div>
+            <strong class="number">{{ row.total|money }}</strong>
+          </div>
+        {% empty %}
+          <div class="empty">داده‌ای برای نمایش وجود ندارد.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="section panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">کمپین‌ها به تفکیک ماه</h2>
+        <p class="section-subtitle">جدول افقی برای بررسی روند سالانه</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>کمپین</th>
+            {% for month, label in months %}
+              <th>{{ label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for campaign_name, month_map in monthly_campaigns.items %}
+            <tr>
+              <td>{{ campaign_name }}</td>
+              {% for month, label in months %}
+                <td class="number">{{ month_map|get_item:month|money }}</td>
+              {% endfor %}
+            </tr>
+          {% empty %}
+            <tr><td colspan="13" class="empty">داده‌ای برای نمایش وجود ندارد.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

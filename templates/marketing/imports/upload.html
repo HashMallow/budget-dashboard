@@ -1,0 +1,104 @@
+{% extends "marketing/base.html" %}
+
+{% block title %}ورود اکسل{% endblock %}
+{% block page_title %}ورود اکسل{% endblock %}
+{% block page_subtitle %}آپلود فایل xlsx، بررسی dry-run، سپس ثبت در دیتابیس{% endblock %}
+
+{% block content %}
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">آپلود فایل</h2>
+          <p class="section-subtitle">ابتدا فقط بررسی می‌شود و چیزی در دیتابیس تغییر نمی‌کند</p>
+        </div>
+      </div>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="dry_run">
+        {{ form.non_field_errors }}
+        <div class="grid">
+          <div class="field">
+            <label for="{{ form.workbook.id_for_label }}">{{ form.workbook.label }}</label>
+            {{ form.workbook }}
+            {{ form.workbook.errors }}
+          </div>
+          <button class="btn primary" type="submit">بررسی فایل</button>
+        </div>
+      </form>
+      {% if pending_path %}
+        <form method="post" style="margin-top: 14px;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="confirm">
+          <button class="btn primary" type="submit">تایید و import به دیتابیس</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">نتیجه آخرین بررسی</h2>
+          <p class="section-subtitle">created / updated / skipped</p>
+        </div>
+      </div>
+      {% if summary %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>بخش</th>
+                <th>جدید</th>
+                <th>به‌روزرسانی</th>
+                <th>ردشده</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in summary %}
+                <tr>
+                  <td>{{ row.label }}</td>
+                  <td class="number">{{ row.created }}</td>
+                  <td class="number">{{ row.updated }}</td>
+                  <td class="number">{{ row.skipped }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">هنوز فایلی بررسی نشده است.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if skipped_preview %}
+    <section class="section panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">ردیف‌های ردشده</h2>
+          <p class="section-subtitle">۲۰ مورد اول برای بررسی سریع</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>شیت</th>
+              <th>ردیف</th>
+              <th>دلیل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in skipped_preview %}
+              <tr>
+                <td>{{ item.sheet }}</td>
+                <td class="number">{{ item.row_number }}</td>
+                <td>{{ item.reason }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

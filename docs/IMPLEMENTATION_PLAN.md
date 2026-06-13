@@ -114,16 +114,12 @@ python tools/inspect_xlsx_structure.py --file ./data/marketing.xlsx
 ## Suggested Local Commands
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py import_marketing_excel --dry-run
-python manage.py import_marketing_excel --file ./data/marketing.xlsx
-python manage.py runserver
-pytest
-ruff check .
+make setup
+make dev-admin
+make import-dry-run
+make import FILE=./data/marketing.xlsx
+make run
+make check
 ```
 
-Use `uv` instead of pip if the repository is already configured for uv.
+The Makefile is uv-only. Direct equivalents use `uv run python manage.py ...`.

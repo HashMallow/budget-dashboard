@@ -1,3 +1,25 @@
+[project]
+name = "marketing-spend-dashboard"
+version = "0.1.0"
+description = "Django dashboard for marketing spend monitoring, Excel import, invoice workflow, and reporting."
+requires-python = ">=3.13"
+dependencies = [
+  "Django>=5.2,<6.0",
+  "pandas>=2.2",
+  "openpyxl>=3.1",
+  "Pillow>=10.0",
+  "PyYAML>=6.0",
+  "reportlab>=4.0",
+  "python-decouple>=3.8",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "pytest-django>=4.8",
+  "ruff>=0.6",
+]
+
 [tool.ruff]
 line-length = 120
 target-version = "py313"

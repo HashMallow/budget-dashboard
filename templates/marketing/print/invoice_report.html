@@ -1,0 +1,79 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}گزارش فاکتورها{% endblock %}
+{% block page_title %}گزارش فاکتورها{% endblock %}
+{% block page_subtitle %}برای ذخیره PDF از print مرورگر استفاده کنید{% endblock %}
+{% block page_actions %}
+  <button class="btn primary" onclick="window.print()">⎙ چاپ / ذخیره PDF</button>
+{% endblock %}
+
+{% block content %}
+  <section class="section grid cards">
+    <div class="card">
+      <div class="card-label">زمان تولید</div>
+      <div class="card-value" style="font-size: 18px;">{{ generated_at }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">تعداد فاکتور</div>
+      <div class="card-value number">{{ invoice_count }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">جمع هزینه</div>
+      <div class="card-value number">{{ total_spend|money }}</div>
+      <div class="card-note">IRR</div>
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <h2 class="section-title">وندورها</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>وندور</th>
+              <th>تعداد</th>
+              <th>مبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in vendor_rows %}
+              <tr>
+                <td>{{ row.vendor__name }}</td>
+                <td class="number">{{ row.invoice_count }}</td>
+                <td class="number">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">داده‌ای وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="section-title">مرحله پرداخت</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>مرحله</th>
+              <th>تعداد</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in stage_rows %}
+              <tr>
+                <td>{{ row.payment_stage|stage_label }}</td>
+                <td class="number">{{ row.invoice_count }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="2" class="empty">داده‌ای وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+{% endblock %}

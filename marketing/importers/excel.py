@@ -16,7 +16,17 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.datetime import from_excel
 
-from marketing.models import BudgetLine, Campaign, CostBucket, Invoice, PaymentStage, Team, Vendor, normalize_name
+from marketing.models import (
+    BudgetLine,
+    Campaign,
+    CostBucket,
+    Invoice,
+    PaymentStage,
+    Team,
+    TeamAlias,
+    Vendor,
+    normalize_name,
+)
 
 
 class DryRunRollback(Exception):
@@ -256,6 +266,14 @@ def mapped_value(row: dict[str, Any], columns: dict[str, str | None], key: str) 
 
 
 def get_or_create_team(name: str, result: ImportResult, dry_run: bool) -> Team:
+    alias = TeamAlias.objects.select_related("team").filter(
+        normalized_raw_name=normalize_name(name),
+        is_active=True,
+        team__is_active=True,
+    ).first()
+    if alias:
+        return alias.team
+
     slug = slugify(name, allow_unicode=True) or normalize_name(name).replace(" ", "-")
     team = Team.objects.filter(slug=slug).first() or Team.objects.filter(name=name).first()
     if team:

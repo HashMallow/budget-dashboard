@@ -1,0 +1,90 @@
+{% extends "marketing/base.html" %}
+
+{% block title %}{% if mode == "edit" %}ویرایش فاکتور{% else %}ثبت فاکتور{% endif %}{% endblock %}
+{% block page_title %}{% if mode == "edit" %}ویرایش فاکتور{% else %}ثبت فاکتور{% endif %}{% endblock %}
+{% block page_subtitle %}اطلاعات فاکتور در دیتابیس ثبت می‌شود{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% if invoice %}{% url 'marketing:invoice_detail' invoice.pk %}{% else %}{% url 'marketing:invoice_list' %}{% endif %}">بازگشت</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="message">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.invoice_number.id_for_label }}">{{ form.invoice_number.label }}</label>
+          {{ form.invoice_number }}
+          {{ form.invoice_number.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+          {{ form.amount }}
+          {{ form.amount.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.vendor.id_for_label }}">{{ form.vendor.label }}</label>
+          {{ form.vendor }}
+          {{ form.vendor.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.new_vendor_name.id_for_label }}">{{ form.new_vendor_name.label }}</label>
+          {{ form.new_vendor_name }}
+          {{ form.new_vendor_name.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.team.id_for_label }}">{{ form.team.label }}</label>
+          {{ form.team }}
+          {{ form.team.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.campaign.id_for_label }}">{{ form.campaign.label }}</label>
+          {{ form.campaign }}
+          {{ form.campaign.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+          {{ form.category }}
+          {{ form.category.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.cost_bucket.id_for_label }}">{{ form.cost_bucket.label }}</label>
+          {{ form.cost_bucket }}
+          {{ form.cost_bucket.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.invoice_date.id_for_label }}">{{ form.invoice_date.label }}</label>
+          {{ form.invoice_date }}
+          {{ form.invoice_date.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.due_date.id_for_label }}">{{ form.due_date.label }}</label>
+          {{ form.due_date }}
+          {{ form.due_date.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.currency.id_for_label }}">{{ form.currency.label }}</label>
+          {{ form.currency }}
+          {{ form.currency.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.payment_stage.id_for_label }}">{{ form.payment_stage.label }}</label>
+          {{ form.payment_stage }}
+          {{ form.payment_stage.errors }}
+        </div>
+        <div class="field wide">
+          <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+          {{ form.description }}
+          {{ form.description.errors }}
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 18px;">
+        <button class="btn primary" type="submit">ذخیره</button>
+        <a class="btn" href="{% url 'marketing:invoice_list' %}">انصراف</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

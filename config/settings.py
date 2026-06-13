@@ -43,6 +43,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "marketing.context_processors.display_preferences",
             ],
         },
     },
@@ -77,6 +78,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DEFAULT_CURRENCY = os.environ.get("DJANGO_DEFAULT_CURRENCY", "IRR")
 
-LOGIN_URL = "admin:login"
+LOGIN_URL = "marketing:login"
 LOGIN_REDIRECT_URL = "marketing:dashboard"
-LOGOUT_REDIRECT_URL = "admin:login"
+LOGOUT_REDIRECT_URL = "marketing:login"

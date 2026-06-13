@@ -7,7 +7,7 @@ import yaml
 from openpyxl import Workbook
 
 from marketing.importers.excel import import_marketing_workbook
-from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage, Team, Vendor
+from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage, Team, TeamAlias, Vendor
 
 pytestmark = pytest.mark.django_db
 
@@ -193,3 +193,19 @@ def test_dry_run_does_not_write_database(tmp_path):
     assert Invoice.objects.count() == 0
     assert BudgetLine.objects.count() == 0
     assert Vendor.objects.count() == 0
+
+
+def test_import_resolves_team_aliases(tmp_path):
+    workbook_path = tmp_path / "marketing.xlsx"
+    mapping_path = tmp_path / "column_mapping.yml"
+    write_workbook(workbook_path)
+    write_mapping(mapping_path, workbook_path)
+
+    canonical = Team.objects.create(name="Ops & Analytics", slug="ops-analytics")
+    TeamAlias.objects.create(raw_name="Growth", team=canonical)
+
+    import_marketing_workbook(workbook_path, mapping_path=mapping_path)
+
+    invoice = Invoice.objects.get(invoice_number="1", cost_bucket=CostBucket.TEAM)
+    assert invoice.team == canonical
+    assert not Team.objects.filter(name="Growth").exists()

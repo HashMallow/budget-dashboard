@@ -10,8 +10,10 @@ These files should remain in the final project:
 README.md
 Makefile
 manage.py
-requirements.txt
 pyproject.toml
+uv.lock
+uv.toml
+.python-version
 .env.example
 .gitignore
 
@@ -20,7 +22,9 @@ marketing/
 templates/
 
 docs/CURRENT_STATE_AND_RUN_GUIDE.md
+docs/PROJECT_BLUEPRINT.md
 docs/PROJECT_FILE_REFERENCE.md
+docs/END_STATE_CLEANUP_PLAN.md
 docs/DATA_MODEL.md
 docs/RBAC_SPEC.md
 docs/EXCEL_IMPORT_SPEC.md
@@ -40,6 +44,7 @@ These are local/generated or peripheral files:
 
 ```text
 .venv/
+.uv-cache/
 db.sqlite3
 media/
 staticfiles/
@@ -55,7 +60,7 @@ __pycache__/
 *.wav
 
 docs/discovery/audio_*.md
-docs/discovery/audio.wav
+docs/discovery/*.wav
 docs/discovery/workbook_*.md
 docs/discovery/import_risks.md
 
@@ -75,7 +80,7 @@ Audio transcription can be recreated with the local Codex skill:
 Workbook discovery can be recreated with:
 
 ```bash
-python tools/inspect_xlsx_structure.py path/to/workbook.xlsx --out-dir docs/discovery
+uv run python tools/inspect_xlsx_structure.py path/to/workbook.xlsx --out-dir docs/discovery
 ```
 
 Import mapping can be recreated or updated by rerunning discovery and editing:
@@ -112,8 +117,10 @@ Alireza/
 ├── README.md
 ├── Makefile
 ├── manage.py
-├── requirements.txt
 ├── pyproject.toml
+├── uv.lock
+├── uv.toml
+├── .python-version
 ├── .env.example
 ├── .gitignore
 ├── config/
@@ -121,6 +128,7 @@ Alireza/
 ├── templates/
 ├── docs/
 │   ├── CURRENT_STATE_AND_RUN_GUIDE.md
+│   ├── PROJECT_BLUEPRINT.md
 │   ├── PROJECT_FILE_REFERENCE.md
 │   ├── END_STATE_CLEANUP_PLAN.md
 │   ├── DATA_MODEL.md

@@ -24,11 +24,17 @@ SQLite database
 db.sqlite3
           |
           v
-Django Admin panel
+Custom Django panel
+/
+          |
+          v
+Django Admin fallback
 /admin/
 ```
 
-The app currently uses Django Admin as the first working panel. This is useful for validating the database, imported workbook data, users, roles, and core models before building a custom dashboard UI.
+The app now has a minimal custom panel for non-technical users. Django Admin remains available as a fallback for low-level maintenance.
+
+Local commands now run through `uv`, using `pyproject.toml` and `uv.lock` as the standard dependency setup.
 
 ## Current Project Structure
 
@@ -38,8 +44,10 @@ Alireza/
 ├── README.md
 ├── Makefile
 ├── manage.py
-├── requirements.txt
 ├── pyproject.toml
+├── uv.lock
+├── uv.toml
+├── .python-version
 ├── db.sqlite3
 ├── your_workbook.xlsx
 │
@@ -63,10 +71,12 @@ Alireza/
 │   └── tests/
 │
 ├── docs/
+│   ├── PROJECT_BLUEPRINT.md
 │   ├── discovery/
 │   │   ├── audio_transcript.fa.md
 │   │   ├── audio_summary.en.md
 │   │   ├── audio_requirements.en.md
+│   │   ├── audio_followup_answers.en.md
 │   │   ├── workbook_structure.md
 │   │   ├── workbook_sample_rows.md
 │   │   ├── column_mapping.yml
@@ -84,12 +94,25 @@ Alireza/
 
 ```text
 [x] Audio transcription/discovery documentation
+[x] Follow-up voice feedback documentation
 [x] Workbook structure discovery
 [x] Column mapping based on the real workbook
 [x] Django project setup
+[x] uv dependency workflow
 [x] Local SQLite database
 [x] Core data models
 [x] Django Admin panel
+[x] Custom panel login/dashboard shell
+[x] Persian/English shell toggle and Persian digit display toggle
+[x] Invoice list/detail/create/edit pages
+[x] Payment stage update page action
+[x] Invoice/payment proof upload controls
+[x] Vendor report page
+[x] Campaign report page
+[x] Budget table and pivot page
+[x] Browser Excel upload dry-run/confirm page
+[x] Admin user/access creation page
+[x] Team alias model, seeded aliases, and importer alias resolution
 [x] Auth groups: Admin, Manager, Editor, Observer
 [x] Local admin bootstrap command
 [x] Excel import command
@@ -103,22 +126,20 @@ Alireza/
 ### Partially Working
 
 ```text
-[~] Basic dashboard route exists, but it is only a placeholder page.
-[~] Roles and permissions exist in code, but custom user-facing screens do not use them yet.
-[~] Data is imported and viewable in Django Admin, not yet in a polished dashboard UI.
+[~] The custom UI is functional, but visual analytics are still simple table/bar views.
+[~] Roles and permissions are applied to the main user-facing screens.
+[~] Data is imported and viewable in the custom panel and Django Admin.
+[~] Team aliases are implemented for the obvious workbook duplicates; future aliases can be added in Django Admin.
+[~] The Excel Data sheet is understood as reference data, but it is not seeded into database lookup tables yet.
 ```
 
 ### Not Built Yet
 
 ```text
-[ ] Friendly custom dashboard UI
-[ ] Excel upload/import page in the browser
-[ ] Invoice create/edit screens outside Django Admin
-[ ] Team-scoped user dashboards
-[ ] Charts and visual analysis
-[ ] Vendor report page
-[ ] Campaign report page
-[ ] Excel/PDF export pages
+[ ] Data sheet reference seeding for vendors/categories/sub-teams/requesters
+[ ] Dedicated team dashboard pages
+[ ] Chart.js visual analysis endpoints
+[ ] Server-rendered PDF export
 [ ] Production deployment configuration
 [ ] AWS deployment
 ```
@@ -228,6 +249,33 @@ REFERRAL: 2
 SMS: 0 actual invoice rows found so far
 ```
 
+## Follow-Up Voice Feedback Captured
+
+The second set of voice notes is summarized in:
+
+```text
+docs/discovery/audio_followup_answers.en.md
+```
+
+Decisions to carry into the next implementation phase:
+
+```text
+Data sheet
+  Treat as lookup/reference data, not as a main invoice or budget table.
+  Use later to seed or validate vendors, categories, sub-teams, requesters, and month names.
+
+Vendor management
+  Add/remove vendors in the app UI, not by editing the Excel Data sheet.
+
+Team aliases
+  Implemented as database-backed TeamAlias rows.
+  Current aliases: Operation & Analysis -> Ops & Analytics; Brand (PR & Social & CSR) -> Brand.
+
+BudgetLine UI
+  Keep normalized rows in the database.
+  Build an Excel-like pivot table with horizontal month scrolling for humans.
+```
+
 ## How To Run Locally
 
 Run these commands from the project root:
@@ -245,8 +293,8 @@ make setup
 This does:
 
 ```text
-1. Creates .venv if needed
-2. Installs Python dependencies
+1. Uses uv to sync the locked Python environment
+2. Installs runtime and dev dependencies from pyproject.toml/uv.lock
 3. Runs database migrations
 4. Creates baseline auth groups
 ```
@@ -296,7 +344,7 @@ make run
 Open:
 
 ```text
-http://127.0.0.1:8000/admin/
+http://127.0.0.1:8000/login/
 ```
 
 Login:
@@ -315,7 +363,7 @@ make run PORT=8001
 Then open:
 
 ```text
-http://127.0.0.1:8001/admin/
+http://127.0.0.1:8001/login/
 ```
 
 ### One-Command Local Panel Shortcut
@@ -347,7 +395,7 @@ setup -> dev-admin -> import -> run
 Open:
 
 ```text
-http://127.0.0.1:8000/admin/
+http://127.0.0.1:8000/login/
 ```
 
 Login with:
@@ -359,24 +407,22 @@ admin / admin12345
 Expected result:
 
 ```text
-Django Admin opens successfully.
-Marketing app sections are visible.
+Custom panel opens successfully.
+Dashboard, invoices, vendors, campaigns, budgets, imports, and users sections are visible as permitted.
 ```
 
 ### 2. Check Imported Data
 
-In Django Admin, open:
+In the custom panel, open:
 
 ```text
-Marketing
-├── Teams
+Dashboard
+├── Invoices
 ├── Vendors
 ├── Campaigns
-├── Budget lines
-├── Invoices
-├── Invoice attachments
-├── Invoice status history
-└── User team access
+├── Budgets
+├── Imports
+└── Users
 ```
 
 Expected counts:
@@ -450,7 +496,7 @@ Ruff lint passes
 Current result:
 
 ```text
-8 tests passed
+12 tests passed
 ```
 
 ## Current Make Commands
@@ -460,7 +506,7 @@ make help
   Show available commands.
 
 make setup
-  Create virtualenv, install dependencies, migrate database, seed auth groups.
+  Sync uv dependencies, migrate database, seed auth groups.
 
 make dev-admin
   Create/update local admin user: admin / admin12345.
@@ -487,6 +533,33 @@ make shell
   Open Django shell.
 ```
 
+Raw command equivalent when you do not want to use `make`:
+
+```bash
+uv run python manage.py migrate
+uv run python manage.py seed_auth_groups
+uv run python manage.py import_marketing_excel --dry-run
+uv run python manage.py runserver 127.0.0.1:8000 --noreload
+```
+
+## Current Panel Routes
+
+```text
+/login/           Login
+/                 Dashboard
+/invoices/        Invoice list/create/detail/edit
+/vendors/         Vendor spend report
+/campaigns/       Campaign spend report
+/budgets/         Budget table and pivot
+/imports/         Admin-only Excel upload/import
+/users/           Admin-only user/access management
+/admin/           Django Admin fallback
+```
+
+Users are database records, not environment variables. Use `/users/` as an admin to create users, assign Admin/Manager/Editor/Observer roles, grant team/global access, and deactivate users. `.env` is for deployment settings and secrets such as `DJANGO_SECRET_KEY`, database URLs, and allowed hosts.
+
+Use the `EN/FA` button in the top bar to switch the shell language. Use the `123/۰۱۲` button to switch number display. The shell/navigation switches now; full page-by-page English copy can be expanded later.
+
 ## Development Roadmap
 
 ### Phase 1: Basic Custom UI
@@ -499,7 +572,9 @@ Goal: move beyond Django Admin for everyday usage.
 3. Add invoice list page.
 4. Add invoice detail page.
 5. Add team/vendor/campaign list pages.
-6. Apply server-side permission filters to every page.
+6. Add team alias management.
+7. Add reference-data management for vendors/categories/sub-teams.
+8. Apply server-side permission filters to every page.
 ```
 
 Recommended first screens:
@@ -512,6 +587,7 @@ Dashboard shell
   |-- Vendor list
   |-- Campaign list
   |-- Budget list
+  |-- Team aliases
   |-- Import status page
 ```
 
@@ -629,6 +705,8 @@ Gunicorn + Django app
     +---- Static files via S3/CloudFront or Nginx
 ```
 
+For version 1, prefer this small always-on Django deployment over serverless. It is easier to operate with login sessions, admin workflows, uploads, imports, PDF/Excel exports, and later scheduled jobs.
+
 Deployment checklist:
 
 ```text
@@ -666,9 +744,9 @@ For a file-by-file explanation of the project, see:
 docs/PROJECT_FILE_REFERENCE.md
 ```
 
-### Current Panel Is Django Admin
+### Current Panel
 
-Right now, `/admin/` is the working panel. It is functional but not the final user experience.
+The working panel starts at `/login/`. Django Admin remains available at `/admin/` for fallback maintenance.
 
 ### Local Admin Password
 
@@ -687,17 +765,17 @@ The app does not yet auto-watch folders or auto-import dropped files.
 Current workflow:
 
 ```text
+Upload workbook at /imports/
+Review dry-run preview
+Confirm import
+```
+
+Terminal workflow remains available:
+
+```text
 Drop workbook in project root/data/imports
 Run make import-dry-run
 Run make import
-```
-
-Future workflow:
-
-```text
-Upload workbook in browser
-Review dry-run preview
-Confirm import
 ```
 
 ### Discovery Mapping Matters
@@ -712,24 +790,21 @@ If the Excel workbook structure changes, update discovery/mapping before importi
 
 ## Recommended Next Step
 
-Build the basic custom UI next:
+Build the analysis layer next:
 
 ```text
-1. App login/logout
-2. Base dashboard layout
-3. Invoice list and detail pages
-4. Vendor list page
-5. Campaign list page
-6. Budget list page
-7. Server-side permission filtering on all pages
+1. Chart.js dashboard visualizations
+2. JSON endpoints for chart data
+3. Budget planned-vs-actual analysis
+4. Team alias management
+5. Reference-data management seeded from the Data sheet
 ```
 
 After that, add:
 
 ```text
-1. Chart.js dashboard visualizations
-2. Browser-based Excel upload/import
-3. Analysis/report pages
-4. Export capabilities
-5. AWS deployment
+1. Dedicated team dashboard pages
+2. Server-rendered PDF export
+3. Deployment Dockerfile
+4. AWS deployment
 ```

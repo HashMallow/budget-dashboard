@@ -1,5 +1,6 @@
 .env
 .venv/
+.uv-cache/
 __pycache__/
 *.py[cod]
 db.sqlite3
@@ -7,7 +8,6 @@ media/
 staticfiles/
 .pytest_cache/
 .ruff_cache/
-docs/discovery/audio.wav
 docs/discovery/faster-whisper-models/
 
 # Local source artifacts and generated discovery notes.

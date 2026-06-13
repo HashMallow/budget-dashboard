@@ -1,0 +1,158 @@
+{% extends "marketing/base.html" %}
+
+{% block title %}کاربران و دسترسی‌ها{% endblock %}
+{% block page_title %}کاربران و دسترسی‌ها{% endblock %}
+{% block page_subtitle %}تعریف کاربر، نقش، تیم مجاز، آپلود و خروجی{% endblock %}
+
+{% block content %}
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">کاربر جدید</h2>
+          <p class="section-subtitle">کاربر و دسترسی اولیه در دیتابیس ساخته می‌شود</p>
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        {% if form.non_field_errors %}<div class="message">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="form-grid">
+          <div class="field">
+            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+            {{ form.username }}
+            {{ form.username.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+            {{ form.password }}
+            {{ form.password.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+            {{ form.first_name }}
+          </div>
+          <div class="field">
+            <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+            {{ form.last_name }}
+          </div>
+          <div class="field">
+            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            {{ form.email }}
+          </div>
+          <div class="field">
+            <label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
+            {{ form.role }}
+          </div>
+          <div class="field">
+            <label for="{{ form.team.id_for_label }}">{{ form.team.label }}</label>
+            {{ form.team }}
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="badge">{{ form.is_global }} همه تیم‌ها</label>
+          </div>
+          <div class="field wide">
+            <label>مجوزها</label>
+            <div class="actions">
+              <label class="badge">{{ form.can_view_referral_sms }} ریفرال و SMS</label>
+              <label class="badge">{{ form.can_export }} خروجی</label>
+              <label class="badge">{{ form.can_upload_invoice_files }} آپلود فاکتور</label>
+              <label class="badge">{{ form.can_upload_payment_proofs }} آپلود فیش</label>
+            </div>
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 18px;">
+          <button class="btn primary" type="submit">ساخت کاربر</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">روش مدیریت کاربران</h2>
+          <p class="section-subtitle">کاربران معمولی نباید در env تعریف شوند</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th>ادمین اولیه</th><td>برای توسعه با make dev-admin ساخته می‌شود.</td></tr>
+            <tr><th>کاربران عادی</th><td>از همین صفحه ساخته و در دیتابیس ذخیره می‌شوند.</td></tr>
+            <tr><th>حذف امن</th><td>کاربر غیرفعال می‌شود تا تاریخچه فاکتورها خراب نشود.</td></tr>
+            <tr><th>env</th><td>برای SECRET_KEY، تنظیمات سرور و اتصال دیتابیس است، نه کاربران روزمره.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">کاربران فعلی</h2>
+        <p class="section-subtitle">نقش‌ها و دسترسی‌های تیمی</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>نام کاربری</th>
+            <th>نام</th>
+            <th>گروه</th>
+            <th>دسترسی‌ها</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in users %}
+            <tr>
+              <td>{{ item.username }}</td>
+              <td>{{ item.get_full_name|default:"-" }}</td>
+              <td>
+                {% for group in item.groups.all %}
+                  <span class="badge">{{ group.name }}</span>
+                {% empty %}
+                  <span class="badge">-</span>
+                {% endfor %}
+              </td>
+              <td>
+                {% for access in item.team_access.all %}
+                  <span class="badge">
+                    {{ access.get_role_display }} /
+                    {% if access.is_global %}همه تیم‌ها{% else %}{{ access.team.name }}{% endif %}
+                  </span>
+                {% empty %}
+                  <span class="badge">-</span>
+                {% endfor %}
+              </td>
+              <td>{% if item.is_active %}<span class="badge ok">فعال</span>{% else %}<span class="badge danger">غیرفعال</span>{% endif %}</td>
+              <td>
+                {% if item != request.user %}
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="user_id" value="{{ item.id }}">
+                    {% if item.is_active %}
+                      <input type="hidden" name="action" value="deactivate">
+                      <button class="btn danger" type="submit">غیرفعال</button>
+                    {% else %}
+                      <input type="hidden" name="action" value="activate">
+                      <button class="btn" type="submit">فعال</button>
+                    {% endif %}
+                  </form>
+                {% else %}
+                  <span class="badge">کاربر فعلی</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty">کاربری وجود ندارد.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

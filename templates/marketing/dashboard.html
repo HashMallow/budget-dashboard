@@ -1,41 +1,240 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Marketing Spend Dashboard</title>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: Arial, sans-serif;
-      background: #f6f7f9;
-      color: #1f2933;
-    }
-    body {
-      margin: 0;
-    }
-    main {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 32px 20px;
-    }
-    h1 {
-      font-size: 28px;
-      line-height: 1.2;
-      margin: 0 0 8px;
-      letter-spacing: 0;
-    }
-    p {
-      margin: 0;
-      color: #52606d;
-      line-height: 1.5;
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Marketing Spend Dashboard</h1>
-    <p>The Django foundation is ready. Dashboards, imports, reports, and role-aware screens will build on the core models.</p>
-  </main>
-</body>
-</html>
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}داشبورد هزینه‌کرد{% endblock %}
+{% block page_title %}داشبورد هزینه‌کرد{% endblock %}
+{% block page_subtitle %}نمای کلی هزینه مارکتینگ، پرداخت‌ها، و وضعیت تیم‌ها{% endblock %}
+{% block page_actions %}
+  {% if can_create_invoice %}
+    <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ ثبت فاکتور</a>
+  {% endif %}
+  {% if can_export_data %}
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ اکسل</a>
+    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ گزارش PDF</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="year">سال</label>
+        <select id="year" name="year">
+          <option value="">همه سال‌ها</option>
+          {% for year in years %}
+            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="team">تیم</label>
+        <select id="team" name="team">
+          <option value="">همه تیم‌های مجاز</option>
+          {% for team in teams %}
+            <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn primary" type="submit">اعمال فیلتر</button>
+    </form>
+  </section>
+
+  <section class="section">
+    <div class="grid cards">
+      <div class="card">
+        <div class="card-label">هزینه کل</div>
+        <div class="card-value number">{{ total_spend|money }}</div>
+        <div class="card-note">IRR</div>
+      </div>
+      <div class="card">
+        <div class="card-label">تعداد فاکتور</div>
+        <div class="card-value number">{{ invoice_count }}</div>
+        <div class="card-note">در محدوده انتخاب‌شده</div>
+      </div>
+      <div class="card">
+        <div class="card-label">پرداخت‌شده</div>
+        <div class="card-value number">{{ paid_spend|money }}</div>
+        <div class="card-note">فاکتورهای Paid</div>
+      </div>
+      <div class="card">
+        <div class="card-label">ریفرال / SMS</div>
+        <div class="card-value number">{{ referral_total|money }} / {{ sms_total|money }}</div>
+        <div class="card-note">جدا از شکست تیم‌ها</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">روند ماهانه</h2>
+          <p class="section-subtitle">آماده برای تبدیل به نمودار Chart.js</p>
+        </div>
+      </div>
+      <div class="bar-list">
+        {% for row in monthly_rows %}
+          <div class="bar-row">
+            <span>{{ row.label }}</span>
+            <div class="bar-track"><div class="bar-fill" style="--w: {{ row.percent }}%;"></div></div>
+            <strong class="number">{{ row.total|money }}</strong>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">هزینه به تفکیک تیم</h2>
+          <p class="section-subtitle">ریفرال و SMS اینجا وارد شکست تیمی نشده‌اند</p>
+        </div>
+      </div>
+      {% if team_total_rows %}
+        <div class="bar-list">
+          {% for row in team_total_rows %}
+            <div class="bar-row">
+              <span>{{ row.team_name }}</span>
+              <div class="bar-track"><div class="bar-fill" style="--w: {{ row.percent }}%;"></div></div>
+              <strong class="number">{{ row.total|money }}</strong>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">داده‌ای برای نمایش وجود ندارد.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">وندورهای برتر</h2>
+          <p class="section-subtitle">مرتب‌شده از بیشترین هزینه به کمترین</p>
+        </div>
+        <a class="btn" href="{% url 'marketing:vendor_report' %}">مشاهده کامل</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>وندور</th>
+              <th>تعداد</th>
+              <th>مبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in vendor_rows %}
+              <tr>
+                <td>{{ row.vendor__name }}</td>
+                <td class="number">{{ row.invoice_count }}</td>
+                <td class="number">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">داده‌ای برای نمایش وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">کمپین‌ها</h2>
+          <p class="section-subtitle">هزینه کمپین‌های ثبت‌شده در فاکتورها</p>
+        </div>
+        <a class="btn" href="{% url 'marketing:campaign_report' %}">مشاهده کامل</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>کمپین</th>
+              <th>سال</th>
+              <th>فاکتور</th>
+              <th>مبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in campaign_rows %}
+              <tr>
+                <td>{{ row.campaign__name }}</td>
+                <td class="number">{{ row.campaign__year }}</td>
+                <td class="number">{{ row.invoice_count }}</td>
+                <td class="number">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="empty">کمپینی در این محدوده ثبت نشده است.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">وضعیت پرداخت</h2>
+          <p class="section-subtitle">تعداد فاکتور در هر مرحله</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>مرحله</th>
+              <th>تعداد</th>
+              <th>مبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in stage_rows %}
+              <tr>
+                <td><span class="badge">{{ row.payment_stage|stage_label }}</span></td>
+                <td class="number">{{ row.invoice_count }}</td>
+                <td class="number">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">داده‌ای برای نمایش وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">فاکتورهای در مالی</h2>
+          <p class="section-subtitle">مرتب‌شده بر اساس روزهای مانده در مرحله</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>فاکتور</th>
+              <th>وندور</th>
+              <th>روز در مرحله</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in attention_invoices %}
+              <tr>
+                <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
+                <td>{{ invoice.vendor.name }}</td>
+                <td class="number">{{ invoice.days_in_current_stage }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">فاکتور معطل در مالی وجود ندارد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+{% endblock %}

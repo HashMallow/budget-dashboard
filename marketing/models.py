@@ -81,6 +81,28 @@ class Team(TimestampedModel):
         return self.name
 
 
+class TeamAlias(TimestampedModel):
+    raw_name = models.CharField(max_length=160, unique=True)
+    normalized_raw_name = models.CharField(max_length=180, unique=True, db_index=True)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="aliases")
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["raw_name"]
+        indexes = [
+            models.Index(fields=["normalized_raw_name", "is_active"]),
+        ]
+        verbose_name_plural = "team aliases"
+
+    def save(self, *args, **kwargs):
+        self.normalized_raw_name = normalize_name(self.raw_name)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.raw_name} -> {self.team.name}"
+
+
 class Vendor(TimestampedModel):
     name = models.CharField(max_length=255)
     normalized_name = models.CharField(max_length=255, db_index=True)
