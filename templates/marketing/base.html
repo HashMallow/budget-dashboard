@@ -52,6 +52,7 @@
     body.theme-dark textarea,
     body.theme-dark .table-wrap,
     body.theme-dark .settings-panel select { background: var(--surface); color: var(--text); }
+    body.theme-dark .settings-panel.menu-links a.menu-item { background: var(--surface); color: var(--text); }
     body.theme-dark .table-wrap th,
     body.theme-dark .table-wrap tbody th { background: var(--surface-soft); color: var(--muted); }
     body.theme-dark .panel { border-top-color: var(--line); }
@@ -192,6 +193,20 @@
     }
     .settings-panel .settings-row { display: grid; gap: 4px; }
     .settings-panel label { color: var(--muted); font-size: 12px; }
+    .settings-panel.menu-links { min-width: 240px; }
+    .settings-panel.menu-links a.menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      text-decoration: none;
+      background: #fff;
+    }
+    .settings-panel.menu-links a.menu-item:hover { border-color: var(--primary); background: var(--surface); }
+    .settings-panel.menu-links .menu-note { color: var(--muted); font-size: 12px; padding: 0 2px; }
     .settings-panel select {
       min-height: 34px;
       padding: 6px 8px;
@@ -497,6 +512,19 @@
           <p>{% block page_subtitle %}{% t "Monitor spend, invoices and payment status" %}{% endblock %}</p>
         </div>
         <div class="actions">
+          {% if can_export_global %}
+            <details class="settings-menu">
+              <summary class="btn" aria-haspopup="true">⇩ {% t "Exports" %}</summary>
+              <div class="settings-panel menu-links">
+                <a class="menu-item" href="{% url 'marketing:export_invoices_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Invoices (Excel)" %}</a>
+                <a class="menu-item" href="{% url 'marketing:export_vendors_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Vendors (Excel)" %}</a>
+                <a class="menu-item" href="{% url 'marketing:export_campaigns_excel' %}?{{ export_query|default:request.GET.urlencode }}">⇩ {% t "Campaigns (Excel)" %}</a>
+                <a class="menu-item" href="{% url 'marketing:export_workbook_excel' %}?{{ export_query|default:request.GET.urlencode }}" title="{% t 'Excel shaped like the source workbook (all sheets)' %}">⇩ {% t "Workbook (.xlsx)" %}</a>
+                <a class="menu-item" href="{% url 'marketing:dashboard_report_pdf' %}?{{ export_query|default:request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
+                <span class="menu-note">{% t "Exports respect your current filters and access scope" %}</span>
+              </div>
+            </details>
+          {% endif %}
           <details class="settings-menu">
             <summary class="btn" aria-haspopup="true">⚙ {% t "Settings" %}</summary>
             <div class="settings-panel">

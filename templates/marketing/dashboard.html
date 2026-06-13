@@ -8,11 +8,6 @@
   {% if can_create_invoice %}
     <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ {% t "New invoice" %}</a>
   {% endif %}
-  {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
-    <a class="btn" href="{% url 'marketing:export_workbook_excel' %}?{{ request.GET.urlencode }}" title="{% t 'Excel shaped like the source workbook (all sheets)' %}">⇩ {% t "Workbook (.xlsx)" %}</a>
-    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
-  {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -58,9 +53,14 @@
         <div class="card-note">{% t "Paid invoices" %}</div>
       </div>
       <div class="card">
-        <div class="card-label">{% t "Referral / SMS" %}</div>
-        <div class="card-value number">{{ referral_total|money }} / {{ sms_total|money }}</div>
-        <div class="card-note">{% t "Separate from team breakdown" %}</div>
+        <div class="card-label">{% t "Referral" %}</div>
+        <div class="card-value number">{{ referral_total|money }}</div>
+        <div class="card-note">{% t "Part of Growth, shown separately" %}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">{% t "SMS" %}</div>
+        <div class="card-value number">{{ sms_total|money }}</div>
+        <div class="card-note">{% t "Part of Retention, shown separately" %}</div>
       </div>
     </div>
   </section>

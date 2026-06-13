@@ -23,7 +23,7 @@ from .analytics import (
     attention_invoices,
     decimal_sum,
     monthly_chart_data,
-    monthly_spend_rows,
+    monthly_spend_window_rows,
     overall_spend_pie,
     percent,
     team_chart_data,
@@ -41,7 +41,7 @@ from .forms import (
     user_can_create_invoice,
 )
 from .importers.excel import ImportResult, import_marketing_workbook
-from .jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_year_bounds
+from .jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_year_bounds, today_jalali
 from .models import (
     BudgetLine,
     CostBucket,
@@ -150,6 +150,20 @@ def get_months(request) -> list[tuple[int, str]]:
     return [(number, latin) for number, _persian, latin in JALALI_MONTHS]
 
 
+def monthly_trend_window(selected_year: str) -> tuple[int, int, int]:
+    """Window (end_year, end_month, count) for the monthly trend chart.
+
+    Avoids showing future months: the current Jalali year stops at the current month, and the
+    default ("all years") view is a trailing 12 months. A specific past year shows its 12 months.
+    """
+    current_year, current_month, _day = today_jalali()
+    if selected_year.isdigit():
+        year = int(selected_year)
+        end_month = current_month if year == current_year else 12
+        return year, end_month, end_month
+    return current_year, current_month, 12
+
+
 def filter_by_jalali_year(queryset, year: str):
     """Filter invoices by a Jalali year using the matching Gregorian date range."""
     if year and year.isdigit():
@@ -248,7 +262,6 @@ def result_summary(result: ImportResult) -> list[dict[str, int | str]]:
 
 @login_required
 def dashboard(request):
-    months = get_months(request)
     base_queryset = visible_invoice_queryset(request)
     years = distinct_jalali_years(base_queryset)
     selected_year = request.GET.get("year", "").strip()
@@ -266,7 +279,14 @@ def dashboard(request):
     referral_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.REFERRAL))
     sms_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.SMS))
 
-    monthly_rows = monthly_spend_rows(invoices, months)
+    end_year, end_month, window_count = monthly_trend_window(selected_year)
+    monthly_rows = monthly_spend_window_rows(
+        invoices,
+        end_year=end_year,
+        end_month=end_month,
+        count=window_count,
+        ui_lang=get_ui_lang(request),
+    )
     monthly_chart = monthly_chart_data(monthly_rows)
 
     team_total_rows = team_spend_rows(invoices)
@@ -490,7 +510,6 @@ def team_list(request):
 @login_required
 def team_dashboard(request, pk: int):
     team = get_object_or_404(visible_team_queryset(request), pk=pk)
-    months = get_months(request)
     selected_year = request.GET.get("year", "").strip()
 
     invoices = visible_invoice_queryset(request).filter(
@@ -502,7 +521,14 @@ def team_dashboard(request, pk: int):
 
     total_spend = decimal_sum(invoices)
     invoice_count = invoices.count()
-    monthly_rows = monthly_spend_rows(invoices, months)
+    end_year, end_month, window_count = monthly_trend_window(selected_year)
+    monthly_rows = monthly_spend_window_rows(
+        invoices,
+        end_year=end_year,
+        end_month=end_month,
+        count=window_count,
+        ui_lang=get_ui_lang(request),
+    )
     monthly_chart = monthly_chart_data(monthly_rows)
     vendor_rows = vendor_grouped_rows(invoices)
     campaign_rows = list(
@@ -516,6 +542,10 @@ def team_dashboard(request, pk: int):
         filter_budget_lines_for_user(BudgetLine.objects.filter(team=team), request.user),
         "planned_amount",
     )
+
+    export_query = f"team={team.id}"
+    if selected_year.isdigit():
+        export_query += f"&year={selected_year}"
 
     context = {
         "team": team,
@@ -532,6 +562,7 @@ def team_dashboard(request, pk: int):
         "attention_invoices": attention,
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
+        "export_query": export_query,
     }
     return render(request, "marketing/teams/dashboard.html", context)
 

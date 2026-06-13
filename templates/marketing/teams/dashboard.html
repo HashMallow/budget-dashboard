@@ -4,12 +4,7 @@
 {% block title %}{% t "Team dashboard" %} — {{ team.name }}{% endblock %}
 {% block page_title %}{% t "Team dashboard" %}: {% t team.name %}{% endblock %}
 {% block page_subtitle %}{% t "Spend, vendors, campaigns and invoices requiring attention for this team" %}{% endblock %}
-{% block page_actions %}
-  {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_vendors_excel' %}?team={{ team.id }}{% if selected_year %}&year={{ selected_year }}{% endif %}">⇩ {% t "Excel" %}</a>
-    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?team={{ team.id }}{% if selected_year %}&year={{ selected_year }}{% endif %}">⎙ {% t "PDF summary" %}</a>
-  {% endif %}
-{% endblock %}
+{% block page_actions %}{% endblock %}
 
 {% block content %}
   <section class="section">

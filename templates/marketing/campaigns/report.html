@@ -4,12 +4,7 @@
 {% block title %}{% t "Campaign report" %}{% endblock %}
 {% block page_title %}{% t "Campaign report" %}{% endblock %}
 {% block page_subtitle %}{% t "Campaign spend across the year and by month" %}{% endblock %}
-{% block page_actions %}
-  {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_campaigns_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
-    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
-  {% endif %}
-{% endblock %}
+{% block page_actions %}{% endblock %}
 
 {% block content %}
   <section class="section">

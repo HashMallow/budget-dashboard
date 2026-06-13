@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from decimal import Decimal
 
 from django.db.models import Count, QuerySet, Sum
 
-from marketing.jalali import gregorian_to_jalali
+from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali
 from marketing.models import CostBucket, Invoice, PaymentStage
 from marketing.translations import translate
 
 ZERO = Decimal("0")
+
+_MONTH_LABELS_FA = {number: persian for number, persian, _latin in JALALI_MONTHS}
+_MONTH_LABELS_EN = {number: latin for number, _persian, latin in JALALI_MONTHS}
 
 
 def decimal_sum(queryset: QuerySet, field: str = "amount") -> Decimal:
@@ -40,6 +44,69 @@ def monthly_spend_rows(invoices: QuerySet[Invoice], months: list[tuple[int, str]
         }
         for month_number, label in months
     ]
+
+
+def jalali_month_totals(invoices: QuerySet[Invoice]) -> dict[tuple[int, int], Decimal]:
+    """Sum invoice amounts keyed by (Jalali year, Jalali month)."""
+    totals: dict[tuple[int, int], Decimal] = defaultdict(lambda: ZERO)
+    for row in invoices.values("invoice_date").annotate(total=Sum("amount")):
+        invoice_date = row["invoice_date"]
+        if not invoice_date:
+            continue
+        jy, jm, _ = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)
+        totals[(jy, jm)] += row["total"] or ZERO
+    return totals
+
+
+def _month_window(end_year: int, end_month: int, count: int) -> list[tuple[int, int]]:
+    """Return ``count`` (year, month) pairs ending at (end_year, end_month), oldest first."""
+    sequence: list[tuple[int, int]] = []
+    year, month = end_year, end_month
+    for _ in range(max(count, 1)):
+        sequence.append((year, month))
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+    return list(reversed(sequence))
+
+
+def monthly_spend_window_rows(
+    invoices: QuerySet[Invoice],
+    *,
+    end_year: int,
+    end_month: int,
+    count: int,
+    ui_lang: str,
+    trim_leading_empty: bool = True,
+) -> list[dict]:
+    """Per-month spend over a trailing window that never extends past (end_year, end_month).
+
+    Leading months with no data are dropped so the chart starts where real data begins.
+    Labels include the year only when the window spans more than one Jalali year.
+    """
+    totals = jalali_month_totals(invoices)
+    window = _month_window(end_year, end_month, count)
+    if trim_leading_empty:
+        first_with_data = next((idx for idx, ym in enumerate(window) if totals.get(ym)), None)
+        window = window[first_with_data:] if first_with_data is not None else window[-1:]
+
+    show_year = len({year for year, _month in window}) > 1
+    labels = _MONTH_LABELS_FA if ui_lang == "fa" else _MONTH_LABELS_EN
+    max_total = max((totals.get(ym, ZERO) for ym in window), default=ZERO)
+
+    rows = []
+    for year, month in window:
+        total = totals.get((year, month), ZERO)
+        label = f"{labels[month]} {year}" if show_year else labels[month]
+        rows.append({
+            "month": month,
+            "year": year,
+            "label": label,
+            "total": total,
+            "percent": percent(total, max_total),
+        })
+    return rows
 
 
 def monthly_chart_data(monthly_rows: list[dict]) -> dict[str, list]:

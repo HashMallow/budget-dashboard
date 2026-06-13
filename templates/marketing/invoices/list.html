@@ -9,7 +9,6 @@
     <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ {% t "New invoice" %}</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
     <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF report" %}</a>
   {% endif %}
 {% endblock %}

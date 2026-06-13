@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 from marketing.money_format import COMPACT, FULL, RIAL, TOMAN, unit_label
+from marketing.permissions import can_export
+
+
+def export_access(request):
+    """Expose a global export flag so the topbar Exports menu can render consistently."""
+    user = getattr(request, "user", None)
+    return {"can_export_global": bool(user and user.is_authenticated and can_export(user))}
 
 
 def display_preferences(request):

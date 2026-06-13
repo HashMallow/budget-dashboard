@@ -43,6 +43,12 @@ def _is_gregorian_leap(year: int) -> bool:
     return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
 
 
+def today_jalali() -> tuple[int, int, int]:
+    """Return today's date as a Jalali (year, month, day) tuple."""
+    today = date.today()
+    return gregorian_to_jalali(today.year, today.month, today.day)
+
+
 def gregorian_to_jalali(g_year: int, g_month: int, g_day: int) -> tuple[int, int, int]:
     """Convert a Gregorian (year, month, day) to a Jalali (year, month, day)."""
     gy = g_year - 1600
