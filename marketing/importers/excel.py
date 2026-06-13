@@ -382,14 +382,17 @@ def get_or_create_vendor(name: str, result: ImportResult, dry_run: bool) -> Vend
     return vendor
 
 
-# Canonical spellings for free-text campaign names coming from the workbook, keyed by the
-# normalized (casefolded, whitespace-collapsed) form so variants like "on going" / "on-going" /
-# "ongoing" all resolve to a single consistent display value.
-CAMPAIGN_NAME_ALIASES = {
-    "on going": "Ongoing",
-    "ongoing": "Ongoing",
-    "on going campaign": "Ongoing",
-}
+# Generic workbook placeholders that are not real campaign names. The current source workbook uses
+# "on going" on every invoice row, which creates noisy duplicate "Ongoing (1405)" campaigns.
+GENERIC_CAMPAIGN_NAMES = frozenset({
+    normalize_name("on going"),
+    normalize_name("ongoing"),
+    normalize_name("on going campaign"),
+    normalize_name("ongoing campaign"),
+})
+
+# Canonical spellings for real free-text campaign names coming from the workbook.
+CAMPAIGN_NAME_ALIASES: dict[str, str] = {}
 
 
 def canonical_campaign_name(name: str) -> str:
@@ -397,7 +400,10 @@ def canonical_campaign_name(name: str) -> str:
     text = " ".join((name or "").split())
     if not text:
         return ""
-    return CAMPAIGN_NAME_ALIASES.get(normalize_name(text), text)
+    normalized = normalize_name(text)
+    if normalized in GENERIC_CAMPAIGN_NAMES:
+        return ""
+    return CAMPAIGN_NAME_ALIASES.get(normalized, text)
 
 
 def get_or_create_campaign(

@@ -39,6 +39,57 @@
         <div class="card-value number">{{ budget_total|money }}</div>
         <div class="card-note">{% t "Budget lines for this team" %}</div>
       </div>
+      <div class="card">
+        <div class="card-label">{% t "Budget deviation" %}</div>
+        <div class="card-value number {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</div>
+        <div class="card-note">{% t "Positive deviation means overspend vs plan" %}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Budget vs actual" %}</h2>
+          <p class="section-subtitle">{% t "Monthly budget vs actual spend" %}</p>
+        </div>
+      </div>
+      {% if budget_variance_chart_has_data %}
+        <div class="chart-wrap"><canvas id="teamBudgetVarianceChart" height="280"></canvas></div>
+      {% endif %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{% t "Month" %}</th>
+              <th class="col-num">{% t "Planned" %}</th>
+              <th class="col-num">{% t "Actual" %}</th>
+              <th class="col-num">{% t "Deviation" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in budget_variance_rows %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="col-num money-cell">{{ row.planned|money }}</td>
+                <td class="col-num money-cell">{{ row.actual|money }}</td>
+                <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="empty">{% t "No budget to display." %}</td></tr>
+            {% endfor %}
+            {% if budget_variance_rows %}
+              <tr>
+                <th>{% t "Total" %}</th>
+                <th class="col-num money-cell">{{ budget_total|money }}</th>
+                <th class="col-num money-cell">{{ total_spend|money }}</th>
+                <th class="col-num money-cell {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</th>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -186,40 +237,91 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if monthly_chart_has_data %}
-    {{ monthly_chart|json_script:"team-monthly-chart-data" }}
+  {% if monthly_chart_has_data or budget_variance_chart_has_data %}
+    {% if monthly_chart_has_data %}{{ monthly_chart|json_script:"team-monthly-chart-data" }}{% endif %}
+    {% if budget_variance_chart_has_data %}{{ budget_variance_chart|json_script:"team-budget-variance-chart-data" }}{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       (function () {
-        var el = document.getElementById("teamMonthlyChart");
-        if (!el || typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
+        if (typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
         if (document.body.classList.contains("theme-dark")) {
           Chart.defaults.color = "#cbd5e1";
           Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
         }
-        var data = JSON.parse(document.getElementById("team-monthly-chart-data").textContent);
         var moneyOptions = window.chartMoneyOptions();
-        new Chart(el, {
-          type: "bar",
-          data: {
-            labels: data.labels,
-            datasets: [{
-              label: "Spend",
-              data: data.values,
-              backgroundColor: "#0f766e",
-              borderRadius: 4
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: moneyOptions.plugins.tooltip
+        var el = document.getElementById("teamMonthlyChart");
+        var node = document.getElementById("team-monthly-chart-data");
+        if (el && node) {
+          var data = JSON.parse(node.textContent);
+          new Chart(el, {
+            type: "bar",
+            data: {
+              labels: data.labels,
+              datasets: [{
+                label: "Spend",
+                data: data.values,
+                backgroundColor: "#0f766e",
+                borderRadius: 4
+              }]
             },
-            scales: moneyOptions.scales
-          }
-        });
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: moneyOptions.plugins.tooltip
+              },
+              scales: moneyOptions.scales
+            }
+          });
+        }
+        var budgetEl = document.getElementById("teamBudgetVarianceChart");
+        var budgetNode = document.getElementById("team-budget-variance-chart-data");
+        if (budgetEl && budgetNode) {
+          var budgetData = JSON.parse(budgetNode.textContent);
+          new Chart(budgetEl, {
+            type: "bar",
+            data: {
+              labels: budgetData.labels,
+              datasets: [
+                {
+                  type: "line",
+                  label: "Planned",
+                  data: budgetData.planned,
+                  borderColor: "#2563eb",
+                  backgroundColor: "rgba(37, 99, 235, 0.12)",
+                  tension: 0.25
+                },
+                {
+                  type: "line",
+                  label: "Actual",
+                  data: budgetData.actual,
+                  borderColor: "#0f766e",
+                  backgroundColor: "rgba(15, 118, 110, 0.12)",
+                  tension: 0.25
+                },
+                {
+                  type: "bar",
+                  label: "Deviation",
+                  data: budgetData.deviation,
+                  backgroundColor: budgetData.deviation.map(function (v) {
+                    return v > 0 ? "rgba(180, 35, 24, 0.55)" : "rgba(6, 118, 71, 0.55)";
+                  }),
+                  borderRadius: 4
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom" },
+                tooltip: moneyOptions.plugins.tooltip
+              },
+              scales: moneyOptions.scales
+            }
+          });
+        }
       })();
     </script>
   {% endif %}

@@ -23,11 +23,14 @@ from openpyxl import Workbook
 
 from .analytics import (
     attention_invoices,
+    budget_actual_variance_window_rows,
+    budget_variance_chart_data,
     decimal_sum,
     monthly_chart_data,
     monthly_spend_window_rows,
     overall_spend_pie,
     percent,
+    team_budget_variance_rows,
     team_chart_data,
     team_spend_rows,
     vendor_grouped_rows,
@@ -78,6 +81,7 @@ from .reports.pdf import (
     build_vendor_report_pdf,
 )
 from .table_sort import SortState, apply_ordering, parse_sort, sort_rows
+from .translations import translate
 
 User = get_user_model()
 ZERO = Decimal("0")
@@ -361,15 +365,42 @@ def dashboard(request):
     ).count()
     contracts_expired = contracts.filter(end_date__lt=today).exclude(stage=ContractStage.CANCELLED).count()
 
+    budget_lines = filter_budget_lines_for_user(BudgetLine.objects.all(), request.user)
+    if selected_year.isdigit():
+        budget_lines = budget_lines.filter(year=int(selected_year))
+    if selected_team.isdigit():
+        budget_lines = budget_lines.filter(team_id=int(selected_team))
+
     end_year, end_month, window_count = monthly_trend_window(selected_year)
+    ui_lang = get_ui_lang(request)
     monthly_rows = monthly_spend_window_rows(
         invoices,
         end_year=end_year,
         end_month=end_month,
         count=window_count,
-        ui_lang=get_ui_lang(request),
+        ui_lang=ui_lang,
     )
     monthly_chart = monthly_chart_data(monthly_rows)
+    budget_variance_rows = budget_actual_variance_window_rows(
+        budget_lines,
+        invoices,
+        end_year=end_year,
+        end_month=end_month,
+        count=window_count,
+        ui_lang=ui_lang,
+    )
+    budget_variance_chart = budget_variance_chart_data(budget_variance_rows)
+    budget_total = decimal_sum(budget_lines, "planned_amount")
+    budget_deviation = total_spend - budget_total
+    scoped_teams = visible_team_queryset(request)
+    if selected_team.isdigit():
+        scoped_teams = scoped_teams.filter(pk=int(selected_team))
+    team_budget_rows = team_budget_variance_rows(
+        budget_lines,
+        invoices,
+        scoped_teams,
+        ui_lang=ui_lang,
+    )
 
     team_total_rows = team_spend_rows(invoices)
     team_chart = team_chart_data(team_total_rows, get_ui_lang(request))
@@ -391,7 +422,6 @@ def dashboard(request):
 
     attention = attention_invoices(invoices)
 
-    ui_lang = get_ui_lang(request)
     spend_pie = overall_spend_pie(team_total_rows, referral_total, sms_total, ui_lang)
 
     context = {
@@ -405,9 +435,13 @@ def dashboard(request):
         "invoice_count": invoice_count,
         "referral_total": referral_total,
         "sms_total": sms_total,
+        "budget_total": budget_total,
+        "budget_deviation": budget_deviation,
         "contracts_expiring_soon": contracts_expiring_soon,
         "contracts_expired": contracts_expired,
         "monthly_rows": monthly_rows,
+        "budget_variance_rows": budget_variance_rows,
+        "team_budget_rows": team_budget_rows,
         "team_total_rows": team_total_rows,
         "vendor_rows": vendor_rows,
         "campaign_rows": campaign_rows,
@@ -417,6 +451,10 @@ def dashboard(request):
         "spend_pie_has_data": bool(spend_pie["values"]),
         "monthly_chart": monthly_chart,
         "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
+        "budget_variance_chart": budget_variance_chart,
+        "budget_variance_chart_has_data": any(
+            value for value in budget_variance_chart["planned"] + budget_variance_chart["actual"]
+        ),
         "team_chart": team_chart,
         "team_chart_has_data": bool(team_chart["values"]),
         "can_create_invoice": user_can_create_invoice(request.user),
@@ -764,12 +802,27 @@ def team_dashboard(request, pk: int):
     total_spend = decimal_sum(invoices)
     invoice_count = invoices.count()
     end_year, end_month, window_count = monthly_trend_window(selected_year)
+    ui_lang = get_ui_lang(request)
+    budget_lines = filter_budget_lines_for_user(BudgetLine.objects.filter(team=team), request.user)
+    if selected_year.isdigit():
+        budget_lines = budget_lines.filter(year=int(selected_year))
+    budget_variance_rows = budget_actual_variance_window_rows(
+        budget_lines,
+        invoices,
+        end_year=end_year,
+        end_month=end_month,
+        count=window_count,
+        ui_lang=ui_lang,
+    )
+    budget_variance_chart = budget_variance_chart_data(budget_variance_rows)
+    budget_total = decimal_sum(budget_lines, "planned_amount")
+    budget_deviation = total_spend - budget_total
     monthly_rows = monthly_spend_window_rows(
         invoices,
         end_year=end_year,
         end_month=end_month,
         count=window_count,
-        ui_lang=get_ui_lang(request),
+        ui_lang=ui_lang,
     )
     monthly_chart = monthly_chart_data(monthly_rows)
     vendor_rows = vendor_grouped_rows(invoices)
@@ -780,10 +833,6 @@ def team_dashboard(request, pk: int):
         .order_by("-total")
     )
     attention = attention_invoices(invoices)
-    budget_total = decimal_sum(
-        filter_budget_lines_for_user(BudgetLine.objects.filter(team=team), request.user),
-        "planned_amount",
-    )
 
     export_query = f"team={team.id}"
     if selected_year.isdigit():
@@ -795,10 +844,16 @@ def team_dashboard(request, pk: int):
         "selected_year": selected_year,
         "total_spend": total_spend,
         "budget_total": budget_total,
+        "budget_deviation": budget_deviation,
         "invoice_count": invoice_count,
         "monthly_rows": monthly_rows,
+        "budget_variance_rows": budget_variance_rows,
         "monthly_chart": monthly_chart,
         "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
+        "budget_variance_chart": budget_variance_chart,
+        "budget_variance_chart_has_data": any(
+            value for value in budget_variance_chart["planned"] + budget_variance_chart["actual"]
+        ),
         "vendor_rows": vendor_rows,
         "campaign_rows": campaign_rows,
         "attention_invoices": attention,
@@ -959,6 +1014,23 @@ def budget_list(request):
         default_field="team",
     )
 
+    month_totals = {month_number: ZERO for month_number, _label in months}
+    team_totals: dict[str, Decimal] = defaultdict(lambda: ZERO)
+    for row in pivot.values():
+        for month_number, amount in row["months"].items():
+            month_totals[month_number] += amount
+        team_totals[row["team"]] += row["total"]
+
+    budget_month_chart = {
+        "labels": [label for _month_number, label in months],
+        "values": [float(month_totals[month_number]) for month_number, _label in months],
+    }
+    sorted_team_totals = sorted(team_totals.items(), key=lambda item: item[1], reverse=True)
+    budget_team_chart = {
+        "labels": [translate(name, get_ui_lang(request)) for name, value in sorted_team_totals if value],
+        "values": [float(value) for _name, value in sorted_team_totals if value],
+    }
+
     paginator = Paginator(queryset, 50)
     context = {
         "page_obj": paginator.get_page(request.GET.get("page")),
@@ -969,6 +1041,10 @@ def budget_list(request):
         "filters": {"year": year, "team": team, "q": q},
         "table_sort": sort,
         "table_sort_defaults": {**BUDGET_SORT_DEFAULTS, "total": "desc"},
+        "budget_month_chart": budget_month_chart,
+        "budget_month_chart_has_data": any(budget_month_chart["values"]),
+        "budget_team_chart": budget_team_chart,
+        "budget_team_chart_has_data": bool(budget_team_chart["values"]),
     }
     return render(request, "marketing/budgets/list.html", context)
 

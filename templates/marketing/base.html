@@ -26,6 +26,7 @@
       --amber: #d97706;
       --accent: #b45309;
       --danger: #b42318;
+      --success: #067647;
       --ok: #15803d;
       --shadow: 0 10px 28px rgba(20, 32, 45, 0.08);
       font-family: "Vazirmatn", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif;
@@ -288,7 +289,7 @@
       background: #f8fafc;
       white-space: nowrap;
     }
-    /* Numeric columns: header + cell share the same edge alignment. */
+    /* Numeric columns: header + cell share the same physical edge alignment. */
     .table-wrap th.col-num,
     .table-wrap td.col-num,
     .table-wrap td.number {
@@ -302,6 +303,8 @@
     .table-wrap td.number strong {
       font-weight: 700;
     }
+    .deviation-over { color: var(--danger); font-weight: 600; }
+    .deviation-under { color: var(--success); font-weight: 600; }
     .money-value[title] {
       cursor: help;
       border-bottom: 1px dotted #94a3b8;
@@ -340,10 +343,15 @@
     .sortable-th.is-active .sort-indicator {
       opacity: 1;
     }
-    .table-wrap th.col-num .sortable-th,
     .table-wrap th .sortable-th {
-      justify-content: flex-end;
+      justify-content: flex-start;
       width: 100%;
+    }
+    .table-wrap th.col-num .sortable-th {
+      justify-content: flex-end;
+    }
+    html[dir="ltr"] .table-wrap th.col-num .sortable-th .sort-indicator {
+      order: -1;
     }
     /* Badge / tag columns: flex wrap, aligned with header start edge. */
     .table-wrap th.col-badges,

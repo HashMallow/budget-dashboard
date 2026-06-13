@@ -43,6 +43,16 @@
         <div class="card-note">{{ currency_label }}</div>
       </div>
       <div class="card">
+        <div class="card-label">{% t "Planned budget" %}</div>
+        <div class="card-value number">{{ budget_total|money }}</div>
+        <div class="card-note">{% t "Budget lines imported from the Budget sheet" %}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">{% t "Budget deviation" %}</div>
+        <div class="card-value number {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</div>
+        <div class="card-note">{% t "Positive deviation means overspend vs plan" %}</div>
+      </div>
+      <div class="card">
         <div class="card-label">{% t "Invoice count" %}</div>
         <div class="card-value number">{{ invoice_count }}</div>
         <div class="card-note">{% t "In selected range" %}</div>
@@ -72,6 +82,87 @@
       </div>
     </div>
   </section>
+
+  <section class="section">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Budget vs actual" %}</h2>
+          <p class="section-subtitle">{% t "Monthly budget vs actual spend" %}</p>
+        </div>
+      </div>
+      {% if budget_variance_chart_has_data %}
+        <div class="chart-wrap"><canvas id="budgetVarianceChart" height="280"></canvas></div>
+      {% endif %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{% t "Month" %}</th>
+              <th class="col-num">{% t "Planned" %}</th>
+              <th class="col-num">{% t "Actual" %}</th>
+              <th class="col-num">{% t "Deviation" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in budget_variance_rows %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="col-num money-cell">{{ row.planned|money }}</td>
+                <td class="col-num money-cell">{{ row.actual|money }}</td>
+                <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="empty">{% t "No budget to display." %}</td></tr>
+            {% endfor %}
+            {% if budget_variance_rows %}
+              <tr>
+                <th>{% t "Total" %}</th>
+                <th class="col-num money-cell">{{ budget_total|money }}</th>
+                <th class="col-num money-cell">{{ total_spend|money }}</th>
+                <th class="col-num money-cell {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</th>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {% if team_budget_rows|length > 1 %}
+  <section class="section">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Budget variance by team" %}</h2>
+          <p class="section-subtitle">{% t "Planned budget, actual spend and deviation per team" %}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{% t "Team" %}</th>
+              <th class="col-num">{% t "Planned" %}</th>
+              <th class="col-num">{% t "Actual" %}</th>
+              <th class="col-num">{% t "Deviation" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in team_budget_rows %}
+              <tr>
+                <td>{% t row.team_name %} <a class="btn" style="padding:2px 6px;font-size:11px;" href="{% url 'marketing:team_dashboard' row.team_id %}">{% t "View" %}</a></td>
+                <td class="col-num money-cell">{{ row.planned|money }}</td>
+                <td class="col-num money-cell">{{ row.actual|money }}</td>
+                <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   <section class="section">
     <div class="panel">
@@ -279,10 +370,11 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if spend_pie_has_data or monthly_chart_has_data or team_chart_has_data %}
+  {% if spend_pie_has_data or monthly_chart_has_data or team_chart_has_data or budget_variance_chart_has_data %}
     {% if spend_pie_has_data %}{{ spend_pie|json_script:"spend-pie-data" }}{% endif %}
     {% if monthly_chart_has_data %}{{ monthly_chart|json_script:"monthly-chart-data" }}{% endif %}
     {% if team_chart_has_data %}{{ team_chart|json_script:"team-chart-data" }}{% endif %}
+    {% if budget_variance_chart_has_data %}{{ budget_variance_chart|json_script:"budget-variance-chart-data" }}{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       (function () {
@@ -383,6 +475,57 @@
                 tooltip: teamMoneyOptions.plugins.tooltip
               },
               scales: teamMoneyOptions.scales
+            }
+          });
+        }
+        var budgetEl = document.getElementById("budgetVarianceChart");
+        var budgetNode = document.getElementById("budget-variance-chart-data");
+        if (budgetEl && budgetNode && typeof window.chartMoneyOptions === "function") {
+          var budgetData = JSON.parse(budgetNode.textContent);
+          var budgetMoneyOptions = window.chartMoneyOptions();
+          new Chart(budgetEl, {
+            type: "bar",
+            data: {
+              labels: budgetData.labels,
+              datasets: [
+                {
+                  type: "line",
+                  label: "Planned",
+                  data: budgetData.planned,
+                  borderColor: "#2563eb",
+                  backgroundColor: "rgba(37, 99, 235, 0.12)",
+                  tension: 0.25,
+                  yAxisID: "y"
+                },
+                {
+                  type: "line",
+                  label: "Actual",
+                  data: budgetData.actual,
+                  borderColor: "#0f766e",
+                  backgroundColor: "rgba(15, 118, 110, 0.12)",
+                  tension: 0.25,
+                  yAxisID: "y"
+                },
+                {
+                  type: "bar",
+                  label: "Deviation",
+                  data: budgetData.deviation,
+                  backgroundColor: budgetData.deviation.map(function (v) {
+                    return v > 0 ? "rgba(180, 35, 24, 0.55)" : "rgba(6, 118, 71, 0.55)";
+                  }),
+                  borderRadius: 4,
+                  yAxisID: "y"
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom" },
+                tooltip: budgetMoneyOptions.plugins.tooltip
+              },
+              scales: budgetMoneyOptions.scales
             }
           });
         }

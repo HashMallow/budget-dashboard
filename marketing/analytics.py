@@ -5,8 +5,9 @@ from decimal import Decimal
 
 from django.db.models import Count, QuerySet, Sum
 
+from marketing.cost_buckets import team_spend_cost_buckets
 from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali
-from marketing.models import CostBucket, Invoice, PaymentStage
+from marketing.models import CostBucket, Invoice, PaymentStage, Team
 from marketing.translations import translate
 
 ZERO = Decimal("0")
@@ -56,6 +57,117 @@ def jalali_month_totals(invoices: QuerySet[Invoice]) -> dict[tuple[int, int], De
         jy, jm, _ = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)
         totals[(jy, jm)] += row["total"] or ZERO
     return totals
+
+
+def jalali_budget_month_totals(budget_lines: QuerySet) -> dict[tuple[int, int], Decimal]:
+    """Sum planned budget amounts keyed by (Jalali year, Jalali month)."""
+    totals: dict[tuple[int, int], Decimal] = defaultdict(lambda: ZERO)
+    for row in budget_lines.values("year", "month").annotate(total=Sum("planned_amount")):
+        year = row["year"]
+        month = row["month"]
+        if year and month:
+            totals[(year, month)] += row["total"] or ZERO
+    return totals
+
+
+def budget_actual_variance_window_rows(
+    budget_lines: QuerySet,
+    invoices: QuerySet[Invoice],
+    *,
+    end_year: int,
+    end_month: int,
+    count: int,
+    ui_lang: str,
+    trim_leading_empty: bool = True,
+) -> list[dict]:
+    """Monthly planned budget, actual spend, and deviation over a trailing Jalali window.
+
+    Deviation follows the workbook convention: actual minus planned (positive = overspend).
+    """
+    planned_totals = jalali_budget_month_totals(budget_lines)
+    actual_totals = jalali_month_totals(invoices)
+    window = _month_window(end_year, end_month, count)
+    if trim_leading_empty:
+        first_with_data = next(
+            (
+                idx
+                for idx, ym in enumerate(window)
+                if planned_totals.get(ym) or actual_totals.get(ym)
+            ),
+            None,
+        )
+        window = window[first_with_data:] if first_with_data is not None else window[-1:]
+
+    show_year = len({year for year, _month in window}) > 1
+    labels = _MONTH_LABELS_FA if ui_lang == "fa" else _MONTH_LABELS_EN
+    max_magnitude = max(
+        (
+            max(planned_totals.get(ym, ZERO), actual_totals.get(ym, ZERO))
+            for ym in window
+        ),
+        default=ZERO,
+    )
+
+    rows = []
+    for year, month in window:
+        planned = planned_totals.get((year, month), ZERO)
+        actual = actual_totals.get((year, month), ZERO)
+        deviation = actual - planned
+        label = f"{labels[month]} {year}" if show_year else labels[month]
+        rows.append({
+            "month": month,
+            "year": year,
+            "label": label,
+            "planned": planned,
+            "actual": actual,
+            "deviation": deviation,
+            "percent": percent(max(planned, actual), max_magnitude),
+        })
+    return rows
+
+
+def budget_variance_chart_data(variance_rows: list[dict]) -> dict[str, list]:
+    return {
+        "labels": [row["label"] for row in variance_rows],
+        "planned": [float(row["planned"]) for row in variance_rows],
+        "actual": [float(row["actual"]) for row in variance_rows],
+        "deviation": [float(row["deviation"]) for row in variance_rows],
+    }
+
+
+def team_budget_variance_rows(
+    budget_lines: QuerySet,
+    invoices: QuerySet[Invoice],
+    teams: QuerySet[Team],
+    *,
+    ui_lang: str,
+) -> list[dict]:
+    """Per-team planned budget, actual spend, and deviation for the current filter scope."""
+    planned_by_team = {
+        row["team_id"]: row["total"] or ZERO
+        for row in budget_lines.filter(team__isnull=False)
+        .values("team_id")
+        .annotate(total=Sum("planned_amount"))
+    }
+    rows = []
+    for team in teams:
+        actual = decimal_sum(
+            invoices.filter(team=team, cost_bucket__in=team_spend_cost_buckets(team)),
+        )
+        planned = planned_by_team.get(team.id, ZERO)
+        deviation = actual - planned
+        rows.append({
+            "team_id": team.id,
+            "team_name": translate(team.name, ui_lang),
+            "planned": planned,
+            "actual": actual,
+            "deviation": deviation,
+        })
+    rows.sort(key=lambda item: item["actual"], reverse=True)
+    max_actual = max((row["actual"] for row in rows), default=ZERO)
+    for row in rows:
+        row["percent"] = percent(row["actual"], max_actual)
+    return rows
 
 
 def _month_window(end_year: int, end_month: int, count: int) -> list[tuple[int, int]]:
@@ -180,9 +292,9 @@ def vendor_grouped_rows(invoices: QuerySet[Invoice]) -> list[dict]:
     return vendor_rows
 
 
-def attention_invoices(invoices: QuerySet[Invoice], *, limit: int = 6) -> list[Invoice]:
+def attention_invoices(invoices: QuerySet[Invoice], *, limit: int = 20) -> list[Invoice]:
     return sorted(
-        invoices.filter(payment_stage=PaymentStage.FINANCE_REVIEW)[:20],
+        invoices.filter(payment_stage=PaymentStage.FINANCE_REVIEW),
         key=lambda item: item.days_in_current_stage,
         reverse=True,
     )[:limit]

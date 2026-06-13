@@ -34,6 +34,36 @@
     </form>
   </section>
 
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Planned budget by month" %}</h2>
+          <p class="section-subtitle">{% t "Total planned budget per Persian (Jalali) month" %}</p>
+        </div>
+      </div>
+      {% if budget_month_chart_has_data %}
+        <div class="chart-wrap"><canvas id="budgetMonthChart" height="260"></canvas></div>
+      {% else %}
+        <div class="empty">{% t "No budget to display." %}</div>
+      {% endif %}
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Planned budget by team" %}</h2>
+          <p class="section-subtitle">{% t "Share of planned budget across teams" %}</p>
+        </div>
+      </div>
+      {% if budget_team_chart_has_data %}
+        <div class="chart-wrap"><canvas id="budgetTeamChart" height="260"></canvas></div>
+      {% else %}
+        <div class="empty">{% t "No budget to display." %}</div>
+      {% endif %}
+    </div>
+  </section>
+
   <section class="section panel">
     <div class="section-header">
       <div>
@@ -114,4 +144,85 @@
       </div>
     {% endif %}
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if budget_month_chart_has_data or budget_team_chart_has_data %}
+    {% if budget_month_chart_has_data %}{{ budget_month_chart|json_script:"budget-month-chart-data" }}{% endif %}
+    {% if budget_team_chart_has_data %}{{ budget_team_chart|json_script:"budget-team-chart-data" }}{% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      (function () {
+        if (typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
+        if (document.body.classList.contains("theme-dark")) {
+          Chart.defaults.color = "#cbd5e1";
+          Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
+        }
+        var palette = [
+          "#0f766e", "#2563eb", "#d97706", "#7c3aed", "#0891b2",
+          "#be123c", "#15803d", "#b45309", "#475569", "#9333ea",
+          "#0d9488", "#dc2626"
+        ];
+        var moneyOptions = window.chartMoneyOptions();
+        var monthEl = document.getElementById("budgetMonthChart");
+        var monthNode = document.getElementById("budget-month-chart-data");
+        if (monthEl && monthNode) {
+          var monthData = JSON.parse(monthNode.textContent);
+          new Chart(monthEl, {
+            type: "bar",
+            data: {
+              labels: monthData.labels,
+              datasets: [{
+                label: "Planned budget",
+                data: monthData.values,
+                backgroundColor: "#2563eb",
+                borderRadius: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: moneyOptions.plugins.tooltip
+              },
+              scales: moneyOptions.scales
+            }
+          });
+        }
+        var teamEl = document.getElementById("budgetTeamChart");
+        var teamNode = document.getElementById("budget-team-chart-data");
+        if (teamEl && teamNode) {
+          var teamData = JSON.parse(teamNode.textContent);
+          var teamTooltip = {
+            callbacks: {
+              label: function (ctx) {
+                return ctx.label + ": " + window.formatChartAmount(ctx.parsed);
+              }
+            }
+          };
+          new Chart(teamEl, {
+            type: "doughnut",
+            data: {
+              labels: teamData.labels,
+              datasets: [{
+                data: teamData.values,
+                backgroundColor: teamData.labels.map(function (_, i) { return palette[i % palette.length]; }),
+                borderColor: "#ffffff",
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom" },
+                tooltip: teamTooltip
+              }
+            }
+          });
+        }
+      })();
+    </script>
+  {% endif %}
 {% endblock %}

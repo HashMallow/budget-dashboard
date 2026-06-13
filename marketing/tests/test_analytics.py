@@ -1,13 +1,20 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 
-from marketing.analytics import monthly_spend_rows, monthly_spend_window_rows
+from marketing.analytics import (
+    attention_invoices,
+    budget_actual_variance_window_rows,
+    monthly_spend_rows,
+    monthly_spend_window_rows,
+    team_budget_variance_rows,
+)
 from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_to_gregorian, jalali_year_bounds
-from marketing.models import CostBucket, Invoice, PaymentStage, Team, Vendor
+from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage, Team, Vendor
 
 pytestmark = pytest.mark.django_db
 
@@ -104,3 +111,110 @@ def test_jalali_year_bounds_filter_matches_converted_year():
     filtered = Invoice.objects.filter(invoice_date__range=(start, end))
 
     assert filtered.count() == 1
+
+
+def test_attention_invoices_includes_all_current_finance_review_rows_up_to_default_limit():
+    team = Team.objects.create(name="Growth", slug="growth")
+    vendor = Vendor.objects.create(name="Vendor")
+    now = timezone.now()
+
+    for index in range(12):
+        Invoice.objects.create(
+            invoice_number=f"FR-{index}",
+            vendor=vendor,
+            team=team,
+            category="Performance",
+            cost_bucket=CostBucket.TEAM,
+            invoice_date=date(2026, 6, 3),
+            amount=Decimal("1000"),
+            payment_stage=PaymentStage.FINANCE_REVIEW,
+            stage_changed_at=now - timedelta(days=index),
+        )
+    Invoice.objects.create(
+        invoice_number="PAID-1",
+        vendor=vendor,
+        team=team,
+        category="Performance",
+        cost_bucket=CostBucket.TEAM,
+        invoice_date=date(2026, 6, 3),
+        amount=Decimal("1000"),
+        payment_stage=PaymentStage.PAID,
+    )
+
+    rows = attention_invoices(Invoice.objects.all())
+
+    assert len(rows) == 12
+    assert [invoice.invoice_number for invoice in rows[:3]] == ["FR-11", "FR-10", "FR-9"]
+    assert all(invoice.payment_stage == PaymentStage.FINANCE_REVIEW for invoice in rows)
+
+
+def test_budget_variance_window_matches_planned_actual_and_deviation():
+    team = Team.objects.create(name="Growth", slug="growth")
+    vendor = Vendor.objects.create(name="Vendor")
+    _make_invoice(team, vendor, 1405, 1, "300")
+    _make_invoice(team, vendor, 1405, 2, "100")
+    BudgetLine.objects.create(
+        year=1405,
+        month=1,
+        team=team,
+        category="Performance",
+        planned_amount=Decimal("250"),
+    )
+    BudgetLine.objects.create(
+        year=1405,
+        month=2,
+        team=team,
+        category="Performance",
+        planned_amount=Decimal("150"),
+    )
+
+    rows = budget_actual_variance_window_rows(
+        BudgetLine.objects.all(),
+        Invoice.objects.all(),
+        end_year=1405,
+        end_month=2,
+        count=2,
+        ui_lang="en",
+    )
+
+    assert len(rows) == 2
+    assert rows[0]["planned"] == Decimal("250")
+    assert rows[0]["actual"] == Decimal("300")
+    assert rows[0]["deviation"] == Decimal("50")
+    assert rows[1]["planned"] == Decimal("150")
+    assert rows[1]["actual"] == Decimal("100")
+    assert rows[1]["deviation"] == Decimal("-50")
+
+
+def test_team_budget_variance_rows_include_rollup_bucket_spend():
+    growth = Team.objects.create(name="Growth", slug="growth")
+    vendor = Vendor.objects.create(name="Vendor")
+    Invoice.objects.create(
+        invoice_number="REF-1",
+        vendor=vendor,
+        team=growth,
+        category="Referral",
+        cost_bucket=CostBucket.REFERRAL,
+        invoice_date=jalali_to_gregorian(1405, 1, 10),
+        amount=Decimal("400"),
+        payment_stage=PaymentStage.PAID,
+    )
+    BudgetLine.objects.create(
+        year=1405,
+        month=1,
+        team=growth,
+        category="Performance",
+        planned_amount=Decimal("500"),
+    )
+
+    rows = team_budget_variance_rows(
+        BudgetLine.objects.all(),
+        Invoice.objects.all(),
+        Team.objects.filter(pk=growth.pk),
+        ui_lang="en",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["planned"] == Decimal("500")
+    assert rows[0]["actual"] == Decimal("400")
+    assert rows[0]["deviation"] == Decimal("-100")

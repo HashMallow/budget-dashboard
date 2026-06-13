@@ -104,6 +104,22 @@ def get_item(value, key):
 
 
 @register.filter
+def deviation_class(value) -> str:
+    """CSS helper: positive deviation (overspend) vs under budget."""
+    if value in (None, "", 0):
+        return ""
+    try:
+        numeric = value
+        if numeric > 0:
+            return "deviation-over"
+        if numeric < 0:
+            return "deviation-under"
+    except TypeError:
+        pass
+    return ""
+
+
+@register.filter
 def is_panel_admin(user) -> bool:
     return user_has_admin_access(user)
 
