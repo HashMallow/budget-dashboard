@@ -9,8 +9,9 @@
     <a class="btn primary" href="{% url 'marketing:invoice_create' %}">＋ {% t "New invoice" %}</a>
   {% endif %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}">⇩ {% t "Excel" %}</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}">⎙ {% t "PDF report" %}</a>
+    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:export_workbook_excel' %}?{{ request.GET.urlencode }}" title="{% t 'Excel shaped like the source workbook (all sheets)' %}">⇩ {% t "Workbook (.xlsx)" %}</a>
+    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
   {% endif %}
 {% endblock %}
 
@@ -44,7 +45,7 @@
       <div class="card">
         <div class="card-label">{% t "Total spend" %}</div>
         <div class="card-value number">{{ total_spend|money }}</div>
-        <div class="card-note">IRR</div>
+        <div class="card-note">{{ currency_label }}</div>
       </div>
       <div class="card">
         <div class="card-label">{% t "Invoice count" %}</div>
@@ -88,6 +89,9 @@
           <p class="section-subtitle">{% t "By Persian (Jalali) month" %}</p>
         </div>
       </div>
+      {% if monthly_chart_has_data %}
+        <div class="chart-wrap"><canvas id="monthlyTrendChart" height="260"></canvas></div>
+      {% endif %}
       <div class="bar-list">
         {% for row in monthly_rows %}
           <div class="bar-row">
@@ -106,11 +110,14 @@
           <p class="section-subtitle">{% t "Referral and SMS are excluded from this breakdown" %}</p>
         </div>
       </div>
+      {% if team_chart_has_data %}
+        <div class="chart-wrap"><canvas id="teamSpendChart" height="260"></canvas></div>
+      {% endif %}
       {% if team_total_rows %}
         <div class="bar-list">
           {% for row in team_total_rows %}
             <div class="bar-row">
-              <span>{% t row.team_name %}</span>
+              <span>{% t row.team_name %}{% if row.team_id %} <a class="btn" style="padding:2px 6px;font-size:11px;" href="{% url 'marketing:team_dashboard' row.team_id %}">{% t "View" %}</a>{% endif %}</span>
               <div class="bar-track"><div class="bar-fill" style="--w: {{ row.percent }}%;"></div></div>
               <strong class="number">{{ row.total|money }}</strong>
             </div>
@@ -132,20 +139,20 @@
         <a class="btn" href="{% url 'marketing:vendor_report' %}">{% t "View all" %}</a>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               <th>{% t "Vendor" %}</th>
-              <th>{% t "Count" %}</th>
-              <th>{% t "Amount" %}</th>
+              <th class="col-num">{% t "Count" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in vendor_rows %}
               <tr>
                 <td>{{ row.vendor__name }}</td>
-                <td class="number">{{ row.invoice_count }}</td>
-                <td class="number">{{ row.total|money }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
             {% empty %}
               <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
@@ -164,22 +171,22 @@
         <a class="btn" href="{% url 'marketing:campaign_report' %}">{% t "View all" %}</a>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table campaign-table">
           <thead>
             <tr>
               <th>{% t "Campaign" %}</th>
-              <th>{% t "Year" %}</th>
-              <th>{% t "Invoices" %}</th>
-              <th>{% t "Amount" %}</th>
+              <th class="col-num">{% t "Year" %}</th>
+              <th class="col-num">{% t "Invoices" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in campaign_rows %}
               <tr>
                 <td>{{ row.campaign__name }}</td>
-                <td class="number">{{ row.campaign__year }}</td>
-                <td class="number">{{ row.invoice_count }}</td>
-                <td class="number">{{ row.total|money }}</td>
+                <td class="col-num">{{ row.campaign__year }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
             {% empty %}
               <tr><td colspan="4" class="empty">{% t "No campaigns recorded in this range." %}</td></tr>
@@ -199,20 +206,20 @@
         </div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               <th>{% t "Stage" %}</th>
-              <th>{% t "Count" %}</th>
-              <th>{% t "Amount" %}</th>
+              <th class="col-num">{% t "Count" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in stage_rows %}
               <tr>
                 <td><span class="badge">{% t row.payment_stage|stage_label %}</span></td>
-                <td class="number">{{ row.invoice_count }}</td>
-                <td class="number">{{ row.total|money }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
             {% empty %}
               <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
@@ -230,12 +237,12 @@
         </div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               <th>{% t "Invoice" %}</th>
               <th>{% t "Vendor" %}</th>
-              <th>{% t "Days in stage" %}</th>
+              <th class="col-num">{% t "Days in stage" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -243,7 +250,7 @@
               <tr>
                 <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
                 <td>{{ invoice.vendor.name }}</td>
-                <td class="number">{{ invoice.days_in_current_stage }}</td>
+                <td class="col-num">{{ invoice.days_in_current_stage }}</td>
               </tr>
             {% empty %}
               <tr><td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
@@ -256,48 +263,113 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if spend_pie_has_data %}
-    {{ spend_pie|json_script:"spend-pie-data" }}
+  {% if spend_pie_has_data or monthly_chart_has_data or team_chart_has_data %}
+    {% if spend_pie_has_data %}{{ spend_pie|json_script:"spend-pie-data" }}{% endif %}
+    {% if monthly_chart_has_data %}{{ monthly_chart|json_script:"monthly-chart-data" }}{% endif %}
+    {% if team_chart_has_data %}{{ team_chart|json_script:"team-chart-data" }}{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       (function () {
-        var el = document.getElementById("spendPie");
-        if (!el || typeof Chart === "undefined") { return; }
-        var data = JSON.parse(document.getElementById("spend-pie-data").textContent);
+        if (typeof Chart === "undefined") { return; }
+        if (document.body.classList.contains("theme-dark")) {
+          Chart.defaults.color = "#cbd5e1";
+          Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
+        }
         var palette = [
           "#0f766e", "#2563eb", "#d97706", "#7c3aed", "#0891b2",
           "#be123c", "#15803d", "#b45309", "#475569", "#9333ea",
           "#0d9488", "#dc2626"
         ];
-        new Chart(el, {
-          type: "doughnut",
-          data: {
-            labels: data.labels,
-            datasets: [{
-              data: data.values,
-              backgroundColor: data.labels.map(function (_, i) { return palette[i % palette.length]; }),
-              borderColor: "#ffffff",
-              borderWidth: 2
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { position: "bottom", labels: { font: { family: "Vazirmatn, Segoe UI, sans-serif" } } },
-              tooltip: {
+        var pieEl = document.getElementById("spendPie");
+        var pieNode = document.getElementById("spend-pie-data");
+        if (pieEl && pieNode) {
+          var pieData = JSON.parse(pieNode.textContent);
+          var pieTooltip = typeof window.formatChartAmount === "function"
+            ? {
                 callbacks: {
                   label: function (ctx) {
-                    var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-                    var pct = total ? Math.round((ctx.parsed / total) * 100) : 0;
-                    var value = ctx.parsed.toLocaleString("en-US");
-                    return " " + ctx.label + ": " + value + " (" + pct + "%)";
+                    return ctx.label + ": " + window.formatChartAmount(ctx.parsed);
                   }
                 }
               }
+            : undefined;
+          new Chart(pieEl, {
+            type: "doughnut",
+            data: {
+              labels: pieData.labels,
+              datasets: [{
+                data: pieData.values,
+                backgroundColor: pieData.labels.map(function (_, i) { return palette[i % palette.length]; }),
+                borderColor: "#ffffff",
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "bottom", labels: { font: { family: "Vazirmatn, Segoe UI, sans-serif" } } },
+                tooltip: pieTooltip
+              }
             }
-          }
-        });
+          });
+        }
+        var monthlyEl = document.getElementById("monthlyTrendChart");
+        var monthlyNode = document.getElementById("monthly-chart-data");
+        if (monthlyEl && monthlyNode && typeof window.chartMoneyOptions === "function") {
+          var monthlyData = JSON.parse(monthlyNode.textContent);
+          var moneyOptions = window.chartMoneyOptions();
+          new Chart(monthlyEl, {
+            type: "line",
+            data: {
+              labels: monthlyData.labels,
+              datasets: [{
+                label: "Spend",
+                data: monthlyData.values,
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37, 99, 235, 0.15)",
+                fill: true,
+                tension: 0.25
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: moneyOptions.plugins.tooltip
+              },
+              scales: moneyOptions.scales
+            }
+          });
+        }
+        var teamEl = document.getElementById("teamSpendChart");
+        var teamNode = document.getElementById("team-chart-data");
+        if (teamEl && teamNode && typeof window.chartMoneyOptions === "function") {
+          var teamData = JSON.parse(teamNode.textContent);
+          var teamMoneyOptions = window.chartMoneyOptions();
+          new Chart(teamEl, {
+            type: "bar",
+            data: {
+              labels: teamData.labels,
+              datasets: [{
+                label: "Spend",
+                data: teamData.values,
+                backgroundColor: teamData.labels.map(function (_, i) { return palette[i % palette.length]; }),
+                borderRadius: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: teamMoneyOptions.plugins.tooltip
+              },
+              scales: teamMoneyOptions.scales
+            }
+          });
+        }
       })();
     </script>
   {% endif %}

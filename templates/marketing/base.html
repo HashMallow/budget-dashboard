@@ -29,6 +29,39 @@
       --shadow: 0 10px 28px rgba(20, 32, 45, 0.08);
       font-family: "Vazirmatn", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif;
     }
+    /* Dark theme: override design tokens + the few hard-coded light surfaces. The sidebar is
+       already dark in both themes, so it is intentionally left as-is. */
+    body.theme-dark {
+      color-scheme: dark;
+      --bg: #0f141a;
+      --surface: #1b232d;
+      --surface-soft: #232e3a;
+      --text: #e6edf3;
+      --muted: #9fb0bf;
+      --line: #2c3947;
+      --primary: #14b8a6;
+      --primary-dark: #0d9488;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      background: var(--bg);
+    }
+    body.theme-dark .topbar { background: rgba(27, 35, 45, 0.9); }
+    body.theme-dark .message { background: #0c2f33; border-color: #155e63; color: #a5f3fc; }
+    body.theme-dark .form-control,
+    body.theme-dark input,
+    body.theme-dark select,
+    body.theme-dark textarea,
+    body.theme-dark .table-wrap,
+    body.theme-dark .settings-panel select { background: var(--surface); color: var(--text); }
+    body.theme-dark .table-wrap th,
+    body.theme-dark .table-wrap tbody th { background: var(--surface-soft); color: var(--muted); }
+    body.theme-dark .panel { border-top-color: var(--line); }
+    body.theme-dark .badge { color: var(--text); }
+    body.theme-dark .badge.ok { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    body.theme-dark .badge.warn { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    body.theme-dark .badge.danger { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+    body.theme-dark .badge.info { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+    body.theme-dark .btn.danger { background: rgba(239, 68, 68, 0.12); border-color: #7f1d1d; color: #f87171; }
+    body.theme-dark .bar-track { background: var(--surface-soft); }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -135,6 +168,40 @@
     }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .inline-form { display: inline-flex; margin: 0; }
+    .settings-menu { position: relative; }
+    .settings-menu > summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    .settings-menu > summary::-webkit-details-marker { display: none; }
+    .settings-menu[open] > summary { background: var(--surface); border-color: var(--primary); }
+    .settings-panel {
+      position: absolute;
+      inset-inline-end: 0;
+      top: calc(100% + 6px);
+      z-index: 30;
+      min-width: 230px;
+      padding: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+      display: grid;
+      gap: 10px;
+    }
+    .settings-panel .settings-row { display: grid; gap: 4px; }
+    .settings-panel label { color: var(--muted); font-size: 12px; }
+    .settings-panel select {
+      min-height: 34px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+    .settings-panel .settings-save { width: 100%; margin-top: 2px; }
     .btn {
       display: inline-flex;
       align-items: center;
@@ -178,11 +245,146 @@
     .form-grid .wide { grid-column: 1 / -1; }
     .form-errors, .errorlist { color: var(--danger); margin: 4px 0 0; padding: 0; list-style: none; }
     .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-    table { width: 100%; border-collapse: collapse; min-width: 760px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
-    th { background: #f8fafc; color: #475569; font-size: 12px; font-weight: 700; white-space: nowrap; }
-    tr:last-child td { border-bottom: 0; }
-    .number { direction: ltr; unicode-bidi: isolate; text-align: left; font-variant-numeric: tabular-nums; }
+    .table-wrap table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+    }
+    .table-wrap th,
+    .table-wrap td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: start;
+    }
+    .table-wrap th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .table-wrap tr:last-child td { border-bottom: 0; }
+    .table-wrap tbody th {
+      width: 34%;
+      font-weight: 700;
+      color: #475569;
+      background: #f8fafc;
+      white-space: nowrap;
+    }
+    /* Numeric columns: header + cell share the same edge alignment. */
+    .table-wrap th.col-num,
+    .table-wrap td.col-num,
+    .table-wrap td.number {
+      text-align: end;
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .table-wrap td.col-num.money-cell,
+    .table-wrap td.number strong {
+      font-weight: 700;
+    }
+    .money-value[title] {
+      cursor: help;
+      border-bottom: 1px dotted #94a3b8;
+    }
+    .money-compact-fa {
+      unicode-bidi: isolate;
+      white-space: nowrap;
+      display: inline-block;
+    }
+    .data-table thead th {
+      vertical-align: bottom;
+    }
+    .sortable-th {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: inherit;
+      text-decoration: none;
+      font: inherit;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .sortable-th:hover {
+      color: var(--primary);
+    }
+    .sortable-th.is-active {
+      color: var(--primary);
+    }
+    .sort-indicator {
+      display: inline-block;
+      min-width: 0.85em;
+      opacity: 0.35;
+      font-size: 0.85em;
+      line-height: 1;
+    }
+    .sortable-th.is-active .sort-indicator {
+      opacity: 1;
+    }
+    .table-wrap th.col-num .sortable-th,
+    .table-wrap th .sortable-th {
+      justify-content: flex-end;
+      width: 100%;
+    }
+    /* Badge / tag columns: flex wrap, aligned with header start edge. */
+    .table-wrap th.col-badges,
+    .table-wrap td.col-badges {
+      text-align: start;
+    }
+    .table-wrap td.col-actions,
+    .table-wrap th.col-actions {
+      text-align: center;
+      white-space: nowrap;
+    }
+    .data-table { table-layout: fixed; }
+    .data-table td { overflow-wrap: anywhere; }
+    .data-table td.col-num,
+    .data-table td.number {
+      overflow-wrap: normal;
+    }
+    .badge-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 4px;
+      min-width: 0;
+    }
+    .vendor-table { min-width: 920px; }
+    .vendor-table .col-vendor { width: 22%; }
+    .vendor-table .col-count { width: 80px; }
+    .vendor-table .col-invoices { width: 26%; }
+    .vendor-table .col-stages { width: 22%; }
+    .vendor-table .col-amount { width: 168px; }
+    .campaign-table { min-width: 720px; }
+    .campaign-table .col-campaign { width: auto; }
+    .campaign-table .col-year { width: 88px; }
+    .campaign-table .col-team { width: 18%; }
+    .campaign-table .col-invoices { width: 96px; }
+    .campaign-table .col-amount { width: 168px; }
+    .invoice-table { min-width: 980px; }
+    .invoice-table .col-number { width: 110px; }
+    .invoice-table .col-vendor { width: 18%; }
+    .invoice-table .col-team { width: 12%; }
+    .invoice-table .col-category { width: 16%; }
+    .invoice-table .col-date { width: 108px; }
+    .invoice-table .col-amount { width: 148px; }
+    .invoice-table .col-stage { width: 128px; }
+    .invoice-table .col-days { width: 72px; }
+    .teams-table { min-width: 640px; }
+    .teams-table .col-team { width: auto; }
+    .teams-table .col-count { width: 96px; }
+    .teams-table .col-amount { width: 168px; }
+    .teams-table .col-actions { width: 180px; }
+    /* Card / stat numbers (outside tables) */
+    .number {
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-variant-numeric: tabular-nums;
+    }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -225,7 +427,7 @@
       .content { padding: 16px; }
       .grid.cards, .grid.two, .grid.three, .form-grid, .filter-form { grid-template-columns: 1fr; }
       .bar-row { grid-template-columns: 1fr; gap: 6px; }
-      table { min-width: 680px; }
+      table { min-width: 640px; }
     }
     @media print {
       .sidebar, .topbar, .no-print { display: none !important; }
@@ -237,7 +439,7 @@
     }
   </style>
 </head>
-<body class="ui-{{ ui_lang|default:'fa' }} digits-{{ number_locale|default:'fa' }}">
+<body class="ui-{{ ui_lang|default:'fa' }} digits-{{ number_locale|default:'fa' }} money-{{ money_format|default:'compact' }} theme-{{ theme|default:'light' }}">
   <div class="app-shell">
     <aside class="sidebar no-print">
       <div class="brand">
@@ -252,6 +454,9 @@
             </a>
             <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' %}active{% endif %}">
               <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>
+            </a>
+            <a href="{% url 'marketing:team_list' %}" class="{% if current == 'team_list' or current == 'team_dashboard' %}active{% endif %}">
+              <span class="nav-icon">◉</span><span>{% t "Teams" %}</span>
             </a>
             <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
               <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
@@ -292,17 +497,44 @@
           <p>{% block page_subtitle %}{% t "Monitor spend, invoices and payment status" %}{% endblock %}</p>
         </div>
         <div class="actions">
-          <form class="inline-form" method="post" action="{% url 'marketing:set_display_preferences' %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-            {% if ui_lang == "fa" %}
-              <input type="hidden" name="ui_lang" value="en">
-              <button class="btn" type="submit">English</button>
-            {% else %}
-              <input type="hidden" name="ui_lang" value="fa">
-              <button class="btn" type="submit">فارسی</button>
-            {% endif %}
-          </form>
+          <details class="settings-menu">
+            <summary class="btn" aria-haspopup="true">⚙ {% t "Settings" %}</summary>
+            <div class="settings-panel">
+              <form method="post" action="{% url 'marketing:set_display_preferences' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <div class="settings-row">
+                  <label for="set-ui-lang">{% t "Language" %}</label>
+                  <select id="set-ui-lang" name="ui_lang">
+                    <option value="en" {% if ui_lang == "en" %}selected{% endif %}>English</option>
+                    <option value="fa" {% if ui_lang == "fa" %}selected{% endif %}>فارسی</option>
+                  </select>
+                </div>
+                <div class="settings-row">
+                  <label for="set-money-format">{% t "Amount format" %}</label>
+                  <select id="set-money-format" name="money_format">
+                    <option value="compact" {% if money_format == "compact" %}selected{% endif %}>{% t "Compact (K/M/B)" %}</option>
+                    <option value="full" {% if money_format == "full" %}selected{% endif %}>{% t "Full (with commas)" %}</option>
+                  </select>
+                </div>
+                <div class="settings-row">
+                  <label for="set-currency-unit">{% t "Currency unit" %}</label>
+                  <select id="set-currency-unit" name="currency_unit">
+                    <option value="rial" {% if currency_unit == "rial" %}selected{% endif %}>{% t "Rial (IRR)" %}</option>
+                    <option value="toman" {% if currency_unit == "toman" %}selected{% endif %}>{% t "Toman" %}</option>
+                  </select>
+                </div>
+                <div class="settings-row">
+                  <label for="set-theme">{% t "Theme" %}</label>
+                  <select id="set-theme" name="theme">
+                    <option value="light" {% if theme == "light" %}selected{% endif %}>{% t "Light" %}</option>
+                    <option value="dark" {% if theme == "dark" %}selected{% endif %}>{% t "Dark" %}</option>
+                  </select>
+                </div>
+                <button class="btn primary settings-save" type="submit">{% t "Apply" %}</button>
+              </form>
+            </div>
+          </details>
           {% block page_actions %}{% endblock %}
         </div>
       </header>
@@ -319,6 +551,75 @@
       </div>
     </main>
   </div>
+  <script>
+    (function () {
+      window.MARKETING_MONEY = {
+        mode: "{{ money_format|default:'compact' }}",
+        lang: "{{ ui_lang|default:'en' }}",
+        unit: "{{ currency_unit|default:'rial' }}"
+      };
+      window.formatChartAmount = function (value) {
+        var n = Number(value);
+        if (!isFinite(n)) { return String(value); }
+        var cfg = window.MARKETING_MONEY;
+        if (cfg.unit === "toman") { n = n / 10; }
+        if (cfg.mode !== "compact") {
+          return Math.round(n).toLocaleString("en-US");
+        }
+        var abs = Math.abs(n);
+        if (abs < 1000) { return Math.round(n).toLocaleString("en-US"); }
+        var scales = [
+          [1e12, 1e12, "T", " تریلیون"],
+          [1e9, 1e9, "B", " میلیارد"],
+          [1e6, 1e6, "M", " میلیون"],
+          [1e3, 1e3, "K", " هزار"]
+        ];
+        for (var i = 0; i < scales.length; i++) {
+          var threshold = scales[i][0];
+          var divisor = scales[i][1];
+          if (abs >= threshold) {
+            var scaled = n / divisor;
+            var ratio = abs / divisor;
+            var decimals = ratio >= 100 ? 0 : (ratio >= 10 ? 1 : 2);
+            var formatted = scaled.toFixed(decimals).replace(/\.?0+$/, "");
+            if (cfg.lang === "fa") {
+              var suffix = scales[i][3].trim();
+              return "\u202B" + formatted + " " + suffix + "\u202C";
+            }
+            return formatted + scales[i][2];
+          }
+        }
+        return Math.round(n).toLocaleString("en-US");
+      };
+      window.chartMoneyOptions = function () {
+        return {
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  var parsed = ctx.parsed;
+                  var amount = parsed && typeof parsed === "object"
+                    ? (parsed.y != null ? parsed.y : parsed)
+                    : parsed;
+                  var label = ctx.label || ctx.dataset.label || "";
+                  var formatted = window.formatChartAmount(amount);
+                  return label ? (label + ": " + formatted) : formatted;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (value) { return window.formatChartAmount(value); }
+              }
+            }
+          }
+        };
+      };
+    })();
+  </script>
   {% block extra_scripts %}{% endblock %}
   {% if number_locale == "fa" %}
   <script>

@@ -8,6 +8,9 @@ from .models import (
     Invoice,
     InvoiceAttachment,
     InvoiceStatusHistory,
+    Requester,
+    SpendCategory,
+    SubTeam,
     Team,
     TeamAlias,
     UserTeamAccess,
@@ -36,6 +39,31 @@ class TeamAliasAdmin(admin.ModelAdmin):
 class VendorAdmin(admin.ModelAdmin):
     list_display = ("name", "normalized_name", "tax_id", "updated_at")
     search_fields = ("name", "normalized_name", "tax_id")
+    readonly_fields = ("normalized_name",)
+
+
+@admin.register(SpendCategory)
+class SpendCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "normalized_name", "is_active", "source_sheet", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "normalized_name")
+    readonly_fields = ("normalized_name",)
+
+
+@admin.register(SubTeam)
+class SubTeamAdmin(admin.ModelAdmin):
+    list_display = ("name", "team", "is_active", "source_sheet", "updated_at")
+    list_filter = ("is_active", "team")
+    search_fields = ("name", "normalized_name")
+    autocomplete_fields = ("team",)
+    readonly_fields = ("normalized_name",)
+
+
+@admin.register(Requester)
+class RequesterAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_active", "source_sheet", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "normalized_name")
     readonly_fields = ("normalized_name",)
 
 

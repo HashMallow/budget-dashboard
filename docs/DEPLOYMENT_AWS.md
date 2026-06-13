@@ -4,8 +4,7 @@ A concrete, copy-pasteable runbook for putting **this** project — the Marketin
 (Django + gunicorn, server-rendered templates) — online. It is written around what is already in
 this repo, not a generic tutorial.
 
-The AWS learning whitepaper in the repo
-(`AWS_Infrastructure_Research_Project_Combined_CLI_UI_Go_Worker_Edition.pdf`) is used only as
+The AWS learning whitepaper/roadmap files in the repo are used only as
 **background** (cost discipline, CLI-first habits, the "add managed services later" philosophy).
 Where its assumptions differ from this app, see [§9 — How this maps to the PDF](#9-how-this-maps-to-the-pdf).
 
@@ -28,7 +27,7 @@ These are the deployment-relevant facts about this codebase (don't assume the ge
 | Uploaded media | invoice images + payment proofs + raw XLSX, on disk under `media/` (move to S3 later, §6) |
 | DB (dev) | SQLite (`db.sqlite3`) |
 | DB (prod) | any Postgres via `DATABASE_URL` (psycopg3 is in the `prod` extra) |
-| Initial data | imported from the workbook (`your_workbook.xlsx`) via a management command |
+| Initial data | imported from the workbook via management commands; `load-data` imports invoice/budget facts and seeds Data-sheet lookups |
 | Config | all via env vars (see §3); `config/settings.py` flips to "prod mode" when `DJANGO_DEBUG=false` |
 | Locale defaults | `TIME_ZONE=Asia/Tehran`, `DEFAULT_CURRENCY=IRR` (both env-overridable) |
 
@@ -47,12 +46,22 @@ proxy that terminates HTTPS**. You do *not* need ECS/EKS/CloudFront/an S3 static
 | **AWS Lightsail** | Low | Flat, predictable | You want AWS but a fixed monthly bill |
 | **Docker on a cheap VPS** (Hetzner/DigitalOcean) | Medium | Very low | Cost is the top priority |
 
-This guide walks the **single EC2 + Caddy** path in full because it's the most instructive AWS
-option and maps cleanly onto how the app actually runs. §7 lists the managed-AWS upgrades
-(RDS, S3, CloudWatch, CI/CD, ALB) to add **only when you need them**. §8 covers the PaaS shortcut.
+**Chosen path for this project:** use the AWS learning path:
 
-> If you want the absolute fastest route and don't specifically need AWS, jump to
-> [§8 — PaaS shortcut](#8-paas-shortcut-fastest-to-live).
+```text
+1. EC2 + Caddy + Gunicorn
+2. Add RDS PostgreSQL
+3. Add S3 for uploads/media
+4. Add CloudWatch + CI/CD
+5. Add ALB / multiple instances / Terraform only if scale or reliability requires it
+```
+
+This guide walks the **single EC2 + Caddy** path in full because it is the most instructive AWS
+option and maps cleanly onto how the app actually runs. §6 lists the managed-AWS upgrades
+(RDS, S3, CloudWatch, CI/CD, ALB) in the order we want to add them. §8 covers the PaaS shortcut
+only as a fallback.
+
+For this project, continue with §4 first, then add §6A and §6B after the EC2 version is stable.
 
 ---
 
@@ -142,12 +151,13 @@ uv run python manage.py collectstatic --noinput         # = make collectstatic
 uv run python manage.py createsuperuser                 # REAL admin — never ship admin/admin12345
 
 # Load the initial spend data from the workbook (preview first)
-uv run python manage.py import_marketing_excel --dry-run --file "marketing_spend_workbook.xlsx"
-uv run python manage.py import_marketing_excel          --file "marketing_spend_workbook.xlsx"
+make load-data-dry-run FILE="marketing_spend_workbook.xlsx"
+make load-data         FILE="marketing_spend_workbook.xlsx"
 ```
 
 > The importer is idempotent on `invoice_number + vendor`, so re-running it updates rather than
-> duplicates. Excel is an import format only — after this, the database is the source of truth.
+> duplicates. The reference seed upserts vendors/categories/sub-teams/requesters by normalized name.
+> Excel is an import format only — after this, the database is the source of truth.
 
 ### 4.4 Run gunicorn as a service
 `/etc/systemd/system/marketing.service`:
@@ -205,14 +215,33 @@ trusts via `SECURE_PROXY_SSL_HEADER` — so the `SECURE_SSL_REDIRECT` setting wo
   an invoice with an uploaded image, and an Excel export all work.
 
 ### 4.7 Deploying updates later
+
+Manual deployment workflow for the first server:
+
 ```bash
 cd /home/ubuntu/marketing
+make check                            # optional on the server; mandatory locally/CI before deploy
 git pull
 make prod-install                     # only if dependencies changed
 set -a; source .env; set +a
 uv run python manage.py migrate
 uv run python manage.py collectstatic --noinput
 sudo systemctl restart marketing
+```
+
+CI/CD later should automate the same shape:
+
+```text
+push to Git
+    |
+    v
+run make check
+    |
+    v
+deploy only if checks pass
+    |
+    v
+pull code, install deps, migrate, collectstatic, restart
 ```
 
 > **Cost hygiene:** stop the instance when it's idle for long periods; watch EBS volume and public
@@ -234,7 +263,7 @@ Either way, after pointing `DATABASE_URL` at Postgres: `migrate`, then re-run th
 
 ## 6. Managed-AWS upgrades (add only when needed)
 
-### 6A. RDS PostgreSQL
+### 6A. RDS PostgreSQL — second step after EC2 works
 Use when you want managed backups, failover, or to separate DB from the web box.
 1. Create the smallest dev-size RDS PostgreSQL in a **private** subnet; tag it.
 2. Security group: allow `5432` **only** from the EC2 instance's security group.
@@ -248,7 +277,7 @@ aws rds describe-db-instances \
   --output table
 ```
 
-### 6B. S3 for uploaded media
+### 6B. S3 for uploaded media — third step after RDS works
 Use when uploads must survive instance replacement, or when you run more than one web box.
 1. Create a bucket with **Block Public Access ON**; tag it.
 2. Give the EC2 instance an IAM **role** (not access keys) with least-privilege access to that bucket.
@@ -259,7 +288,7 @@ Use when uploads must survive instance replacement, or when you run more than on
 aws s3api head-object --bucket YOUR-BUCKET --key imports/sample.xlsx
 ```
 
-### 6C. Operations layer (later, in order)
+### 6C. Operations layer — after EC2 + RDS + S3
 - **CloudWatch:** ship gunicorn/Caddy logs; alarm on 5xx; **set log retention** (otherwise it bills forever).
 - **CI/CD:** GitHub Actions with **OIDC** (no long-lived AWS keys) running `make check` then deploying over SSH.
 - **ALB + 2 instances:** only for zero-downtime/redundancy (the ALB has a standing hourly cost).

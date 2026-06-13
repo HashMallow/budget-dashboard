@@ -10,6 +10,7 @@ line up with the wrong (often empty) buckets.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 # Jalali month names in Persian, with a Latin transliteration for English UIs.
@@ -28,8 +29,14 @@ JALALI_MONTHS: list[tuple[int, str, str]] = [
     (12, "اسفند", "Esfand"),
 ]
 
+_DIGIT_TRANSLATION = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
 _J_DAYS_IN_MONTH = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29]
 _G_DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+
+def normalize_digits(value: object) -> str:
+    """Return text with Persian/Arabic digits converted to ASCII digits."""
+    return str(value or "").translate(_DIGIT_TRANSLATION).strip()
 
 
 def _is_gregorian_leap(year: int) -> bool:
@@ -108,6 +115,30 @@ def jalali_to_gregorian(j_year: int, j_month: int, j_day: int) -> date:
         gd -= month_length
         gregorian_month += 1
     raise ValueError("Could not convert Jalali date")
+
+
+def parse_jalali_date_text(value: object) -> date | None:
+    """Parse Jalali text like 1405/01/10 or ۱۴۰۵-۰۱-۱۰ into a Gregorian date."""
+    text = normalize_digits(value)
+    match = re.fullmatch(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", text)
+    if not match:
+        match = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", text)
+    if not match:
+        return None
+    year, month, day = (int(part) for part in match.groups())
+    if not 1200 <= year <= 1600:
+        return None
+    try:
+        return jalali_to_gregorian(year, month, day)
+    except ValueError:
+        return None
+
+
+def format_jalali_date(value: date | None) -> str:
+    if value is None:
+        return ""
+    year, month, day = gregorian_to_jalali(value.year, value.month, value.day)
+    return f"{year:04d}/{month:02d}/{day:02d}"
 
 
 def jalali_year_of(value: date) -> int:

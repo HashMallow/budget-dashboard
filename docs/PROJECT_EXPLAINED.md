@@ -59,7 +59,7 @@ Excel workbook (.xlsx)            docs/discovery/column_mapping.yml
   marketing/views.py   --- filters data by the logged-in user's permissions,
         |                   aggregates totals for charts/reports
         v
-  templates/marketing/*.html  --- renders HTML (bilingual), pie chart via Chart.js
+  templates/marketing/*.html  --- renders HTML (bilingual), charts via Chart.js
         |
         v
   Browser
@@ -118,10 +118,13 @@ marketing/                         The single app that holds all the business lo
   translations.py    English→Persian dictionary used by the {% t %} template tag.
   jalali.py          Gregorian↔Jalali (Persian) calendar conversion for monthly grouping.
   admin.py           Registers models in Django's built-in /admin/ (fallback maintenance UI).
+  analytics.py       Server-side aggregation helpers for monthly/team/pie/vendor dashboard data.
+  reference_data.py  Seeds lookup rows from the workbook Data sheet.
   importers/excel.py The Excel importer: read mapping, normalize, alias teams, canonicalize
                      campaign names, idempotent upsert, raw-row traceability.
   management/commands/   CLI commands: import_marketing_excel, seed_auth_groups,
-                         bootstrap_dev_admin (the make targets call these).
+                         seed_reference_data, bootstrap_dev_admin (the make targets call these).
+  reports/pdf.py     ReportLab PDF builder for the dashboard summary.
   templatetags/marketing_format.py  Custom template tags/filters: {% t %} (translate),
                      {% form_errors %}, money/number formatting.
   migrations/        Versioned schema + data migrations (incl. team aliases, campaign canonicalize).
@@ -250,6 +253,44 @@ This is a deliberately lightweight alternative to Django's full `gettext`/`.po` 
   / when `DEBUG=False`. So dev stays simple, prod gets hardened.
 - Deployment specifics live in `docs/DEPLOYMENT_AWS.md`.
 
+### 6.9 CSRF protection (why forms include `{% csrf_token %}`)
+
+CSRF means **Cross-Site Request Forgery**. It protects logged-in users from another website trying
+to submit a dangerous form through their browser.
+
+```text
+Good request:
+
+You open /invoices/create/
+        |
+        v
+Django renders a hidden CSRF token inside the form
+        |
+        v
+You submit the form from this same site
+        |
+        v
+Django sees the token matches and accepts the POST
+
+Blocked request:
+
+You are logged in here
+        |
+        v
+Another website tries to POST "create invoice" or "import workbook"
+        |
+        v
+It does not have the valid CSRF token
+        |
+        v
+Django rejects the request before the view changes data
+```
+
+It is not a login system by itself. Authentication answers “who are you?”; CSRF protection answers
+“did this state-changing POST really come from one of our pages?” That is why create/edit/import,
+upload, logout, stage-update, preference, and user-management forms use POST plus `{% csrf_token %}`.
+GET links should only read data.
+
 ---
 
 ## 7. Run it and poke at it yourself
@@ -257,7 +298,7 @@ This is a deliberately lightweight alternative to Django's full `gettext`/`.po` 
 ```bash
 make setup        # install deps, migrate DB, seed auth groups
 make dev-admin    # create local admin -> admin / admin12345 (dev only)
-make import       # load the Excel workbook into the DB
+make load-data    # import invoice/budget facts, then seed Data-sheet lookups
 make dev          # run with auto-reload, then open http://127.0.0.1:8000/login/
 make check        # Django checks + tests + ruff
 make shell        # a Python REPL with Django loaded — great for exploring

@@ -127,6 +127,70 @@ class Vendor(TimestampedModel):
         return self.name
 
 
+class SpendCategory(TimestampedModel):
+    """Lookup category/budget-line title seeded from the workbook Data sheet."""
+
+    name = models.CharField(max_length=255)
+    normalized_name = models.CharField(max_length=255, unique=True, db_index=True)
+    is_active = models.BooleanField(default=True)
+    source_sheet = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "spend categories"
+
+    def save(self, *args, **kwargs):
+        if not self.normalized_name:
+            self.normalized_name = normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class SubTeam(TimestampedModel):
+    """Sub-team label seeded from the workbook Data sheet."""
+
+    name = models.CharField(max_length=255)
+    normalized_name = models.CharField(max_length=255, unique=True, db_index=True)
+    team = models.ForeignKey(Team, null=True, blank=True, on_delete=models.SET_NULL, related_name="sub_teams")
+    is_active = models.BooleanField(default=True)
+    source_sheet = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "sub team"
+        verbose_name_plural = "sub teams"
+
+    def save(self, *args, **kwargs):
+        if not self.normalized_name:
+            self.normalized_name = normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Requester(TimestampedModel):
+    """Requester name seeded from the workbook Data sheet."""
+
+    name = models.CharField(max_length=255)
+    normalized_name = models.CharField(max_length=255, unique=True, db_index=True)
+    is_active = models.BooleanField(default=True)
+    source_sheet = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        if not self.normalized_name:
+            self.normalized_name = normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Campaign(TimestampedModel):
     name = models.CharField(max_length=255)
     year = models.PositiveIntegerField()

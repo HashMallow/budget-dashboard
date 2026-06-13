@@ -1,0 +1,41 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Teams" %}{% endblock %}
+{% block page_title %}{% t "Teams" %}{% endblock %}
+{% block page_subtitle %}{% t "Open a team dashboard to see spend, vendors and campaigns" %}{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table teams-table">
+        <colgroup>
+          <col class="col-team">
+          <col class="col-count">
+          <col class="col-amount">
+          <col class="col-actions">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>{% sortable_th "Team" "team" %}</th>
+            <th class="col-num">{% sortable_th "Invoice count" "invoices" %}</th>
+            <th class="col-num">{% sortable_th "Total spend" "amount" %}</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in team_summaries %}
+            <tr>
+              <td>{% t row.team.name %}</td>
+              <td class="col-num">{{ row.invoice_count }}</td>
+              <td class="col-num money-cell">{{ row.total_spend|money }}</td>
+              <td class="col-actions"><a class="btn" href="{% url 'marketing:team_dashboard' row.team.pk %}">{% t "View team dashboard" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty">{% t "No teams in your access scope." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

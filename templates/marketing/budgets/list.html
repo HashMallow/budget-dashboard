@@ -42,15 +42,15 @@
       </div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="data-table">
         <thead>
           <tr>
-            <th>{% t "Team" %}</th>
-            <th>{% t "Category" %}</th>
+            <th>{% sortable_th "Team" "team" %}</th>
+            <th>{% sortable_th "Category" "category" %}</th>
             {% for month, label in months %}
-              <th>{{ label }}</th>
+              <th class="col-num">{{ label }}</th>
             {% endfor %}
-            <th>{% t "Total" %}</th>
+            <th class="col-num">{% sortable_th "Total" "total" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -59,9 +59,9 @@
               <td>{{ row.team }}</td>
               <td>{{ row.category }}</td>
               {% for month, label in months %}
-                <td class="number">{{ row.months|get_item:month|money }}</td>
+                <td class="col-num">{{ row.months|get_item:month|money }}</td>
               {% endfor %}
-              <td class="number"><strong>{{ row.total|money }}</strong></td>
+              <td class="col-num money-cell">{{ row.total|money }}</td>
             </tr>
           {% empty %}
             <tr><td colspan="15" class="empty">{% t "No budget to display." %}</td></tr>
@@ -79,26 +79,26 @@
       </div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="data-table">
         <thead>
           <tr>
-            <th>{% t "Year" %}</th>
-            <th>{% t "Month" %}</th>
-            <th>{% t "Team" %}</th>
-            <th>{% t "Campaign" %}</th>
-            <th>{% t "Category" %}</th>
-            <th>{% t "Budget" %}</th>
+            <th class="col-num">{% sortable_th "Year" "year" %}</th>
+            <th class="col-num">{% sortable_th "Month" "month" %}</th>
+            <th>{% sortable_th "Team" "team" %}</th>
+            <th>{% sortable_th "Campaign" "campaign" %}</th>
+            <th>{% sortable_th "Category" "category" %}</th>
+            <th class="col-num">{% sortable_th "Budget" "amount" %}</th>
           </tr>
         </thead>
         <tbody>
           {% for line in page_obj %}
             <tr>
-              <td class="number">{{ line.year }}</td>
-              <td class="number">{{ line.month }}</td>
+              <td class="col-num">{{ line.year }}</td>
+              <td class="col-num">{{ line.month }}</td>
               <td>{{ line.team.name|default:"-" }}</td>
               <td>{{ line.campaign.name|default:"-" }}</td>
               <td>{{ line.category }}</td>
-              <td class="number">{{ line.planned_amount|money }}</td>
+              <td class="col-num money-cell">{{ line.planned_amount|money }}</td>
             </tr>
           {% empty %}
             <tr><td colspan="6" class="empty">{% t "No rows to display." %}</td></tr>
@@ -108,9 +108,9 @@
     </div>
     {% if page_obj.has_other_pages %}
       <div class="pagination">
-        {% if page_obj.has_previous %}<a class="btn" href="?page={{ page_obj.previous_page_number }}">{% t "Previous" %}</a>{% endif %}
+        {% if page_obj.has_previous %}<a class="btn" href="?{% qs page=page_obj.previous_page_number %}">{% t "Previous" %}</a>{% endif %}
         <span class="btn">{% t "Page" %} {{ page_obj.number }} {% t "of" %} {{ page_obj.paginator.num_pages }}</span>
-        {% if page_obj.has_next %}<a class="btn" href="?page={{ page_obj.next_page_number }}">{% t "Next" %}</a>{% endif %}
+        {% if page_obj.has_next %}<a class="btn" href="?{% qs page=page_obj.next_page_number %}">{% t "Next" %}</a>{% endif %}
       </div>
     {% endif %}
   </section>

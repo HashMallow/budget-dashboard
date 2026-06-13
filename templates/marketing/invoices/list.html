@@ -58,17 +58,27 @@
 
   <section class="section panel">
     <div class="table-wrap">
-      <table>
+      <table class="data-table invoice-table">
+        <colgroup>
+          <col class="col-number">
+          <col class="col-vendor">
+          <col class="col-team">
+          <col class="col-category">
+          <col class="col-date">
+          <col class="col-amount">
+          <col class="col-stage">
+          <col class="col-days">
+        </colgroup>
         <thead>
           <tr>
-            <th>{% t "Number" %}</th>
-            <th>{% t "Vendor" %}</th>
-            <th>{% t "Team" %}</th>
-            <th>{% t "Category" %}</th>
-            <th>{% t "Date" %}</th>
-            <th>{% t "Amount" %}</th>
-            <th>{% t "Stage" %}</th>
-            <th>{% t "Days" %}</th>
+            <th>{% sortable_th "Number" "number" %}</th>
+            <th>{% sortable_th "Vendor" "vendor" %}</th>
+            <th>{% sortable_th "Team" "team" %}</th>
+            <th>{% sortable_th "Category" "category" %}</th>
+            <th class="col-num">{% sortable_th "Date" "date" %}</th>
+            <th class="col-num">{% sortable_th "Amount" "amount" %}</th>
+            <th>{% sortable_th "Stage" "stage" %}</th>
+            <th class="col-num">{% sortable_th "Days" "days" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -78,10 +88,10 @@
               <td>{{ invoice.vendor.name }}</td>
               <td>{{ invoice.team.name|default:"-" }}</td>
               <td>{{ invoice.category }}</td>
-              <td class="number">{{ invoice.invoice_date }}</td>
-              <td class="number">{{ invoice.amount|money }}</td>
+              <td class="col-num">{% display_date invoice.invoice_date %}</td>
+              <td class="col-num money-cell">{{ invoice.amount|money }}</td>
               <td><span class="badge">{% t invoice.payment_stage|stage_label %}</span></td>
-              <td class="number">{{ invoice.days_in_current_stage }}</td>
+              <td class="col-num">{{ invoice.days_in_current_stage }}</td>
             </tr>
           {% empty %}
             <tr><td colspan="8" class="empty">{% t "No invoices to display." %}</td></tr>
@@ -92,11 +102,11 @@
     {% if page_obj.has_other_pages %}
       <div class="pagination">
         {% if page_obj.has_previous %}
-          <a class="btn" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">{% t "Previous" %}</a>
+          <a class="btn" href="?{% qs page=page_obj.previous_page_number %}">{% t "Previous" %}</a>
         {% endif %}
         <span class="btn">{% t "Page" %} {{ page_obj.number }} {% t "of" %} {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="btn" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">{% t "Next" %}</a>
+          <a class="btn" href="?{% qs page=page_obj.next_page_number %}">{% t "Next" %}</a>
         {% endif %}
       </div>
     {% endif %}

@@ -4,9 +4,8 @@ from dataclasses import dataclass
 
 from django.db.models import Q, QuerySet
 
+from .cost_buckets import REFERRAL_SMS_BUCKETS, exclude_pseudo_teams
 from .models import BudgetLine, Campaign, CostBucket, Invoice, Role, Team, UserTeamAccess
-
-REFERRAL_SMS_BUCKETS = {CostBucket.REFERRAL, CostBucket.SMS}
 
 
 @dataclass(frozen=True)
@@ -70,6 +69,7 @@ def get_user_scope(user) -> UserScope:
 
 
 def filter_teams_for_user(queryset: QuerySet[Team], user) -> QuerySet[Team]:
+    queryset = exclude_pseudo_teams(queryset)
     scope = get_user_scope(user)
     if scope.is_admin or scope.is_global:
         return queryset
@@ -87,7 +87,7 @@ def filter_invoices_for_user(queryset: QuerySet[Invoice], user) -> QuerySet[Invo
 
     filters = Q()
     if scope.team_ids:
-        filters |= Q(team_id__in=scope.team_ids) & ~Q(cost_bucket__in=REFERRAL_SMS_BUCKETS)
+        filters |= Q(team_id__in=scope.team_ids)
     if scope.can_view_referral_sms:
         filters |= Q(cost_bucket__in=REFERRAL_SMS_BUCKETS)
     return queryset.filter(filters)
@@ -117,9 +117,13 @@ def can_view_invoice(user, invoice: Invoice) -> bool:
 
 def _matching_accesses_for_invoice(user, invoice: Invoice) -> QuerySet[UserTeamAccess]:
     accesses = active_access_for_user(user)
-    if invoice.cost_bucket in REFERRAL_SMS_BUCKETS:
+    if invoice.cost_bucket in REFERRAL_SMS_BUCKETS and invoice.team_id:
+        accesses = accesses.filter(
+            Q(is_global=True) | Q(team_id=invoice.team_id) | Q(can_view_referral_sms=True)
+        )
+    elif invoice.cost_bucket in REFERRAL_SMS_BUCKETS:
         accesses = accesses.filter(Q(is_global=True) | Q(can_view_referral_sms=True))
-    if invoice.team_id:
+    elif invoice.team_id:
         accesses = accesses.filter(Q(is_global=True) | Q(team_id=invoice.team_id))
     else:
         accesses = accesses.filter(is_global=True)
@@ -130,11 +134,15 @@ def can_create_invoice_for_team(user, team: Team | None, cost_bucket: str = Cost
     if user_has_admin_access(user):
         return True
     accesses = active_access_for_user(user).filter(role=Role.EDITOR)
-    if cost_bucket in REFERRAL_SMS_BUCKETS:
+    if cost_bucket in REFERRAL_SMS_BUCKETS and team is not None:
+        accesses = accesses.filter(Q(is_global=True) | Q(team=team) | Q(can_view_referral_sms=True))
+    elif cost_bucket in REFERRAL_SMS_BUCKETS:
         accesses = accesses.filter(Q(is_global=True) | Q(can_view_referral_sms=True))
-    if team is None:
+    elif team is None:
         return accesses.filter(is_global=True).exists()
-    return accesses.filter(Q(is_global=True) | Q(team=team)).exists()
+    else:
+        accesses = accesses.filter(Q(is_global=True) | Q(team=team))
+    return accesses.exists()
 
 
 def can_edit_invoice(user, invoice: Invoice) -> bool:

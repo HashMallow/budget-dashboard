@@ -61,16 +61,19 @@ def test_superuser_can_see_all_invoices(sample_data):
     }
 
 
-def test_team_editor_only_sees_own_team_non_referral_invoices(sample_data):
+def test_team_editor_sees_assigned_team_including_rollup_buckets(sample_data):
     editor = sample_data["user_model"].objects.create_user(username="growth-editor")
     UserTeamAccess.objects.create(user=editor, team=sample_data["growth"], role=Role.EDITOR)
 
     visible_ids = set(filter_invoices_for_user(Invoice.objects.all(), editor).values_list("id", flat=True))
 
-    assert visible_ids == {sample_data["growth_invoice"].id}
+    assert visible_ids == {
+        sample_data["growth_invoice"].id,
+        sample_data["referral_invoice"].id,
+    }
     assert can_edit_invoice(editor, sample_data["growth_invoice"]) is True
+    assert can_edit_invoice(editor, sample_data["referral_invoice"]) is True
     assert can_edit_invoice(editor, sample_data["brand_invoice"]) is False
-    assert can_edit_invoice(editor, sample_data["referral_invoice"]) is False
 
 
 def test_observer_cannot_edit_invoice(sample_data):
@@ -80,17 +83,25 @@ def test_observer_cannot_edit_invoice(sample_data):
     assert can_edit_invoice(observer, sample_data["growth_invoice"]) is False
 
 
-def test_referral_sms_requires_global_or_explicit_flag(sample_data):
+def test_referral_sms_outside_assigned_team_requires_global_or_explicit_flag(sample_data):
+    vendor = sample_data["growth_invoice"].vendor
+    brand_referral = make_invoice(
+        team=sample_data["brand"],
+        vendor=vendor,
+        invoice_number="R-2",
+        bucket=CostBucket.REFERRAL,
+    )
     manager = sample_data["user_model"].objects.create_user(username="growth-manager")
     UserTeamAccess.objects.create(user=manager, team=sample_data["growth"], role=Role.MANAGER)
 
     visible_ids = set(filter_invoices_for_user(Invoice.objects.all(), manager).values_list("id", flat=True))
-    assert sample_data["referral_invoice"].id not in visible_ids
+    assert sample_data["referral_invoice"].id in visible_ids
+    assert brand_referral.id not in visible_ids
 
     UserTeamAccess.objects.filter(user=manager).update(can_view_referral_sms=True)
 
     visible_ids = set(filter_invoices_for_user(Invoice.objects.all(), manager).values_list("id", flat=True))
-    assert sample_data["referral_invoice"].id in visible_ids
+    assert brand_referral.id in visible_ids
 
 
 def test_global_manager_can_see_all_invoices(sample_data):

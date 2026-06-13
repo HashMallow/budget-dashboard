@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from pathlib import Path
 
 from django import forms
@@ -7,6 +8,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
+from .cost_buckets import exclude_pseudo_teams
+from .jalali import format_jalali_date, normalize_digits, parse_jalali_date_text
 from .models import (
     AttachmentType,
     Campaign,
@@ -54,6 +57,54 @@ class DateInput(forms.DateInput):
     input_type = "date"
 
 
+class FlexibleDateField(forms.DateField):
+    """Accept Gregorian ISO dates and Jalali/Shamsi dates in invoice forms."""
+
+    default_error_messages = {
+        "invalid": "Enter a valid date. Use 1405/01/10 or 2026-03-30.",
+    }
+
+    def __init__(self, *args, display_jalali: bool = False, **kwargs):
+        kwargs.setdefault(
+            "widget",
+            forms.TextInput(attrs={"dir": "ltr", "inputmode": "numeric", "placeholder": "1405/01/10"}),
+        )
+        self.display_jalali = display_jalali
+        super().__init__(*args, **kwargs)
+
+    def prepare_value(self, value):
+        if isinstance(value, datetime):
+            value = value.date()
+        if isinstance(value, date):
+            return format_jalali_date(value) if self.display_jalali else value.isoformat()
+        return value
+
+    def to_python(self, value):
+        if value in self.empty_values:
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+
+        text = normalize_digits(value)
+        jalali_value = parse_jalali_date_text(text)
+        if jalali_value:
+            return jalali_value
+
+        try:
+            return datetime.fromisoformat(text).date()
+        except ValueError:
+            pass
+
+        for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                pass
+        raise ValidationError(self.error_messages["invalid"], code="invalid")
+
+
 def apply_form_control(field: forms.Field) -> None:
     widget = field.widget
     if isinstance(widget, forms.CheckboxInput):
@@ -71,6 +122,8 @@ class StyledFormMixin:
 
 class InvoiceForm(StyledFormMixin, forms.ModelForm):
     new_vendor_name = forms.CharField(label="New vendor", required=False, max_length=255)
+    invoice_date = FlexibleDateField(label="Invoice date", required=True)
+    due_date = FlexibleDateField(label="Due date", required=False)
 
     class Meta:
         model = Invoice
@@ -90,8 +143,6 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "payment_stage",
         ]
         widgets = {
-            "invoice_date": DateInput(format="%Y-%m-%d"),
-            "due_date": DateInput(format="%Y-%m-%d"),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
         labels = {
@@ -118,8 +169,9 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         self.fields["team"].required = False
         self.fields["campaign"].queryset = filter_campaigns_for_user(Campaign.objects.select_related("team"), user)
         self.fields["campaign"].required = False
-        self.fields["invoice_date"].input_formats = ["%Y-%m-%d"]
-        self.fields["due_date"].input_formats = ["%Y-%m-%d"]
+        display_jalali = ui_lang == "fa"
+        self.fields["invoice_date"].display_jalali = display_jalali
+        self.fields["due_date"].display_jalali = display_jalali
         self._style_fields()
         apply_ui_language(self, ui_lang)
 
@@ -254,6 +306,8 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
         self.user = user
         super().__init__(*args, **kwargs)
         self.fields["team"].queryset = Team.objects.filter(is_active=True).order_by("name")
+        if user_has_admin_access(user):
+            self.fields["team"].queryset = exclude_pseudo_teams(self.fields["team"].queryset)
         self._style_fields()
         apply_ui_language(self, ui_lang)
 

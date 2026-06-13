@@ -30,8 +30,8 @@
     </div>
     <div class="card">
       <div class="card-label">{% t "Invoice date" %}</div>
-      <div class="card-value number">{{ invoice.invoice_date }}</div>
-      <div class="card-note">{% t "Due:" %} {{ invoice.due_date|default:"-" }}</div>
+      <div class="card-value number">{% display_date invoice.invoice_date %}</div>
+      <div class="card-note">{% t "Due:" %} {% display_date invoice.due_date %}</div>
     </div>
   </section>
 

@@ -27,12 +27,39 @@ FA: dict[str, str] = {
     "Full admin": "ادمین کامل",
     "Panel user": "کاربر پنل",
     "Logout": "خروج",
+    "Full amounts": "مبالغ کامل",
+    "Compact amounts": "مبالغ فشرده",
+    "Show exact IRR amounts with commas": "نمایش مبلغ دقیق ریال با جداکننده هزارگان",
+    "Show shortened amounts (K/M/B/T)": "نمایش مبالغ کوتاه‌شده (هزار/میلیون/میلیارد/تریلیون)",
+    # --- Settings menu ---
+    "Settings": "تنظیمات",
+    "Language": "زبان",
+    "Amount format": "قالب مبلغ",
+    "Compact (K/M/B)": "فشرده (هزار/میلیون/میلیارد)",
+    "Full (with commas)": "کامل (با جداکننده)",
+    "Currency unit": "واحد پول",
+    "Rial (IRR)": "ریال",
+    "Toman": "تومان",
+    "Theme": "پوسته",
+    "Light": "روشن",
+    "Dark": "تیره",
+    "Apply": "اعمال",
     "Monitor spend, invoices and payment status": "مانیتورینگ هزینه، فاکتور و وضعیت پرداخت",
     # --- Dashboard ---
     "Spend Dashboard": "داشبورد هزینه‌کرد",
     "Overview of marketing spend, payments and team status": "نمای کلی هزینه مارکتینگ، پرداخت‌ها و وضعیت تیم‌ها",
     "New invoice": "ثبت فاکتور",
     "Excel": "اکسل",
+    "Workbook (.xlsx)": "فایل اکسل کامل",
+    "Excel shaped like the source workbook (all sheets)": "اکسل با ساختار فایل اصلی (همه شیت‌ها)",
+    "Export workbook": "خروجی فایل اکسل کامل",
+    "Excel shaped like the source workbook, built from the database": (
+        "اکسلی با ساختار فایل اصلی، ساخته‌شده از دیتابیس"
+    ),
+    "Sheets: invoices, monthly Budget projection/Actual, Market Live Spending, and Data lookups — scoped to what you can see.": (  # noqa: E501
+        "شیت‌ها: فاکتورها، بودجه/واقعی ماهانه، Market Live Spending و لیست‌های Data — محدود به داده‌های قابل‌مشاهده شما."
+    ),
+    "Download workbook (.xlsx)": "دانلود فایل اکسل (.xlsx)",
     "PDF report": "گزارش PDF",
     "Year": "سال",
     "All years": "همه سال‌ها",
@@ -289,6 +316,7 @@ FA: dict[str, str] = {
     "Invoice saved.": "فاکتور ثبت شد.",
     "Invoice updated.": "فاکتور به‌روزرسانی شد.",
     "Payment stage updated.": "مرحله پرداخت به‌روزرسانی شد.",
+    "Enter a valid date. Use 1405/01/10 or 2026-03-30.": "تاریخ معتبر وارد کنید. مثل ۱۴۰۵/۰۱/۱۰ یا 2026-03-30.",
     "Invalid payment stage.": "مرحله پرداخت معتبر نیست.",
     "File uploaded.": "فایل آپلود شد.",
     "Upload failed. Check the file type or your permissions.": (
@@ -304,6 +332,19 @@ FA: dict[str, str] = {
     "New user created.": "کاربر جدید ساخته شد.",
     # --- Misc data fallbacks ---
     "No team": "بدون تیم",
+    "Team dashboard": "داشبورد تیم",
+    "View team dashboard": "مشاهده داشبورد تیم",
+    "Open a team dashboard to see spend, vendors and campaigns": (
+        "برای مشاهده هزینه، وندورها و کمپین‌ها، داشبورد تیم را باز کنید"
+    ),
+    "Spend, vendors, campaigns and invoices requiring attention for this team": (
+        "هزینه، وندورها، کمپین‌ها و فاکتورهای نیازمند پیگیری برای این تیم"
+    ),
+    "Planned budget": "بودجه برنامه‌ریزی‌شده",
+    "Budget lines for this team": "ردیف‌های بودجه این تیم",
+    "No teams in your access scope.": "تیمی در محدوده دسترسی شما نیست.",
+    "PDF summary": "خلاصه PDF",
+    "View": "مشاهده",
 }
 
 TRANSLATIONS: dict[str, dict[str, str]] = {"fa": FA}

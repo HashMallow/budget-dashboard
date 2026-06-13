@@ -6,8 +6,8 @@
 {% block page_subtitle %}{% t "Amount, invoice count, payment stage and invoice numbers per vendor" %}{% endblock %}
 {% block page_actions %}
   {% if can_export_data %}
-    <a class="btn" href="{% url 'marketing:export_invoices_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
-    <a class="btn" href="{% url 'marketing:invoice_report_print' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF report" %}</a>
+    <a class="btn" href="{% url 'marketing:export_vendors_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
   {% endif %}
 {% endblock %}
 
@@ -55,35 +55,46 @@
 
   <section class="section panel">
     <div class="table-wrap">
-      <table>
+      <table class="data-table vendor-table">
+        <colgroup>
+          <col class="col-vendor">
+          <col class="col-count">
+          <col class="col-invoices">
+          <col class="col-stages">
+          <col class="col-amount">
+        </colgroup>
         <thead>
           <tr>
-            <th>{% t "Vendor" %}</th>
-            <th>{% t "Invoice count" %}</th>
-            <th>{% t "Invoice numbers" %}</th>
-            <th>{% t "Stages" %}</th>
-            <th>{% t "Total spend" %}</th>
+            <th>{% sortable_th "Vendor" "vendor" %}</th>
+            <th class="col-num">{% sortable_th "Invoice count" "invoices" %}</th>
+            <th class="col-badges">{% t "Invoice numbers" %}</th>
+            <th class="col-badges">{% t "Stages" %}</th>
+            <th class="col-num">{% sortable_th "Total spend" "amount" %}</th>
           </tr>
         </thead>
         <tbody>
           {% for row in vendor_rows %}
             <tr>
               <td>{{ row.vendor.name }}</td>
-              <td class="number">{{ row.invoice_count }}</td>
-              <td>
-                {% for number in row.visible_invoice_numbers %}
-                  <span class="badge ltr">{{ number }}</span>
-                {% endfor %}
-                {% if row.remaining_invoice_count %}
-                  <span class="badge">+{{ row.remaining_invoice_count }}</span>
-                {% endif %}
+              <td class="col-num">{{ row.invoice_count }}</td>
+              <td class="col-badges">
+                <div class="badge-group">
+                  {% for number in row.visible_invoice_numbers %}
+                    <span class="badge ltr">{{ number }}</span>
+                  {% endfor %}
+                  {% if row.remaining_invoice_count %}
+                    <span class="badge">+{{ row.remaining_invoice_count }}</span>
+                  {% endif %}
+                </div>
               </td>
-              <td>
-                {% for stage in row.stages %}
-                  <span class="badge">{% t stage %}</span>
-                {% endfor %}
+              <td class="col-badges">
+                <div class="badge-group">
+                  {% for stage in row.stages %}
+                    <span class="badge">{% t stage %}</span>
+                  {% endfor %}
+                </div>
               </td>
-              <td class="number"><strong>{{ row.total|money }}</strong></td>
+              <td class="col-num money-cell">{{ row.total|money }}</td>
             </tr>
           {% empty %}
             <tr><td colspan="5" class="empty">{% t "No vendors in this range." %}</td></tr>

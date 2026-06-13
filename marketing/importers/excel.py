@@ -10,13 +10,18 @@ from typing import Any
 import yaml
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
 from django.utils.text import slugify
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.datetime import from_excel
 
-from marketing.jalali import jalali_to_gregorian
+from marketing.cost_buckets import (
+    detect_cost_bucket_from_text,
+    infer_cost_bucket_from_pseudo_team_name,
+    is_pseudo_team_name,
+    parent_team_name_for_bucket,
+)
+from marketing.jalali import normalize_digits, parse_jalali_date_text
 from marketing.models import (
     BudgetLine,
     Campaign,
@@ -159,7 +164,12 @@ def parse_excel_date(value: Any, workbook_epoch) -> date | None:
         except (TypeError, ValueError):
             return None
         return parsed.date() if isinstance(parsed, datetime) else parsed
-    text = cell_to_text(value)
+    text = normalize_digits(cell_to_text(value))
+    # Values like 1405/01/10 are Jalali/Shamsi. Parse those before trying
+    # Gregorian formats; otherwise Python would accept year 1405 as Gregorian.
+    jalali_date = parse_jalali_date_text(text)
+    if jalali_date:
+        return jalali_date
     try:
         return datetime.fromisoformat(text).date()
     except ValueError:
@@ -169,20 +179,7 @@ def parse_excel_date(value: Any, workbook_epoch) -> date | None:
             return datetime.strptime(text, fmt).date()
         except ValueError:
             pass
-    return parse_jalali_date(text)
-
-
-def parse_jalali_date(value: str) -> date | None:
-    match = re.fullmatch(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", value.strip())
-    if not match:
-        return None
-    year, month, day = (int(part) for part in match.groups())
-    if not 1200 <= year <= 1600:
-        return None
-    try:
-        return jalali_to_gregorian(year, month, day)
-    except ValueError:
-        return None
+    return None
 
 
 def normalize_currency(value: Any) -> str:
@@ -222,7 +219,25 @@ def mapped_value(row: dict[str, Any], columns: dict[str, str | None], key: str) 
     return row.get(column)
 
 
+# Canonical team names for workbook variants that mean the same team. Keyed by the normalized
+# (casefolded, whitespace-collapsed) raw name so they resolve at import time independent of DB
+# state. The DB-backed TeamAlias table remains available for admin-defined aliases.
+TEAM_NAME_ALIASES: dict[str, str] = {
+    normalize_name("Operation & Analysis"): "Ops & Analytics",
+    normalize_name("Brand (PR & Social & CSR)"): "Brand",
+}
+
+
+def canonical_team_name(name: str) -> str:
+    """Resolve known workbook spelling variants to a single canonical team name."""
+    text = " ".join((name or "").split())
+    return TEAM_NAME_ALIASES.get(normalize_name(text), text)
+
+
 def get_or_create_team(name: str, result: ImportResult, dry_run: bool) -> Team:
+    if is_pseudo_team_name(name):
+        raise ValueError(f"Refusing to create pseudo-team from cost-bucket label: {name!r}")
+    name = canonical_team_name(name)
     alias = TeamAlias.objects.select_related("team").filter(
         normalized_raw_name=normalize_name(name),
         is_active=True,
@@ -245,6 +260,98 @@ def get_or_create_team(name: str, result: ImportResult, dry_run: bool) -> Team:
     team = Team.objects.create(name=name, slug=slug)
     result.teams.created += 1
     return team
+
+
+def resolve_import_team(
+    team_name: str,
+    cost_bucket: str,
+    result: ImportResult,
+    dry_run: bool,
+) -> Team | None:
+    parent_name = parent_team_name_for_bucket(cost_bucket)
+    if parent_name:
+        return get_or_create_team(parent_name, result, dry_run)
+    if team_name and not is_pseudo_team_name(team_name):
+        return get_or_create_team(team_name, result, dry_run)
+    return None
+
+
+def resolve_budget_team(
+    team_name: str,
+    category: str,
+    description: str,
+    result: ImportResult,
+    dry_run: bool,
+) -> Team | None:
+    context_text = " ".join(part for part in (team_name, category, description) if part)
+    bucket = detect_cost_bucket_from_text(context_text)
+    if bucket:
+        parent_name = parent_team_name_for_bucket(bucket)
+        if parent_name:
+            return get_or_create_team(parent_name, result, dry_run)
+    if team_name and not is_pseudo_team_name(team_name):
+        return get_or_create_team(team_name, result, dry_run)
+    return None
+
+
+def merge_aliased_teams() -> None:
+    """Fold duplicate workbook team variants into their canonical team.
+
+    Robust to import order: runs every load so a fresh DB (where the seed migration found no
+    teams) still ends up with a single canonical team and a recorded TeamAlias row.
+    """
+    for raw_normalized, canonical_name in TEAM_NAME_ALIASES.items():
+        canonical = Team.objects.filter(name=canonical_name).first()
+        if canonical is None:
+            continue
+        duplicates = [
+            team
+            for team in Team.objects.exclude(pk=canonical.pk)
+            if normalize_name(team.name) == raw_normalized
+        ]
+        for alias_team in duplicates:
+            TeamAlias.objects.update_or_create(
+                raw_name=alias_team.name,
+                defaults={
+                    "normalized_raw_name": normalize_name(alias_team.name),
+                    "team": canonical,
+                    "is_active": True,
+                    "notes": "Auto-merged workbook spelling variant during import.",
+                },
+            )
+            for campaign in Campaign.objects.filter(team=alias_team):
+                existing = (
+                    Campaign.objects.filter(name=campaign.name, year=campaign.year, team=canonical)
+                    .exclude(pk=campaign.pk)
+                    .first()
+                )
+                if existing:
+                    Invoice.objects.filter(campaign=campaign).update(campaign=existing)
+                    BudgetLine.objects.filter(campaign=campaign).update(campaign=existing)
+                    campaign.delete()
+                else:
+                    campaign.team = canonical
+                    campaign.save(update_fields=["team"])
+            Invoice.objects.filter(team=alias_team).update(team=canonical)
+            BudgetLine.objects.filter(team=alias_team).update(team=canonical)
+            alias_team.is_active = False
+            alias_team.save(update_fields=["is_active"])
+
+
+def deactivate_reassigned_pseudo_teams() -> None:
+    """Hide legacy pseudo-teams and move any remaining rows onto parent teams."""
+    for team in Team.objects.filter(is_active=True):
+        if not is_pseudo_team_name(team.name):
+            continue
+        bucket = infer_cost_bucket_from_pseudo_team_name(team.name)
+        parent_name = parent_team_name_for_bucket(bucket) if bucket else None
+        if parent_name and bucket:
+            parent = Team.objects.filter(name=parent_name).first()
+            if parent:
+                Invoice.objects.filter(team=team).update(team=parent, cost_bucket=bucket)
+                BudgetLine.objects.filter(team=team).update(team=parent)
+        team.is_active = False
+        team.save(update_fields=["is_active"])
 
 
 def get_or_create_vendor(name: str, result: ImportResult, dry_run: bool) -> Vendor:
@@ -463,13 +570,16 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
         invoice_number = cell_to_text(mapped_value(raw, columns, "invoice_number"))
         vendor_name = cell_to_text(mapped_value(raw, columns, "vendor_name"))
         amount = parse_decimal(mapped_value(raw, columns, "amount"))
-        invoice_date = parse_excel_date(mapped_value(raw, columns, "invoice_date_gregorian_serial"), workbook.epoch)
-        invoice_date = invoice_date or parse_excel_date(
-            mapped_value(raw, columns, "invoice_date_jalali_serial"),
+        invoice_date = parse_excel_date(
+            mapped_value(raw, columns, "jalali_invoice_date_text_candidate"),
             workbook.epoch,
         )
         invoice_date = invoice_date or parse_excel_date(
-            mapped_value(raw, columns, "jalali_invoice_date_text_candidate"),
+            mapped_value(raw, columns, "invoice_date_gregorian_serial"),
+            workbook.epoch,
+        )
+        invoice_date = invoice_date or parse_excel_date(
+            mapped_value(raw, columns, "invoice_date_jalali_serial"),
             workbook.epoch,
         )
         year = parse_year(mapped_value(raw, columns, "year")) or (invoice_date.year if invoice_date else None)
@@ -492,9 +602,12 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
 
         vendor = get_or_create_vendor(vendor_name, result, dry_run)
         invoice_key = (invoice_number, normalize_name(vendor_name))
-        cost_bucket = detect_cost_bucket(raw, bucket_mapping)
         team_name = cell_to_text(mapped_value(raw, columns, "team"))
-        team = get_or_create_team(team_name, result, dry_run) if team_name else None
+        cost_bucket = detect_cost_bucket(raw, bucket_mapping)
+        inferred_bucket = infer_cost_bucket_from_pseudo_team_name(team_name)
+        if inferred_bucket:
+            cost_bucket = inferred_bucket
+        team = resolve_import_team(team_name, cost_bucket, result, dry_run)
         campaign_name = cell_to_text(mapped_value(raw, columns, "campaign_name"))
         campaign = get_or_create_campaign(campaign_name, year, team, result, dry_run) if year else None
         description = cell_to_text(mapped_value(raw, columns, "description"))
@@ -616,7 +729,10 @@ def import_budget_lines(workbook, mapping: dict[str, Any], result: ImportResult,
             result.skip(sheet_name, row_number, "missing team or category/title", result.budget_lines)
             continue
 
-        team = get_or_create_team(team_name, result, dry_run)
+        team = resolve_budget_team(team_name, category, description, result, dry_run)
+        if team is None:
+            result.skip(sheet_name, row_number, "could not resolve team (pseudo-team label only)", result.budget_lines)
+            continue
         currency = normalize_currency(raw.get(context_columns["currency"]))
 
         for month_info in budget_mapping["monthly_columns"]:
@@ -678,6 +794,6 @@ def import_marketing_workbook(
     finally:
         workbook.close()
     if not dry_run:
-        # Status history rows created from import updates should not inherit stale note attributes.
-        timezone.now()
+        merge_aliased_teams()
+        deactivate_reassigned_pseudo_teams()
     return result

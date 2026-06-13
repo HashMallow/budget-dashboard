@@ -6,10 +6,15 @@ import pytest
 import yaml
 from openpyxl import Workbook
 
-from marketing.importers.excel import import_marketing_workbook
+from marketing.importers.excel import import_marketing_workbook, parse_excel_date
 from marketing.models import BudgetLine, Campaign, CostBucket, Invoice, PaymentStage, Team, TeamAlias, Vendor
 
 pytestmark = pytest.mark.django_db
+
+
+def test_jalali_text_dates_are_parsed_as_shamsi_before_gregorian():
+    assert parse_excel_date("1405/01/10", None) == date(2026, 3, 30)
+    assert parse_excel_date("۱۴۰۵/۰۱/۱۰", None) == date(2026, 3, 30)
 
 
 def write_mapping(path, workbook_path):
@@ -163,7 +168,9 @@ def test_import_workbook_creates_invoices_budget_lines_and_preserves_duplicates(
     assert Invoice.objects.count() == 2
     assert Vendor.objects.count() == 1
     assert Team.objects.filter(name="Growth").exists()
-    assert Team.objects.filter(name="Referral").exists()
+    assert not Team.objects.filter(name="Referral", is_active=True).exists()
+    referral = Invoice.objects.get(cost_bucket=CostBucket.REFERRAL)
+    assert referral.team.name == "Growth"
     assert Invoice.objects.filter(invoice_number="1", vendor__name="Test Vendor").count() == 2
     assert Invoice.objects.filter(cost_bucket=CostBucket.REFERRAL).count() == 1
     assert Invoice.objects.filter(payment_stage=PaymentStage.PAID).count() == 1
@@ -196,6 +203,44 @@ def test_dry_run_does_not_write_database(tmp_path):
     assert Invoice.objects.count() == 0
     assert BudgetLine.objects.count() == 0
     assert Vendor.objects.count() == 0
+
+
+def test_canonical_team_name_folds_workbook_variants():
+    from marketing.importers.excel import canonical_team_name
+
+    assert canonical_team_name("Operation & Analysis") == "Ops & Analytics"
+    assert canonical_team_name("Brand (PR & Social & CSR)") == "Brand"
+    assert canonical_team_name("Growth") == "Growth"
+
+
+def test_import_merges_workbook_team_spelling_variants(tmp_path):
+    """Existing duplicate variants fold into the canonical team on re-import."""
+    workbook_path = tmp_path / "marketing.xlsx"
+    mapping_path = tmp_path / "column_mapping.yml"
+    write_workbook(workbook_path)
+    write_mapping(mapping_path, workbook_path)
+
+    canonical = Team.objects.create(name="Ops & Analytics", slug="ops-analytics")
+    variant = Team.objects.create(name="Operation & Analysis", slug="operation-analysis")
+    vendor = Vendor.objects.create(name="Variant Vendor")
+    Invoice.objects.create(
+        invoice_number="OA-1",
+        vendor=vendor,
+        team=variant,
+        category="Performance",
+        cost_bucket=CostBucket.TEAM,
+        invoice_date=date(2026, 3, 30),
+        amount=500,
+    )
+
+    import_marketing_workbook(workbook_path, mapping_path=mapping_path)
+
+    canonical.refresh_from_db()
+    variant.refresh_from_db()
+    assert canonical.is_active
+    assert variant.is_active is False
+    assert Invoice.objects.get(invoice_number="OA-1").team == canonical
+    assert TeamAlias.objects.filter(raw_name="Operation & Analysis", team=canonical).exists()
 
 
 def test_import_resolves_team_aliases(tmp_path):

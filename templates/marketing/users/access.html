@@ -97,15 +97,15 @@
       </div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="data-table">
         <thead>
           <tr>
             <th>{% t "Username" %}</th>
             <th>{% t "Name" %}</th>
-            <th>{% t "Group" %}</th>
-            <th>{% t "Access" %}</th>
+            <th class="col-badges">{% t "Group" %}</th>
+            <th class="col-badges">{% t "Access" %}</th>
             <th>{% t "Status" %}</th>
-            <th>{% t "Actions" %}</th>
+            <th class="col-actions">{% t "Actions" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -113,25 +113,29 @@
             <tr>
               <td>{{ item.username }}</td>
               <td>{{ item.get_full_name|default:"-" }}</td>
-              <td>
-                {% for group in item.groups.all %}
-                  <span class="badge">{% t group.name %}</span>
-                {% empty %}
-                  <span class="badge">-</span>
-                {% endfor %}
+              <td class="col-badges">
+                <div class="badge-group">
+                  {% for group in item.groups.all %}
+                    <span class="badge">{% t group.name %}</span>
+                  {% empty %}
+                    <span class="badge">-</span>
+                  {% endfor %}
+                </div>
               </td>
-              <td>
-                {% for access in item.team_access.all %}
-                  <span class="badge">
-                    {% t access.get_role_display %} /
-                    {% if access.is_global %}{% t "All teams" %}{% else %}{{ access.team.name }}{% endif %}
-                  </span>
-                {% empty %}
-                  <span class="badge">-</span>
-                {% endfor %}
+              <td class="col-badges">
+                <div class="badge-group">
+                  {% for access in item.team_access.all %}
+                    <span class="badge">
+                      {% t access.get_role_display %} /
+                      {% if access.is_global %}{% t "All teams" %}{% else %}{{ access.team.name }}{% endif %}
+                    </span>
+                  {% empty %}
+                    <span class="badge">-</span>
+                  {% endfor %}
+                </div>
               </td>
               <td>{% if item.is_active %}<span class="badge ok">{% t "Active" %}</span>{% else %}<span class="badge danger">{% t "Inactive" %}</span>{% endif %}</td>
-              <td>
+              <td class="col-actions">
                 {% if item != request.user %}
                   <form method="post">
                     {% csrf_token %}

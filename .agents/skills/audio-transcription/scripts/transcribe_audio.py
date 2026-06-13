@@ -43,7 +43,7 @@ def convert_to_wav(audio_path: Path, out_dir: Path) -> Path:
     if not ffmpeg:
         raise RuntimeError("ffmpeg is required to convert OGG/OGA audio to WAV.")
     wav_path = out_dir / f"{audio_path.stem}.wav"
-    run([ffmpeg, "-y", "-i", str(audio_path), str(wav_path)])
+    run([ffmpeg, "-y", "-loglevel", "error", "-i", str(audio_path), str(wav_path)])
     return wav_path
 
 
@@ -82,17 +82,73 @@ def transcribe_whisper_cli(audio_path: Path, out_dir: Path, language: str | None
     return transcript_path.read_text(encoding="utf-8").strip()
 
 
-def transcribe_faster_whisper(audio_path: Path, language: str | None, model: str) -> list[str]:
+def _cuda_available() -> bool:
+    try:
+        import ctranslate2
+
+        return ctranslate2.get_cuda_device_count() > 0
+    except Exception:
+        return False
+
+
+def _resolve_device(device: str) -> str:
+    if device == "auto":
+        return "cuda" if _cuda_available() else "cpu"
+    return device
+
+
+def _resolve_compute_type(compute_type: str, device: str) -> str:
+    if compute_type != "auto":
+        return compute_type
+    return "float16" if device == "cuda" else "int8"
+
+
+def _model_download_root() -> str:
+    """Persistent cache directory (gitignored under docs/discovery/)."""
+    override = os.environ.get("WHISPER_DOWNLOAD_ROOT")
+    if override:
+        return override
+    return str(Path("docs/discovery/faster-whisper-models"))
+
+
+def transcribe_faster_whisper(
+    audio_path: Path,
+    language: str | None,
+    model: str,
+    device: str = "auto",
+    compute_type: str = "auto",
+) -> tuple[list[str], str]:
     from faster_whisper import WhisperModel
 
-    whisper_model = WhisperModel(model, device="cpu", compute_type="int8", download_root="/tmp/faster-whisper-models")
+    resolved_device = _resolve_device(device)
+    resolved_compute = _resolve_compute_type(compute_type, resolved_device)
+
+    def _load(dev: str, compute: str) -> tuple[WhisperModel, str, str]:
+        download_root = _model_download_root()
+        Path(download_root).mkdir(parents=True, exist_ok=True)
+        return (
+            WhisperModel(model, device=dev, compute_type=compute, download_root=download_root),
+            dev,
+            compute,
+        )
+
+    try:
+        whisper_model, resolved_device, resolved_compute = _load(resolved_device, resolved_compute)
+    except Exception as exc:
+        if resolved_device == "cuda":
+            # GPU init can fail when cuDNN/cuBLAS runtime libs are missing; fall back to CPU.
+            print(f"CUDA init failed ({exc}); falling back to CPU.", file=sys.stderr)
+            whisper_model, resolved_device, resolved_compute = _load("cpu", "int8")
+        else:
+            raise
+
     segments, info = whisper_model.transcribe(str(audio_path), language=language, vad_filter=True, beam_size=5)
     lines = [f"Detected language: `{info.language}` probability `{info.language_probability:.2f}`", ""]
     for segment in segments:
         text = segment.text.strip()
         if text:
             lines.append(f"[{segment.start:06.2f}-{segment.end:06.2f}] {text}")
-    return lines
+    return lines, f"{resolved_device}/{resolved_compute}"
 
 
 def write_limitation(out_path: Path, source: Path, reason: str) -> None:
@@ -118,7 +174,24 @@ def main() -> int:
     parser.add_argument("audio", type=Path)
     parser.add_argument("--out-dir", type=Path, default=Path("docs/discovery"))
     parser.add_argument("--language", default=None, help="Language code such as fa or en. Omit for auto-detect.")
-    parser.add_argument("--model", default="medium", help="faster-whisper fallback model name.")
+    parser.add_argument("--model", default="small", help="faster-whisper fallback model name (e.g. medium, large-v3).")
+    parser.add_argument(
+        "--wav-dir",
+        type=Path,
+        default=None,
+        help="Directory for converted WAV files. Defaults to --out-dir.",
+    )
+    parser.add_argument(
+        "--device",
+        default="auto",
+        choices=["auto", "cuda", "cpu"],
+        help="Compute device for faster-whisper. 'auto' uses CUDA when available, else CPU.",
+    )
+    parser.add_argument(
+        "--compute-type",
+        default="auto",
+        help="CTranslate2 compute type. 'auto' picks float16 on GPU and int8 on CPU.",
+    )
     parser.add_argument("--output-name", default=None, help="Transcript markdown filename.")
     args = parser.parse_args()
 
@@ -131,12 +204,14 @@ def main() -> int:
         return 2
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    wav_dir = args.wav_dir or args.out_dir
+    wav_dir.mkdir(parents=True, exist_ok=True)
     suffix = args.language or "auto"
     output_name = args.output_name or f"audio_transcript.{suffix}.md"
     out_path = args.out_dir / output_name
 
     try:
-        wav_path = convert_to_wav(audio_path, args.out_dir)
+        wav_path = convert_to_wav(audio_path, wav_dir)
     except Exception as exc:
         write_limitation(out_path, audio_path, str(exc))
         return 1
@@ -167,8 +242,12 @@ def main() -> int:
             print(f"whisper CLI transcription failed, trying faster_whisper: {exc}", file=sys.stderr)
 
     try:
-        body = transcribe_faster_whisper(wav_path, args.language, args.model)
-        transcript_lines = markdown_header(audio_path, converted, f"faster-whisper {args.model}", args.language)
+        body, runtime = transcribe_faster_whisper(
+            wav_path, args.language, args.model, args.device, args.compute_type
+        )
+        transcript_lines = markdown_header(
+            audio_path, converted, f"faster-whisper {args.model} ({runtime})", args.language
+        )
         transcript_lines.extend(body)
         out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
         print(out_path)

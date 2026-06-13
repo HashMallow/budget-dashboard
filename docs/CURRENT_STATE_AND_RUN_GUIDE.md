@@ -1,6 +1,18 @@
 # Current State and Run Guide
 
-This document explains what exists right now, how the pieces fit together, and how to test the app locally before moving on to a basic UI, visual dashboards, analysis features, and AWS deployment.
+This document explains what exists right now, how the pieces fit together, and how to test the app locally.
+
+## Doc map (start here)
+
+| If you need… | Read |
+|---|---|
+| Run the app locally | This file — **Setup** and **Make commands** below |
+| What to build next | [`PHASE_2.md`](PHASE_2.md) |
+| Deploy to AWS / production | [`DEPLOYMENT_AWS.md`](DEPLOYMENT_AWS.md) |
+| Codebase tour | [`PROJECT_EXPLAINED.md`](PROJECT_EXPLAINED.md) |
+| Roles and permissions | [`ACCESS_BY_ROLE.md`](ACCESS_BY_ROLE.md) / [`PERMISSIONS_MATRIX.md`](PERMISSIONS_MATRIX.md) |
+| Excel import rules | [`EXCEL_IMPORT_SPEC.md`](EXCEL_IMPORT_SPEC.md) + `docs/discovery/column_mapping.yml` |
+| Agent/build instructions | [`../AGENTS.md`](../AGENTS.md) |
 
 ## Big Picture
 
@@ -36,56 +48,83 @@ The app now has a minimal custom panel for non-technical users. Django Admin rem
 
 Local commands now run through `uv`, using `pyproject.toml` and `uv.lock` as the standard dependency setup.
 
+The workbook `Data` sheet has its own reference-data path: `make seed-reference` seeds lookup rows,
+while the main importer continues to handle invoice and budget facts.
+
+Important distinction:
+
+```text
+make import
+  Imports invoice and budget facts only.
+
+make seed-reference
+  Seeds lookup/reference rows from the Data sheet.
+
+make load-data
+  Runs both steps and is the safest fresh-database workflow.
+```
+
 ## Current Project Structure
 
 ```text
 Alireza/
-├── AGENTS.md
+├── AGENTS.md / CLAUDE.md          Agent instructions
 ├── README.md
-├── Makefile
+├── Makefile                        uv-based dev/prod commands
 ├── manage.py
-├── pyproject.toml
-├── uv.lock
-├── uv.toml
-├── .python-version
-├── db.sqlite3
-├── your_workbook.xlsx
+├── pyproject.toml                  deps (+ optional 'prod' extra) and tool config
+├── uv.lock / uv.toml / .python-version
+├── db.sqlite3                      local dev database (gitignored)
+├── your_workbook.xlsx   source workbook for import (gitignored)
+├── AWS_Infrastructure_..._Edition.pdf        deployment reference (background)
 │
 ├── config/
-│   ├── settings.py
+│   ├── settings.py                 env-driven; flips to prod mode when DJANGO_DEBUG=false
 │   ├── urls.py
 │   ├── asgi.py
-│   └── wsgi.py
+│   └── wsgi.py                      gunicorn entrypoint: config.wsgi:application
 │
 ├── marketing/
-│   ├── models.py
+│   ├── models.py                   Team, Vendor, Campaign, BudgetLine, Invoice, ...
 │   ├── admin.py
-│   ├── permissions.py
-│   ├── importers/
-│   │   └── excel.py
+│   ├── analytics.py                server-side dashboard/report aggregation helpers
+│   ├── reference_data.py           Data-sheet lookup seeding service
+│   ├── views.py                    all panel views (dashboard, CRUD, reports, exports)
+│   ├── urls.py
+│   ├── forms.py                    invoice + user-access forms (with FA/EN labels)
+│   ├── permissions.py              server-side RBAC scope/queryset filtering
+│   ├── translations.py             EN→FA UI string catalog
+│   ├── context_processors.py       injects UI language / number locale into templates
+│   ├── jalali.py                   Gregorian↔Jalali helpers for month/year grouping
+│   ├── templatetags/marketing_format.py   {% t %}, form_errors, stage/bucket labels
+│   ├── importers/excel.py          workbook → DB importer (aliases, canonicalization)
+│   ├── reports/pdf.py              ReportLab PDF builder
 │   ├── management/commands/
 │   │   ├── bootstrap_dev_admin.py
 │   │   ├── import_marketing_excel.py
+│   │   ├── seed_reference_data.py
 │   │   └── seed_auth_groups.py
-│   ├── migrations/
-│   └── tests/
+│   ├── migrations/                 0001_initial through 0004_reference_lookup_models
+│   └── tests/                      importer, permissions, frontend, and phase-2 feature tests
+│
+├── templates/
+│   ├── registration/login.html
+│   └── marketing/                  base.html + dashboard, invoices/, vendors/, campaigns/,
+│                                   teams/, budgets/, imports/, users/, print/
 │
 ├── docs/
+│   ├── PROJECT_EXPLAINED.md         guided tour of the codebase
 │   ├── PROJECT_BLUEPRINT.md
-│   ├── discovery/
-│   │   ├── audio_transcript.fa.md
-│   │   ├── audio_summary.en.md
-│   │   ├── audio_requirements.en.md
-│   │   ├── audio_followup_answers.en.md
-│   │   ├── workbook_structure.md
-│   │   ├── workbook_sample_rows.md
-│   │   ├── column_mapping.yml
-│   │   └── import_risks.md
-│   └── CURRENT_STATE_AND_RUN_GUIDE.md
+│   ├── PROJECT_FILE_REFERENCE.md
+│   ├── ACCESS_BY_ROLE.md            who can see/do what per role
+│   ├── DEPLOYMENT_AWS.md            deploy-this-app runbook + alternatives
+│   ├── CURRENT_STATE_AND_RUN_GUIDE.md   (this file)
+│   ├── IMPLEMENTATION_PLAN.md / DATA_MODEL.md / RBAC_SPEC.md / ... (specs)
+│   └── discovery/                  audio transcripts, workbook structure, column_mapping.yml
 │
-├── data/
-├── imports/
-└── templates/
+├── data/  imports/                 drop-zones for workbooks (each has a .gitkeep)
+├── media/                          uploaded invoice/payment images (gitignored)
+└── tools/                          one-off discovery scripts (transcribe, inspect xlsx)
 ```
 
 ## Current Capabilities
@@ -123,10 +162,25 @@ Alireza/
 [x] Makefile command pipeline
 [x] Full bilingual (FA/EN) UI: static text, form labels/choices, and validation messages
 [x] Persian-digit display in FA mode (display-only; form inputs stay Latin)
+[x] Jalali (Persian-calendar) month/year grouping and year filters in reports
+[x] Shamsi/Jalali date parsing in Excel import and invoice forms (`1405/01/10`, `۱۴۰۵/۰۱/۱۰`, and Gregorian ISO)
 [x] Overall-spend pie chart (Chart.js doughnut, server-aggregated, team + referral/SMS)
+[x] Excel export of the (permission-filtered) invoice table
+[x] Printable invoice report page (browser print-to-PDF)
+[x] Campaign-name canonicalization (e.g. "on going" -> "Ongoing") in importer + data migration
 [x] Production settings wiring: DATABASE_URL switch, WhiteNoise, HTTPS/security headers, logging
 [x] Optional 'prod' dependency extra (gunicorn, psycopg, whitenoise, dj-database-url)
 [x] Make targets for dev auto-reload and production (dev, prod-install, collectstatic, prod-run)
+[x] Data sheet reference seeding (`make seed-reference`) into SpendCategory, SubTeam, Requester (+ vendors)
+[x] Dedicated team dashboards at `/teams/` and `/teams/<id>/`
+[x] Monthly trend (line) and per-team (bar) Chart.js charts on the main dashboard
+[x] Vendor and campaign Excel exports (permission-scoped)
+[x] Server-rendered PDF summary via reportlab (`/reports/dashboard.pdf`)
+[x] Workbook-style Excel export that recreates the source workbook's sheets (`/exports/workbook.xlsx`)
+[x] Consolidated Settings menu in the top bar (language, amount format, currency unit, theme)
+[x] Compact/full amount display toggle (e.g. 84.3B vs 84,276,543,010) with exact value on hover
+[x] Rial/Toman currency display toggle (display-only; stored values stay in Rial)
+[x] Light/Dark theme toggle (persisted per session)
 ```
 
 ### Partially Working
@@ -136,18 +190,16 @@ Alireza/
 [~] Roles and permissions are applied to the main user-facing screens.
 [~] Data is imported and viewable in the custom panel and Django Admin.
 [~] Team aliases are implemented for the obvious workbook duplicates; future aliases can be added in Django Admin.
-[~] The Excel Data sheet is understood as reference data, but it is not seeded into database lookup tables yet.
+[~] The Excel Data sheet can be seeded into lookup tables via `make seed-reference`; those lookup rows are admin-visible but not yet fully wired into every form as dropdown/autocomplete validation.
+[~] The team dashboard budget card is a total planned-budget headline, not planned-vs-actual variance analysis yet.
+[~] The ReportLab PDF is a dashboard summary, not a polished multi-page vendor/campaign PDF suite yet.
 ```
 
 ### Not Built Yet
 
 ```text
-[ ] Data sheet reference seeding for vendors/categories/sub-teams/requesters
-[ ] Dedicated team dashboard pages
-[ ] More Chart.js charts (monthly trend / per-team) — pie chart is done
 [ ] Separate React front-end (planned later, consumes the same data)
-[ ] Server-rendered PDF export
-[ ] Live AWS deployment (settings are ready; infra not provisioned yet)
+[ ] Live AWS deployment (settings are ready; infra not provisioned yet — see docs/DEPLOYMENT_AWS.md)
 ```
 
 ## Data Model Overview
@@ -166,6 +218,13 @@ Team
   |----< BudgetLine
   |
   |----< UserTeamAccess >---- User
+
+Data sheet lookup rows
+  |
+  |---- Vendor
+  |---- SpendCategory
+  |---- SubTeam
+  `---- Requester
 ```
 
 ### Main Models
@@ -176,6 +235,15 @@ Team
 
 Vendor
   Supplier/vendor used by invoices.
+
+SpendCategory
+  Lookup/category title seeded from the workbook Data sheet.
+
+SubTeam
+  Lookup sub-team label seeded from the workbook Data sheet.
+
+Requester
+  Lookup requester/person label seeded from the workbook Data sheet.
 
 Campaign
   Marketing campaign, usually tied to year and optionally team.
@@ -257,18 +325,21 @@ SMS: 0 actual invoice rows found so far
 
 ## Follow-Up Voice Feedback Captured
 
-The second set of voice notes is summarized in:
+Raw voice notes, WAV conversions, and raw transcripts are kept outside the main docs tree:
 
 ```text
-docs/discovery/audio_followup_answers.en.md
+.artifacts/voice-feedback/
 ```
+
+That directory is ignored by Git. Durable product decisions from those notes are summarized below
+and in `docs/PROJECT_BLUEPRINT.md`.
 
 Decisions to carry into the next implementation phase:
 
 ```text
 Data sheet
   Treat as lookup/reference data, not as a main invoice or budget table.
-  Use later to seed or validate vendors, categories, sub-teams, requesters, and month names.
+  Seed vendors, categories, sub-teams, and requesters with `make seed-reference`.
 
 Vendor management
   Add/remove vendors in the app UI, not by editing the Excel Data sheet.
@@ -280,6 +351,15 @@ Team aliases
 BudgetLine UI
   Keep normalized rows in the database.
   Build an Excel-like pivot table with horizontal month scrolling for humans.
+
+Roles
+  Manager should be closer to Observer than Admin/Editor: strong view/report access, little or no edit access.
+  Observer should remain read-only.
+  Editor should be the role that can enter/import/update data within its assigned scope.
+
+Dates and amounts
+  Shamsi/Jalali dates must be parsed correctly instead of being misread as Gregorian years.
+  Amount columns and money display need QA whenever Persian digits or narrow tables are changed.
 ```
 
 ## How To Run Locally
@@ -341,6 +421,42 @@ make import-dry-run FILE=./imports/my-workbook.xlsx
 make import FILE=./imports/my-workbook.xlsx
 ```
 
+### Seed Data-Sheet References
+
+Preview first:
+
+```bash
+make seed-reference-dry-run
+```
+
+Then seed:
+
+```bash
+make seed-reference
+```
+
+This reads the workbook `Data` sheet through `docs/discovery/column_mapping.yml` and creates or
+updates:
+
+```text
+Vendor
+SpendCategory
+SubTeam
+Requester
+```
+
+The current local database has been seeded with:
+
+```text
+Vendors: 123 total
+Spend categories: 38
+Sub-teams: 15
+Requesters: 27
+```
+
+Dry-run counts are useful as a preview, but they count repeated workbook cells before database
+writes happen, so the final created/updated/skipped numbers can be lower.
+
 ### Start The Local Panel
 
 ```bash
@@ -391,7 +507,7 @@ make first-run
 This runs:
 
 ```text
-setup -> dev-admin -> import -> run
+setup -> dev-admin -> load-data -> run
 ```
 
 ## How To Test The App Manually
@@ -434,11 +550,18 @@ Dashboard
 Expected counts:
 
 ```text
+Core imported invoice/budget facts:
 Teams: 8
 Vendors: 25
 Campaigns: 5
 Invoices: 51
 Budget lines: 1639
+
+After `make seed-reference`:
+Vendors: 123 total
+Spend categories: 38
+Sub-teams: 15
+Requesters: 27
 ```
 
 ### 3. Check Invoice Filters
@@ -502,7 +625,7 @@ Ruff lint passes
 Current result:
 
 ```text
-14 tests passed
+17 tests passed
 ```
 
 ## Current Make Commands
@@ -522,6 +645,30 @@ make import-dry-run
 
 make import
   Import/update Excel data into the database.
+
+make load-data-dry-run
+  Preview both the main invoice/budget import and the Data-sheet reference seed.
+
+make load-data
+  Run the main invoice/budget import, then seed Data-sheet lookup rows.
+
+make seed-reference-dry-run
+  Preview Data-sheet lookup seeding without database writes.
+
+make seed-reference
+  Seed vendors, categories, sub-teams, and requesters from the workbook Data sheet.
+
+make transcribe-audio AUDIO=voice.ogg
+  Local voice-note transcription. Auto-uses the GPU when available, else CPU.
+
+make transcribe-voice AUDIO=.artifacts/voice-feedback/audio/note.ogg
+  Transcribe into the `.artifacts/voice-feedback/` layout (audio / converted / transcripts).
+
+make transcribe-audio-gpu AUDIO=voice.ogg [TRANSCRIPT_MODEL=large-v3]
+  Force GPU (CUDA, float16) transcription.
+
+make transcribe-audio-high AUDIO=voice.ogg
+  Highest accuracy: large-v3 on the GPU (~3 GB VRAM in float16).
 
 make run
   Start local Django server (no auto-reload).
@@ -557,30 +704,47 @@ Raw command equivalent when you do not want to use `make`:
 uv run python manage.py migrate
 uv run python manage.py seed_auth_groups
 uv run python manage.py import_marketing_excel --dry-run
+uv run python manage.py seed_reference_data --dry-run
 uv run python manage.py runserver 127.0.0.1:8000 --noreload
 ```
 
 ## Current Panel Routes
 
 ```text
-/login/           Login
-/                 Dashboard
-/invoices/        Invoice list/create/detail/edit
-/vendors/         Vendor spend report
-/campaigns/       Campaign spend report
-/budgets/         Budget table and pivot
-/imports/         Admin-only Excel upload/import
-/users/           Admin-only user/access management
-/admin/           Django Admin fallback
+/login/                        Login
+/                              Dashboard (pie + monthly/team charts + summaries)
+/teams/                        Team list with links to per-team dashboards
+/teams/<id>/                   Team dashboard (vendors, campaigns, monthly chart)
+/invoices/                     Invoice list/create/detail/edit/stage-update/attachments
+/vendors/                      Vendor spend report (descending)
+/campaigns/                    Campaign spend report
+/budgets/                      Budget table and pivot
+/imports/                      Admin-only Excel upload/import
+/users/                        Admin-only user/access management
+/exports/invoices.xlsx         Excel export of filtered invoices (needs can_export)
+/exports/vendors.xlsx          Excel export of vendor report
+/exports/campaigns.xlsx        Excel export of campaign report
+/exports/workbook.xlsx         Workbook-style Excel (source-workbook sheet layout)
+/reports/dashboard.pdf          Server-rendered PDF summary (reportlab)
+/reports/invoices/print/       Printable invoice report (browser print)
+/preferences/                  Set display preferences (language, amount format, currency unit, theme)
+/admin/                        Django Admin fallback
 ```
+
+**Workbook export (`.xlsx`):** Generated by `marketing/exports/workbook.py` with Excel-safe cells,
+explicit auto-filter bounds, and regression tests in `marketing/tests/test_workbook_export.py`.
+Exports are meant to open cleanly in Microsoft Excel and Google Sheets.
 
 Users are database records, not environment variables. Use `/users/` as an admin to create users, assign Admin/Manager/Editor/Observer roles, grant team/global access, and deactivate users. `.env` is for deployment settings and secrets such as `DJANGO_SECRET_KEY`, database URLs, and allowed hosts.
 
-Use the `FA/EN` toggle in the top bar to switch the UI language. The whole UI is translated — navigation, page headers, table columns, card labels, form field labels and choices, and validation messages. In Persian mode, displayed numbers are rendered as Persian digits (display only; form inputs keep Latin digits so submitted data is unaffected).
+Use the **Settings** menu (⚙) in the top bar to change display preferences: UI language (FA/EN), amount format (compact vs full), currency unit (Rial vs Toman), and theme (light/dark). The whole UI is translated — navigation, page headers, table columns, card labels, form field labels and choices, and validation messages. In Persian mode, displayed numbers are rendered as Persian digits (display only; form inputs keep Latin digits so submitted data is unaffected). Currency and amount-format choices are display-only and never change the stored Rial values, so exports remain exact.
 
 ## Development Roadmap
 
-### Phase 1: Basic Custom UI
+> Status is tracked against reality below. The "Current Capabilities" section above is the
+> authoritative list of what runs today; the phases here show the original plan and how far each got.
+
+### Phase 1: Basic Custom UI — DONE
 
 Goal: move beyond Django Admin for everyday usage.
 
@@ -591,7 +755,7 @@ Goal: move beyond Django Admin for everyday usage.
 4. Add invoice detail page.
 5. Add team/vendor/campaign list pages.
 6. Add team alias management.
-7. Add reference-data management for vendors/categories/sub-teams.
+7. Add admin fallback and lookup seeding for vendors/categories/sub-teams; richer management screens later.
 8. Apply server-side permission filters to every page.
 ```
 
@@ -609,7 +773,7 @@ Dashboard shell
   |-- Import status page
 ```
 
-### Phase 2: Browser-Based Excel Upload
+### Phase 2: Browser-Based Excel Upload — DONE
 
 Goal: let an admin upload Excel through the UI instead of using terminal commands.
 
@@ -641,9 +805,11 @@ Database import
 Import summary page
 ```
 
-### Phase 3: Visualization and Analysis
+### Phase 3: Visualization and Analysis — PARTIAL
 
-Goal: build the real dashboard.
+Goal: build the real dashboard. Done: summary cards, vendor/campaign tables, monthly trend chart,
+per-team chart, dedicated team dashboards, and the overall-spend pie chart. Pending: budget
+planned-vs-actual and richer campaign/budget analysis.
 
 Charts and tables:
 
@@ -674,7 +840,7 @@ Aggregation service
 Template table + Chart.js JSON
 ```
 
-### Phase 4: Data Entry and Workflow
+### Phase 4: Data Entry and Workflow — DONE
 
 Goal: allow teams/editors to enter and update invoices.
 
@@ -689,9 +855,12 @@ Goal: allow teams/editors to enter and update invoices.
 8. Permission tests for every action
 ```
 
-### Phase 5: Exports
+### Phase 5: Exports — DONE FOR CURRENT SCOPE
 
-Goal: let permitted users export reports.
+Goal: let permitted users export reports. Done: invoice-table Excel export, vendor Excel export,
+campaign Excel export, printable invoice report, and server-rendered dashboard PDF via ReportLab.
+Future work is richer PDF layouts, Persian/RTL PDF font support, and more report-specific PDF
+endpoints.
 
 ```text
 1. Filtered invoice Excel export
@@ -701,9 +870,22 @@ Goal: let permitted users export reports.
 5. Permission-scoped exports
 ```
 
-### Phase 6: AWS Deployment
+### Phase 6: AWS Deployment — SETTINGS READY, INFRA PENDING
 
-Goal: deploy for non-technical users.
+Goal: deploy for non-technical users. The app is production-ready in code (DATABASE_URL/Postgres
+switch, WhiteNoise, HTTPS/security headers, logging, `prod` extra, gunicorn). What remains is
+provisioning the infrastructure. See `docs/DEPLOYMENT_AWS.md` for a concrete, copy-pasteable runbook
+(single EC2 + Caddy, then RDS, then S3).
+
+Chosen path:
+
+```text
+1. EC2 + Caddy + Gunicorn
+2. RDS PostgreSQL
+3. S3 for uploaded invoice/payment files
+4. CloudWatch + CI/CD
+5. ALB/Terraform only if the app needs more reliability or repeatability
+```
 
 Recommended production shape:
 
@@ -723,7 +905,8 @@ Gunicorn + Django app
     +---- Static files via S3/CloudFront or Nginx
 ```
 
-For version 1, prefer this small always-on Django deployment over serverless. It is easier to operate with login sessions, admin workflows, uploads, imports, PDF/Excel exports, and later scheduled jobs.
+For version 1, prefer this small always-on Django deployment over serverless. It is easier to operate
+with login sessions, admin workflows, uploads, imports, PDF/Excel exports, and later scheduled jobs.
 
 Deployment checklist:
 
@@ -792,8 +975,8 @@ Terminal workflow remains available:
 
 ```text
 Drop workbook in project root/data/imports
-Run make import-dry-run
-Run make import
+Run make load-data-dry-run
+Run make load-data
 ```
 
 ### Discovery Mapping Matters
@@ -808,21 +991,24 @@ If the Excel workbook structure changes, update discovery/mapping before importi
 
 ## Recommended Next Step
 
-Build the analysis layer next:
+Deepen the analysis layer where the current charts stop:
 
 ```text
-1. Chart.js dashboard visualizations
-2. JSON endpoints for chart data
-3. Budget planned-vs-actual analysis
-4. Team alias management
-5. Reference-data management seeded from the Data sheet
+1. Budget planned-vs-actual analysis
+2. Richer campaign-over-year visualization
+3. Reference-data management screens for vendors/categories/sub-teams/requesters
+4. Optional JSON endpoints for a later React front-end
 ```
 
-After that, add:
+After that, harden and ship it:
 
 ```text
-1. Dedicated team dashboard pages
-2. Server-rendered PDF export
-3. Deployment Dockerfile
-4. AWS deployment
+1. Upload size/type validation and S3 media storage
+2. Persian/RTL PDF support if PDFs need Persian content
+3. CI/CD running `make check`
+4. AWS deployment per docs/DEPLOYMENT_AWS.md (or a PaaS)
 ```
+
+The React front-end stays a separate, later project that consumes the same server-aggregated data.
+
+For a fuller, prioritized plan of improvements and next steps, see `docs/PHASE_2.md`.

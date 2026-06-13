@@ -4,6 +4,12 @@
 {% block title %}{% t "Campaign report" %}{% endblock %}
 {% block page_title %}{% t "Campaign report" %}{% endblock %}
 {% block page_subtitle %}{% t "Campaign spend across the year and by month" %}{% endblock %}
+{% block page_actions %}
+  {% if can_export_data %}
+    <a class="btn" href="{% url 'marketing:export_campaigns_excel' %}?{{ request.GET.urlencode }}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?{{ request.GET.urlencode }}">⎙ {% t "PDF summary" %}</a>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
   <section class="section">
@@ -56,24 +62,31 @@
         </div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table campaign-table">
+          <colgroup>
+            <col class="col-campaign">
+            <col class="col-year">
+            <col class="col-team">
+            <col class="col-invoices">
+            <col class="col-amount">
+          </colgroup>
           <thead>
             <tr>
-              <th>{% t "Campaign" %}</th>
-              <th>{% t "Year" %}</th>
-              <th>{% t "Team" %}</th>
-              <th>{% t "Invoices" %}</th>
-              <th>{% t "Amount" %}</th>
+              <th>{% sortable_th "Campaign" "campaign" %}</th>
+              <th class="col-num">{% sortable_th "Year" "year" %}</th>
+              <th>{% sortable_th "Team" "team" %}</th>
+              <th class="col-num">{% sortable_th "Invoices" "invoices" %}</th>
+              <th class="col-num">{% sortable_th "Amount" "amount" %}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in campaign_rows %}
               <tr>
                 <td>{{ row.campaign__name }}</td>
-                <td class="number">{{ row.campaign__year }}</td>
+                <td class="col-num">{{ row.campaign__year }}</td>
                 <td>{{ row.campaign__team__name|default:"-" }}</td>
-                <td class="number">{{ row.invoice_count }}</td>
-                <td class="number">{{ row.total|money }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
             {% empty %}
               <tr><td colspan="5" class="empty">{% t "No campaigns in this range." %}</td></tr>
@@ -112,12 +125,12 @@
       </div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="data-table">
         <thead>
           <tr>
             <th>{% t "Campaign" %}</th>
             {% for month, label in months %}
-              <th>{{ label }}</th>
+              <th class="col-num">{{ label }}</th>
             {% endfor %}
           </tr>
         </thead>
@@ -126,7 +139,7 @@
             <tr>
               <td>{{ campaign_name }}</td>
               {% for month, label in months %}
-                <td class="number">{{ month_map|get_item:month|money }}</td>
+                <td class="col-num">{{ month_map|get_item:month|money }}</td>
               {% endfor %}
             </tr>
           {% empty %}

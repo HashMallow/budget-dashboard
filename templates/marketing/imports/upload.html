@@ -45,22 +45,22 @@
       </div>
       {% if summary %}
         <div class="table-wrap">
-          <table>
+          <table class="data-table">
             <thead>
               <tr>
                 <th>{% t "Section" %}</th>
-                <th>{% t "Created" %}</th>
-                <th>{% t "Updated" %}</th>
-                <th>{% t "Skipped" %}</th>
+                <th class="col-num">{% t "Created" %}</th>
+                <th class="col-num">{% t "Updated" %}</th>
+                <th class="col-num">{% t "Skipped" %}</th>
               </tr>
             </thead>
             <tbody>
               {% for row in summary %}
                 <tr>
                   <td>{% t row.label %}</td>
-                  <td class="number">{{ row.created }}</td>
-                  <td class="number">{{ row.updated }}</td>
-                  <td class="number">{{ row.skipped }}</td>
+                  <td class="col-num">{{ row.created }}</td>
+                  <td class="col-num">{{ row.updated }}</td>
+                  <td class="col-num">{{ row.skipped }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -72,6 +72,21 @@
     </div>
   </section>
 
+  {% if can_export_data %}
+    <section class="section panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Export workbook" %}</h2>
+          <p class="section-subtitle">{% t "Excel shaped like the source workbook, built from the database" %}</p>
+        </div>
+      </div>
+      <p class="section-subtitle" style="margin-bottom: 12px;">
+        {% t "Sheets: invoices, monthly Budget projection/Actual, Market Live Spending, and Data lookups — scoped to what you can see." %}
+      </p>
+      <a class="btn primary" href="{% url 'marketing:export_workbook_excel' %}">⇩ {% t "Download workbook (.xlsx)" %}</a>
+    </section>
+  {% endif %}
+
   {% if skipped_preview %}
     <section class="section panel">
       <div class="section-header">
@@ -81,11 +96,11 @@
         </div>
       </div>
       <div class="table-wrap">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               <th>{% t "Sheet" %}</th>
-              <th>{% t "Row" %}</th>
+              <th class="col-num">{% t "Row" %}</th>
               <th>{% t "Reason" %}</th>
             </tr>
           </thead>
@@ -93,7 +108,7 @@
             {% for item in skipped_preview %}
               <tr>
                 <td>{{ item.sheet }}</td>
-                <td class="number">{{ item.row_number }}</td>
+                <td class="col-num">{{ item.row_number }}</td>
                 <td>{{ item.reason }}</td>
               </tr>
             {% endfor %}

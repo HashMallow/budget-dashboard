@@ -19,6 +19,19 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 
+from .analytics import (
+    attention_invoices,
+    decimal_sum,
+    monthly_chart_data,
+    monthly_spend_rows,
+    overall_spend_pie,
+    percent,
+    team_chart_data,
+    team_spend_rows,
+    vendor_grouped_rows,
+)
+from .cost_buckets import exclude_pseudo_teams, team_spend_cost_buckets
+from .exports.workbook import build_workbook_style_export
 from .forms import (
     ExcelImportUploadForm,
     InvoiceAttachmentForm,
@@ -46,10 +59,83 @@ from .permissions import (
     get_user_scope,
     user_has_admin_access,
 )
-from .translations import translate
+from .reports.pdf import build_dashboard_summary_pdf
+from .table_sort import SortState, apply_ordering, parse_sort, sort_rows
 
 User = get_user_model()
 ZERO = Decimal("0")
+
+INVOICE_SORT_FIELDS = {
+    "number": "invoice_number",
+    "vendor": "vendor__name",
+    "team": "team__name",
+    "category": "category",
+    "date": "invoice_date",
+    "amount": "amount",
+    "stage": "payment_stage",
+    "days": "stage_changed_at",
+}
+INVOICE_SORT_DEFAULTS = {
+    "number": "asc",
+    "vendor": "asc",
+    "team": "asc",
+    "category": "asc",
+    "date": "desc",
+    "amount": "desc",
+    "stage": "asc",
+    "days": "desc",
+}
+
+VENDOR_SORT_KEYS = {
+    "vendor": lambda row: row["vendor"].name.lower(),
+    "invoices": lambda row: row["invoice_count"],
+    "amount": lambda row: row["total"],
+}
+VENDOR_SORT_DEFAULTS = {"vendor": "asc", "invoices": "desc", "amount": "desc"}
+
+CAMPAIGN_SORT_FIELDS = {
+    "campaign": "campaign__name",
+    "year": "campaign__year",
+    "team": "campaign__team__name",
+    "invoices": "invoice_count",
+    "amount": "total",
+}
+CAMPAIGN_SORT_DEFAULTS = {
+    "campaign": "asc",
+    "year": "desc",
+    "team": "asc",
+    "invoices": "desc",
+    "amount": "desc",
+}
+
+TEAM_SORT_KEYS = {
+    "team": lambda row: row["team"].name.lower(),
+    "invoices": lambda row: row["invoice_count"],
+    "amount": lambda row: row["total_spend"],
+}
+TEAM_SORT_DEFAULTS = {"team": "asc", "invoices": "desc", "amount": "desc"}
+
+BUDGET_SORT_FIELDS = {
+    "year": "year",
+    "month": "month",
+    "team": "team__name",
+    "campaign": "campaign__name",
+    "category": "category",
+    "amount": "planned_amount",
+}
+BUDGET_SORT_DEFAULTS = {
+    "year": "desc",
+    "month": "asc",
+    "team": "asc",
+    "campaign": "asc",
+    "category": "asc",
+    "amount": "desc",
+}
+BUDGET_PIVOT_SORT_KEYS = {
+    "team": lambda row: row["team"].lower(),
+    "category": lambda row: row["category"].lower(),
+    "total": lambda row: row["total"],
+}
 
 
 def get_ui_lang(request) -> str:
@@ -87,29 +173,14 @@ def forbidden(message: str = "You are not allowed to perform this action.") -> H
     return HttpResponseForbidden(message)
 
 
-def decimal_sum(queryset, field: str = "amount") -> Decimal:
-    return queryset.aggregate(total=Sum(field))["total"] or ZERO
-
-
-def percent(value: Decimal, maximum: Decimal) -> int:
-    """Bar width (0-100) for a value relative to a maximum.
-
-    Any strictly positive value gets a small minimum width so that small-but-real
-    amounts stay visible and distinguishable from a true zero on the chart.
-    """
-    if not maximum or value <= 0:
-        return 0
-    ratio = (float(value) / float(maximum)) * 100
-    return min(max(int(round(ratio)), 2), 100)
-
-
 def visible_invoice_queryset(request):
     queryset = Invoice.objects.select_related("vendor", "team", "campaign").order_by("-invoice_date", "-id")
     return filter_invoices_for_user(queryset, request.user)
 
 
 def visible_team_queryset(request):
-    return filter_teams_for_user(Team.objects.filter(is_active=True), request.user).order_by("name")
+    teams = exclude_pseudo_teams(Team.objects.filter(is_active=True))
+    return filter_teams_for_user(teams, request.user).order_by("name")
 
 
 def filter_invoice_queryset(request, queryset):
@@ -195,32 +266,11 @@ def dashboard(request):
     referral_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.REFERRAL))
     sms_total = decimal_sum(invoices.filter(cost_bucket=CostBucket.SMS))
 
-    monthly_map = {month_number: ZERO for month_number, _label in months}
-    for row in invoices.values("invoice_date").annotate(total=Sum("amount")):
-        invoice_date = row["invoice_date"]
-        jalali_month = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)[1]
-        monthly_map[jalali_month] += row["total"] or ZERO
-    max_monthly = max(monthly_map.values(), default=ZERO)
-    monthly_rows = [
-        {
-            "month": month_number,
-            "label": label,
-            "total": monthly_map[month_number],
-            "percent": percent(monthly_map[month_number], max_monthly),
-        }
-        for month_number, label in months
-    ]
+    monthly_rows = monthly_spend_rows(invoices, months)
+    monthly_chart = monthly_chart_data(monthly_rows)
 
-    team_total_rows = list(
-        invoices.filter(cost_bucket=CostBucket.TEAM)
-        .values("team__name")
-        .annotate(total=Sum("amount"), invoice_count=Count("id"))
-        .order_by("-total")[:10]
-    )
-    max_team_total = max((row["total"] or ZERO for row in team_total_rows), default=ZERO)
-    for row in team_total_rows:
-        row["percent"] = percent(row["total"] or ZERO, max_team_total)
-        row["team_name"] = row["team__name"] or "No team"
+    team_total_rows = team_spend_rows(invoices)
+    team_chart = team_chart_data(team_total_rows, get_ui_lang(request))
 
     vendor_rows = list(
         invoices.values("vendor_id", "vendor__name")
@@ -241,28 +291,10 @@ def dashboard(request):
         .order_by("-invoice_count")
     )
 
-    attention_invoices = sorted(
-        invoices.filter(payment_stage=PaymentStage.FINANCE_REVIEW)[:20],
-        key=lambda item: item.days_in_current_stage,
-        reverse=True,
-    )[:6]
+    attention = attention_invoices(invoices)
 
-    # Overall-spend pie: one slice per team plus separate Referral/SMS slices, so referral and
-    # SMS stay visible outside the team breakdown while still being part of total spend.
     ui_lang = get_ui_lang(request)
-    pie_segments = [
-        (translate(row["team_name"], ui_lang), row["total"])
-        for row in team_total_rows
-        if row["total"]
-    ]
-    if referral_total:
-        pie_segments.append((translate("Referral", ui_lang), referral_total))
-    if sms_total:
-        pie_segments.append((translate("SMS", ui_lang), sms_total))
-    spend_pie = {
-        "labels": [label for label, _ in pie_segments],
-        "values": [float(value) for _, value in pie_segments],
-    }
+    spend_pie = overall_spend_pie(team_total_rows, referral_total, sms_total, ui_lang)
 
     context = {
         "scope": get_user_scope(request.user),
@@ -280,9 +312,13 @@ def dashboard(request):
         "vendor_rows": vendor_rows,
         "campaign_rows": campaign_rows,
         "stage_rows": stage_rows,
-        "attention_invoices": attention_invoices,
+        "attention_invoices": attention,
         "spend_pie": spend_pie,
         "spend_pie_has_data": bool(spend_pie["values"]),
+        "monthly_chart": monthly_chart,
+        "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
+        "team_chart": team_chart,
+        "team_chart_has_data": bool(team_chart["values"]),
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
     }
@@ -292,6 +328,21 @@ def dashboard(request):
 @login_required
 def invoice_list(request):
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    sort = parse_sort(
+        request,
+        allowed=INVOICE_SORT_FIELDS,
+        default_field="date",
+        default_dir="desc",
+        default_dirs=INVOICE_SORT_DEFAULTS,
+    )
+    queryset = apply_ordering(
+        queryset,
+        sort,
+        fields=INVOICE_SORT_FIELDS,
+        default_field="date",
+        inverted={"days"},
+        tiebreaker="-id",
+    )
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(request.GET.get("page"))
     context = {
@@ -303,6 +354,8 @@ def invoice_list(request):
         "cost_buckets": CostBucket.choices,
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
+        "table_sort": sort,
+        "table_sort_defaults": INVOICE_SORT_DEFAULTS,
     }
     return render(request, "marketing/invoices/list.html", context)
 
@@ -397,30 +450,108 @@ def invoice_attachment_upload(request, pk: int):
 
 
 @login_required
+def team_list(request):
+    sort = parse_sort(
+        request,
+        allowed=TEAM_SORT_KEYS,
+        default_field="amount",
+        default_dir="desc",
+        default_dirs=TEAM_SORT_DEFAULTS,
+    )
+    teams = visible_team_queryset(request)
+    team_summaries = []
+    for team in teams:
+        invoices = visible_invoice_queryset(request).filter(
+            team=team,
+            cost_bucket__in=team_spend_cost_buckets(team),
+        )
+        team_summaries.append({
+            "team": team,
+            "total_spend": decimal_sum(invoices),
+            "invoice_count": invoices.count(),
+        })
+    team_summaries = sort_rows(
+        team_summaries,
+        sort,
+        keys=TEAM_SORT_KEYS,
+        default_field="amount",
+    )
+    return render(
+        request,
+        "marketing/teams/list.html",
+        {
+            "team_summaries": team_summaries,
+            "table_sort": sort,
+            "table_sort_defaults": TEAM_SORT_DEFAULTS,
+        },
+    )
+
+
+@login_required
+def team_dashboard(request, pk: int):
+    team = get_object_or_404(visible_team_queryset(request), pk=pk)
+    months = get_months(request)
+    selected_year = request.GET.get("year", "").strip()
+
+    invoices = visible_invoice_queryset(request).filter(
+        team=team,
+        cost_bucket__in=team_spend_cost_buckets(team),
+    )
+    if selected_year.isdigit():
+        invoices = filter_by_jalali_year(invoices, selected_year)
+
+    total_spend = decimal_sum(invoices)
+    invoice_count = invoices.count()
+    monthly_rows = monthly_spend_rows(invoices, months)
+    monthly_chart = monthly_chart_data(monthly_rows)
+    vendor_rows = vendor_grouped_rows(invoices)
+    campaign_rows = list(
+        invoices.filter(campaign__isnull=False)
+        .values("campaign_id", "campaign__name", "campaign__year")
+        .annotate(total=Sum("amount"), invoice_count=Count("id"))
+        .order_by("-total")
+    )
+    attention = attention_invoices(invoices)
+    budget_total = decimal_sum(
+        filter_budget_lines_for_user(BudgetLine.objects.filter(team=team), request.user),
+        "planned_amount",
+    )
+
+    context = {
+        "team": team,
+        "years": distinct_jalali_years(visible_invoice_queryset(request).filter(team=team)),
+        "selected_year": selected_year,
+        "total_spend": total_spend,
+        "budget_total": budget_total,
+        "invoice_count": invoice_count,
+        "monthly_rows": monthly_rows,
+        "monthly_chart": monthly_chart,
+        "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
+        "vendor_rows": vendor_rows,
+        "campaign_rows": campaign_rows,
+        "attention_invoices": attention,
+        "can_create_invoice": user_can_create_invoice(request.user),
+        "can_export_data": can_export(request.user),
+    }
+    return render(request, "marketing/teams/dashboard.html", context)
+
+
+@login_required
 def vendor_report(request):
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
-    grouped: dict[int, dict] = {}
-    for invoice in queryset:
-        vendor_id = invoice.vendor_id
-        if vendor_id not in grouped:
-            grouped[vendor_id] = {
-                "vendor": invoice.vendor,
-                "total": ZERO,
-                "invoice_count": 0,
-                "invoice_numbers": [],
-                "stages": set(),
-            }
-        row = grouped[vendor_id]
-        row["total"] += invoice.amount or ZERO
-        row["invoice_count"] += 1
-        row["invoice_numbers"].append(invoice.invoice_number)
-        row["stages"].add(invoice.get_payment_stage_display())
-
-    vendor_rows = sorted(grouped.values(), key=lambda item: item["total"], reverse=True)
-    for row in vendor_rows:
-        row["stages"] = sorted(row["stages"])
-        row["visible_invoice_numbers"] = row["invoice_numbers"][:8]
-        row["remaining_invoice_count"] = max(len(row["invoice_numbers"]) - 8, 0)
+    sort = parse_sort(
+        request,
+        allowed=VENDOR_SORT_KEYS,
+        default_field="amount",
+        default_dir="desc",
+        default_dirs=VENDOR_SORT_DEFAULTS,
+    )
+    vendor_rows = sort_rows(
+        vendor_grouped_rows(queryset),
+        sort,
+        keys=VENDOR_SORT_KEYS,
+        default_field="amount",
+    )
 
     context = {
         "vendor_rows": vendor_rows,
@@ -429,6 +560,8 @@ def vendor_report(request):
         "payment_stages": PaymentStage.choices,
         "cost_buckets": CostBucket.choices,
         "can_export_data": can_export(request.user),
+        "table_sort": sort,
+        "table_sort_defaults": VENDOR_SORT_DEFAULTS,
     }
     return render(request, "marketing/vendors/report.html", context)
 
@@ -437,12 +570,26 @@ def vendor_report(request):
 def campaign_report(request):
     months = get_months(request)
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
-    campaign_totals = list(
+    sort = parse_sort(
+        request,
+        allowed=CAMPAIGN_SORT_FIELDS,
+        default_field="amount",
+        default_dir="desc",
+        default_dirs=CAMPAIGN_SORT_DEFAULTS,
+    )
+    campaign_qs = (
         queryset.filter(campaign__isnull=False)
         .values("campaign_id", "campaign__name", "campaign__year", "campaign__team__name")
         .annotate(total=Sum("amount"), invoice_count=Count("id"))
-        .order_by("-total")
     )
+    campaign_qs = apply_ordering(
+        campaign_qs,
+        sort,
+        fields=CAMPAIGN_SORT_FIELDS,
+        default_field="amount",
+        tiebreaker="campaign__name",
+    )
+    campaign_totals = list(campaign_qs)
     max_total = max((row["total"] or ZERO for row in campaign_totals), default=ZERO)
     for row in campaign_totals:
         row["percent"] = percent(row["total"] or ZERO, max_total)
@@ -454,6 +601,8 @@ def campaign_report(request):
         .annotate(total=Sum("amount"))
     ):
         invoice_date = row["invoice_date"]
+        if not invoice_date:
+            continue
         jalali_month = gregorian_to_jalali(invoice_date.year, invoice_date.month, invoice_date.day)[1]
         monthly_campaigns[row["campaign__name"]][jalali_month] += row["total"] or ZERO
 
@@ -466,6 +615,9 @@ def campaign_report(request):
         "years": distinct_jalali_years(visible_invoice_queryset(request)),
         "payment_stages": PaymentStage.choices,
         "cost_buckets": CostBucket.choices,
+        "can_export_data": can_export(request.user),
+        "table_sort": sort,
+        "table_sort_defaults": CAMPAIGN_SORT_DEFAULTS,
     }
     return render(request, "marketing/campaigns/report.html", context)
 
@@ -473,8 +625,15 @@ def campaign_report(request):
 @login_required
 def budget_list(request):
     months = get_months(request)
+    sort = parse_sort(
+        request,
+        allowed={*BUDGET_SORT_FIELDS, "total"},
+        default_field="year",
+        default_dir="desc",
+        default_dirs={**BUDGET_SORT_DEFAULTS, "total": "desc"},
+    )
     queryset = filter_budget_lines_for_user(
-        BudgetLine.objects.select_related("team", "campaign").order_by("year", "team__name", "category", "month"),
+        BudgetLine.objects.select_related("team", "campaign"),
         request.user,
     )
     year = request.GET.get("year", "").strip()
@@ -486,6 +645,15 @@ def budget_list(request):
         queryset = queryset.filter(team_id=int(team))
     if q:
         queryset = queryset.filter(Q(category__icontains=q) | Q(team__name__icontains=q))
+
+    db_sort = sort if sort.field in BUDGET_SORT_FIELDS else SortState("year", sort.direction)
+    queryset = apply_ordering(
+        queryset,
+        db_sort,
+        fields=BUDGET_SORT_FIELDS,
+        default_field="year",
+        tiebreaker="id",
+    )
 
     years = (
         filter_budget_lines_for_user(BudgetLine.objects.all(), request.user)
@@ -507,14 +675,27 @@ def budget_list(request):
             pivot[key]["months"][line.month] += line.planned_amount or ZERO
         pivot[key]["total"] += line.planned_amount or ZERO
 
+    pivot_sort = SortState(
+        sort.field if sort.field in BUDGET_PIVOT_SORT_KEYS else "team",
+        sort.direction,
+    )
+    pivot_rows = sort_rows(
+        list(pivot.values()),
+        pivot_sort,
+        keys=BUDGET_PIVOT_SORT_KEYS,
+        default_field="team",
+    )
+
     paginator = Paginator(queryset, 50)
     context = {
         "page_obj": paginator.get_page(request.GET.get("page")),
-        "pivot_rows": sorted(pivot.values(), key=lambda item: (item["team"], item["category"])),
+        "pivot_rows": pivot_rows,
         "months": months,
         "years": years,
         "teams": visible_team_queryset(request),
         "filters": {"year": year, "team": team, "q": q},
+        "table_sort": sort,
+        "table_sort_defaults": {**BUDGET_SORT_DEFAULTS, "total": "desc"},
     }
     return render(request, "marketing/budgets/list.html", context)
 
@@ -559,6 +740,7 @@ def import_workbook(request):
         "summary": summary,
         "pending_path": pending_path,
         "skipped_preview": result.skipped_rows[:20] if result else [],
+        "can_export_data": can_export(request.user),
     }
     return render(request, "marketing/imports/upload.html", context)
 
@@ -637,6 +819,110 @@ def export_invoices_excel(request):
 
 
 @login_required
+def export_vendors_excel(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, _filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    vendor_rows = vendor_grouped_rows(queryset)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Vendors"
+    sheet.append(["Vendor", "Invoice count", "Invoice numbers", "Payment stages", "Total spend"])
+    for row in vendor_rows:
+        sheet.append([
+            row["vendor"].name,
+            row["invoice_count"],
+            ", ".join(row["invoice_numbers"]),
+            ", ".join(row["stages"]),
+            row["total"],
+        ])
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="marketing-vendors.xlsx"'
+    workbook.save(response)
+    return response
+
+
+@login_required
+def export_campaigns_excel(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, _filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    campaign_rows = (
+        queryset.filter(campaign__isnull=False)
+        .values("campaign__name", "campaign__year", "campaign__team__name")
+        .annotate(total=Sum("amount"), invoice_count=Count("id"))
+        .order_by("-total")
+    )
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Campaigns"
+    sheet.append(["Campaign", "Year", "Team", "Invoice count", "Total spend"])
+    for row in campaign_rows:
+        sheet.append([
+            row["campaign__name"],
+            row["campaign__year"],
+            row["campaign__team__name"] or "",
+            row["invoice_count"],
+            row["total"],
+        ])
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="marketing-campaigns.xlsx"'
+    workbook.save(response)
+    return response
+
+
+@login_required
+def export_workbook_excel(request):
+    """Export an Excel file shaped like the source workbook (same sheet names and layout).
+
+    This recreates the familiar workbook structure from the database — the invoice sheet,
+    the wide monthly Budget projection/Actual sheet, the Market Live Spending summary, and
+    the Data lookup lists — scoped to the data the current user is allowed to see.
+    """
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    invoices, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    budget_lines = filter_budget_lines_for_user(BudgetLine.objects.all(), request.user)
+    if filters["year"].isdigit():
+        budget_lines = budget_lines.filter(year=int(filters["year"]))
+    if filters["team"].isdigit():
+        budget_lines = budget_lines.filter(team_id=int(filters["team"]))
+
+    workbook = build_workbook_style_export(invoices, budget_lines)
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="marketing-workbook.xlsx"'
+    workbook.save(response)
+    return response
+
+
+@login_required
+def dashboard_report_pdf(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
+    vendor_rows = list(
+        queryset.values("vendor__name")
+        .annotate(total=Sum("amount"), invoice_count=Count("id"))
+        .order_by("-total")[:15]
+    )
+    stage_rows = list(
+        queryset.values("payment_stage").annotate(invoice_count=Count("id")).order_by("payment_stage")
+    )
+    pdf_bytes = build_dashboard_summary_pdf(
+        title="Marketing spend summary",
+        generated_at=timezone.now(),
+        total_spend=decimal_sum(queryset),
+        invoice_count=queryset.count(),
+        vendor_rows=vendor_rows,
+        stage_rows=stage_rows,
+        filters=filters,
+    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="marketing-dashboard-summary.pdf"'
+    return response
+
+
+@login_required
 def invoice_report_print(request):
     if not can_export(request.user):
         return forbidden("You do not have permission to view reports.")
@@ -661,10 +947,19 @@ def invoice_report_print(request):
 def set_display_preferences(request):
     ui_lang = request.POST.get("ui_lang")
     number_locale = request.POST.get("number_locale")
+    money_format = request.POST.get("money_format")
+    currency_unit = request.POST.get("currency_unit")
+    theme = request.POST.get("theme")
     if ui_lang in {"fa", "en"}:
         request.session["ui_lang"] = ui_lang
     if number_locale in {"fa", "en"}:
         request.session["number_locale"] = number_locale
+    if money_format in {"full", "compact"}:
+        request.session["money_format"] = money_format
+    if currency_unit in {"rial", "toman"}:
+        request.session["currency_unit"] = currency_unit
+    if theme in {"light", "dark"}:
+        request.session["theme"] = theme
 
     next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or "/"
     if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):

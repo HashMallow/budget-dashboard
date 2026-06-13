@@ -1,0 +1,231 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Team dashboard" %} — {{ team.name }}{% endblock %}
+{% block page_title %}{% t "Team dashboard" %}: {% t team.name %}{% endblock %}
+{% block page_subtitle %}{% t "Spend, vendors, campaigns and invoices requiring attention for this team" %}{% endblock %}
+{% block page_actions %}
+  {% if can_export_data %}
+    <a class="btn" href="{% url 'marketing:export_vendors_excel' %}?team={{ team.id }}{% if selected_year %}&year={{ selected_year }}{% endif %}">⇩ {% t "Excel" %}</a>
+    <a class="btn" href="{% url 'marketing:dashboard_report_pdf' %}?team={{ team.id }}{% if selected_year %}&year={{ selected_year }}{% endif %}">⎙ {% t "PDF summary" %}</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="year">{% t "Year" %}</label>
+        <select id="year" name="year">
+          <option value="">{% t "All years" %}</option>
+          {% for year in years %}
+            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn primary" type="submit">{% t "Apply filter" %}</button>
+    </form>
+  </section>
+
+  <section class="section">
+    <div class="grid cards">
+      <div class="card">
+        <div class="card-label">{% t "Total spend" %}</div>
+        <div class="card-value number">{{ total_spend|money }}</div>
+        <div class="card-note">{{ currency_label }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">{% t "Invoice count" %}</div>
+        <div class="card-value number">{{ invoice_count }}</div>
+        <div class="card-note">{% t "In selected range" %}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">{% t "Planned budget" %}</div>
+        <div class="card-value number">{{ budget_total|money }}</div>
+        <div class="card-note">{% t "Budget lines for this team" %}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Monthly trend" %}</h2>
+          <p class="section-subtitle">{% t "By Persian (Jalali) month" %}</p>
+        </div>
+      </div>
+      {% if monthly_chart_has_data %}
+        <div class="chart-wrap"><canvas id="teamMonthlyChart" height="280"></canvas></div>
+      {% else %}
+        <div class="empty">{% t "No data to display." %}</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section grid two">
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Top vendors" %}</h2>
+          <p class="section-subtitle">{% t "Sorted from highest to lowest spend" %}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table vendor-table">
+          <colgroup>
+            <col class="col-vendor">
+            <col class="col-count">
+            <col class="col-invoices">
+            <col class="col-stages">
+            <col class="col-amount">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>{% t "Vendor" %}</th>
+              <th class="col-num">{% t "Count" %}</th>
+              <th class="col-badges">{% t "Invoice numbers" %}</th>
+              <th class="col-badges">{% t "Stages" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in vendor_rows %}
+              <tr>
+                <td>{{ row.vendor.name }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-badges">
+                  <div class="badge-group">
+                    {% for number in row.visible_invoice_numbers %}
+                      <span class="badge ltr">{{ number }}</span>
+                    {% endfor %}
+                  </div>
+                </td>
+                <td class="col-badges">
+                  <div class="badge-group">
+                    {% for stage in row.stages %}
+                      <span class="badge">{% t stage %}</span>
+                    {% endfor %}
+                  </div>
+                </td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="empty">{% t "No vendors in this range." %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Campaigns" %}</h2>
+          <p class="section-subtitle">{% t "Spend on campaigns recorded on invoices" %}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table campaign-table">
+          <colgroup>
+            <col class="col-campaign">
+            <col class="col-year">
+            <col class="col-invoices">
+            <col class="col-amount">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>{% t "Campaign" %}</th>
+              <th class="col-num">{% t "Year" %}</th>
+              <th class="col-num">{% t "Invoices" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in campaign_rows %}
+              <tr>
+                <td>{{ row.campaign__name }}</td>
+                <td class="col-num">{{ row.campaign__year }}</td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="empty">{% t "No campaigns recorded in this range." %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">{% t "Invoices in finance review" %}</h2>
+        <p class="section-subtitle">{% t "Sorted by days waiting in stage" %}</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Invoice" %}</th>
+            <th>{% t "Vendor" %}</th>
+            <th class="col-num">{% t "Days in stage" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for invoice in attention_invoices %}
+            <tr>
+              <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
+              <td>{{ invoice.vendor.name }}</td>
+              <td class="col-num">{{ invoice.days_in_current_stage }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if monthly_chart_has_data %}
+    {{ monthly_chart|json_script:"team-monthly-chart-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+      (function () {
+        var el = document.getElementById("teamMonthlyChart");
+        if (!el || typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
+        if (document.body.classList.contains("theme-dark")) {
+          Chart.defaults.color = "#cbd5e1";
+          Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
+        }
+        var data = JSON.parse(document.getElementById("team-monthly-chart-data").textContent);
+        var moneyOptions = window.chartMoneyOptions();
+        new Chart(el, {
+          type: "bar",
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: "Spend",
+              data: data.values,
+              backgroundColor: "#0f766e",
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: moneyOptions.plugins.tooltip
+            },
+            scales: moneyOptions.scales
+          }
+        });
+      })();
+    </script>
+  {% endif %}
+{% endblock %}
