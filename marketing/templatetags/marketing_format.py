@@ -91,12 +91,15 @@ def money(value, mode_override: str = "") -> str:
             if parts:
                 num, suffix = parts
                 negative, body = split_signed_prefix(num)
-                sign = "−" if negative else ""
-                # LTR isolate keeps the minus on the correct (left) side of Persian digits.
+                if negative:
+                    sign = "−"
+                    # Keep RTL amount order; isolate signed digits so minus stays on the left.
+                    return mark_safe(
+                        f'<span class="money-compact-fa" dir="rtl">'
+                        f'<bdi dir="ltr">{sign}{conditional_escape(body)}</bdi> {suffix}</span>'
+                    )
                 return mark_safe(
-                    f'<span class="money-compact-fa">'
-                    f'<span dir="ltr" class="signed-number">{sign}{conditional_escape(body)}</span>'
-                    f" {suffix}</span>"
+                    f'<span class="money-compact-fa" dir="rtl">{conditional_escape(num)} {suffix}</span>'
                 )
         if lang == "fa":
             negative, body = split_signed_prefix(text)

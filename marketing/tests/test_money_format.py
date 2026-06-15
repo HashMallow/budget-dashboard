@@ -128,11 +128,29 @@ def test_money_filter_renders_minus_before_persian_compact_number():
         html = template.render(ctx)
     finally:
         reset_money_display(token)
-    assert 'class="signed-number"' in html
-    assert "dir=\"ltr\"" in html
+    assert "money-compact-fa" in html
+    assert 'dir="rtl"' in html
+    assert "bdi" in html
     assert "−330" in html or "-330" in html
     assert "میلیارد" in html
-    assert html.index("−" if "−" in html else "-") < html.index("میلیارد")
+
+
+def test_money_filter_keeps_persian_compact_number_before_suffix():
+    from django.template import Context, Template
+
+    from marketing.money_format import activate_money_display, reset_money_display
+
+    template = Template("{% load marketing_format %}{{ value|money }}")
+    ctx = Context({"value": Decimal("3920000000")})
+    token = activate_money_display(COMPACT, "fa", TOMAN)
+    try:
+        html = template.render(ctx)
+    finally:
+        reset_money_display(token)
+    assert 'dir="rtl"' in html
+    assert "392" in html
+    assert "میلیون" in html
+    assert html.index("392") < html.index("میلیون")
 
 
 def test_unit_labels():

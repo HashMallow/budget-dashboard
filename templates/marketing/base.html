@@ -413,7 +413,16 @@
     .data-table td.col-num.money-cell,
     .data-table th.col-num.money-cell,
     .data-table .col-amount {
-      min-width: 8.75rem;
+      min-width: 10.5rem;
+      overflow: visible;
+      text-overflow: clip;
+    }
+    .data-table td.col-date,
+    .data-table th.col-date {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+      min-width: 11.5rem;
     }
     .badge-group {
       display: flex;
@@ -438,15 +447,16 @@
     .campaign-table .col-team { width: 18%; min-width: 120px; }
     .campaign-table .col-invoices { width: 96px; min-width: 96px; }
     .campaign-table .col-amount { width: 180px; min-width: 8.75rem; }
-    .invoice-table { min-width: 1040px; }
+    .invoice-table { min-width: 1120px; }
     .invoice-table .col-number { width: 110px; min-width: 110px; }
-    .invoice-table .col-vendor { width: 18%; min-width: 140px; }
-    .invoice-table .col-team { width: 12%; min-width: 100px; }
-    .invoice-table .col-category { width: 16%; min-width: 120px; }
-    .invoice-table .col-date { width: 108px; min-width: 108px; }
-    .invoice-table .col-amount { width: 160px; min-width: 8.75rem; }
-    .invoice-table .col-stage { width: 128px; min-width: 128px; }
-    .invoice-table .col-days { width: 72px; min-width: 72px; }
+    .invoice-table .col-vendor { width: 15%; min-width: 120px; }
+    .invoice-table .col-team { width: 10%; min-width: 90px; }
+    .invoice-table .col-business-line { width: 9%; min-width: 6.5rem; }
+    .invoice-table .col-category { width: 13%; min-width: 100px; }
+    .invoice-table .col-date { width: 11.5rem; min-width: 11.5rem; }
+    .invoice-table .col-amount { width: 10.5rem; min-width: 10.5rem; }
+    .invoice-table .col-stage { width: 7.5rem; min-width: 7.5rem; }
+    .invoice-table .col-days { width: 4.5rem; min-width: 4.5rem; }
     .teams-table { min-width: 680px; }
     .teams-table .col-team { width: auto; min-width: 140px; }
     .teams-table .col-count { width: 96px; min-width: 96px; }
@@ -828,9 +838,18 @@
           return digits;
         }
         if (lang === "fa") {
-          return "\u2066\u2212" + digits + "\u2069";
+          return "\u2212" + digits;
         }
         return "-" + digits;
+      };
+      window.formatFaCompactAmount = function (numberText, suffix, lang) {
+        var value = String(numberText);
+        var negative = value.startsWith("-");
+        var body = negative ? value.slice(1) : value;
+        var digits = window.formatDigitsForLang(body, lang);
+        var sign = negative ? (lang === "fa" ? "\u2212" : "-") : "";
+        // RTL run: number then suffix in logical order (matches DOM money filter).
+        return "\u202B" + sign + digits + " " + suffix.trim() + "\u202C";
       };
       window.formatChartAmount = function (value) {
         var n = Number(value);
@@ -860,7 +879,7 @@
             var formatted = scaled.toFixed(decimals).replace(/\.?0+$/, "");
             if (cfg.lang === "fa") {
               var faSuffix = cfg.unit === "toman" ? scales[i][4] : scales[i][3];
-              return window.formatSignedNumberForLang(formatted, "fa") + faSuffix;
+              return window.formatFaCompactAmount(formatted, faSuffix, "fa");
             }
             return formatted + scales[i][2];
           }
