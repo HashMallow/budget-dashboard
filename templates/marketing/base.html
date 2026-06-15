@@ -937,7 +937,7 @@
           var datasets = chart.data.datasets || [];
           var datasetIndex = -1;
           for (var i = 0; i < datasets.length; i += 1) {
-            if (datasets[i].yAxisID === "y1") { datasetIndex = i; break; }
+            if (datasets[i].type === "bar") { datasetIndex = i; break; }
           }
           if (datasetIndex < 0) { return; }
           var meta = chart.getDatasetMeta(datasetIndex);
@@ -948,7 +948,6 @@
           ctx.fillStyle = isDark ? "#e2e8f0" : "#334155";
           ctx.font = "600 11px Vazirmatn, Segoe UI, sans-serif";
           ctx.textAlign = "center";
-          ctx.textBaseline = "bottom";
           meta.data.forEach(function (bar, index) {
             var raw = datasets[datasetIndex].data[index];
             var n = Number(raw);
@@ -970,22 +969,6 @@
         var deviationLabel = labels.deviation || "Deviation";
         var moneyOptions = window.chartMoneyOptions();
         var deviationColors = budgetData.deviation.map(window.deviationBarColor);
-        var scales = {
-          x: moneyOptions.scales.x,
-          y: {
-            position: "left",
-            beginAtZero: true,
-            ticks: moneyOptions.scales.y.ticks
-          },
-          y1: {
-            position: "right",
-            beginAtZero: true,
-            grid: { drawOnChartArea: false },
-            ticks: {
-              callback: function (value) { return window.formatChartAmount(value); }
-            }
-          }
-        };
         return new Chart(canvas, {
           type: "bar",
           data: {
@@ -1021,7 +1004,7 @@
                 data: budgetData.deviation,
                 backgroundColor: deviationColors,
                 borderRadius: 4,
-                yAxisID: "y1",
+                yAxisID: "y",
                 order: 0
               }
             ]
@@ -1037,7 +1020,7 @@
               },
               tooltip: moneyOptions.plugins.tooltip
             },
-            scales: scales
+            scales: moneyOptions.scales
           },
           plugins: [window.budgetVarianceBarLabelsPlugin]
         });

@@ -107,6 +107,9 @@ CONTRACT_SORT_DEFAULTS = {
 }
 
 
+from django.contrib.auth.decorators import login_not_required
+
+@login_not_required
 def favicon_svg(request):
     """Return the fixed app tab icon (yellow invoice on gradient)."""
     response = HttpResponse(_FAVICON_SVG, content_type="image/svg+xml")
@@ -114,6 +117,7 @@ def favicon_svg(request):
     return response
 
 
+@login_not_required
 def set_display_preferences(request):
     ui_lang = request.POST.get("ui_lang")
     number_locale = request.POST.get("number_locale")
@@ -137,10 +141,12 @@ def set_display_preferences(request):
     return redirect(next_url)
 
 
+@login_not_required
 def help_sitemap(request):
     return render(request, "marketing/help_sitemap.html")
 
 
+@login_not_required
 def logout_view(request):
     logout(request)
     return redirect("marketing:login")

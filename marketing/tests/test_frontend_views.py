@@ -222,4 +222,4 @@ def test_dashboard_chart_helpers_load_before_chart_init(client, frontend_data):
     assert init_pos != -1
     assert helper_pos < init_pos, "Chart money helpers must load before dashboard chart init"
     assert variance_helper_pos < init_pos, "Budget variance helper must load before dashboard chart init"
-    assert 'yAxisID: "y1"' in html or "createBudgetVarianceChart" in html
+    assert "yAxisID: \"y\"" in html or "createBudgetVarianceChart" in html
