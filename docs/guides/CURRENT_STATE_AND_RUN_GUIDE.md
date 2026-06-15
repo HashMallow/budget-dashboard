@@ -75,7 +75,7 @@ Alireza/
 ├── pyproject.toml                  deps (+ optional 'prod' extra) and tool config
 ├── uv.lock / uv.toml / .python-version
 ├── db.sqlite3                      local dev database (gitignored)
-├── your_workbook.xlsx   source workbook for import (gitignored)
+├── your_workbook.xlsx              source workbook for import (gitignored; any *.xlsx)
 │
 ├── config/
 │   ├── settings.py                 env-driven; flips to prod mode when DJANGO_DEBUG=false

@@ -509,53 +509,12 @@
         }
         var budgetEl = document.getElementById("budgetVarianceChart");
         var budgetNode = document.getElementById("budget-variance-chart-data");
-        if (budgetEl && budgetNode && typeof window.chartMoneyOptions === "function") {
+        if (budgetEl && budgetNode && typeof window.createBudgetVarianceChart === "function") {
           var budgetData = JSON.parse(budgetNode.textContent);
-          var budgetMoneyOptions = window.chartMoneyOptions();
-          new Chart(budgetEl, {
-            type: "bar",
-            data: {
-              labels: budgetData.labels,
-              datasets: [
-                {
-                  type: "line",
-                  label: "Planned",
-                  data: budgetData.planned,
-                  borderColor: "#2563eb",
-                  backgroundColor: "rgba(37, 99, 235, 0.12)",
-                  tension: 0.25,
-                  yAxisID: "y"
-                },
-                {
-                  type: "line",
-                  label: "Actual",
-                  data: budgetData.actual,
-                  borderColor: "#0f766e",
-                  backgroundColor: "rgba(15, 118, 110, 0.12)",
-                  tension: 0.25,
-                  yAxisID: "y"
-                },
-                {
-                  type: "bar",
-                  label: "Deviation",
-                  data: budgetData.deviation,
-                  backgroundColor: budgetData.deviation.map(function (v) {
-                    return v > 0 ? "rgba(180, 35, 24, 0.55)" : "rgba(6, 118, 71, 0.55)";
-                  }),
-                  borderRadius: 4,
-                  yAxisID: "y"
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { position: "bottom" },
-                tooltip: budgetMoneyOptions.plugins.tooltip
-              },
-              scales: budgetMoneyOptions.scales
-            }
+          window.createBudgetVarianceChart(budgetEl, budgetData, {
+            planned: "{% t 'Planned'|escapejs %}",
+            actual: "{% t 'Actual'|escapejs %}",
+            deviation: "{% t 'Deviation'|escapejs %}"
           });
         }
       })();

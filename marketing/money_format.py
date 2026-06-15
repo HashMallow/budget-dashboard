@@ -52,12 +52,19 @@ def money_display_title(value, *, unit: str, lang: str, compact_formatted: str =
 
 
 def split_fa_compact_amount(formatted: str) -> tuple[str, str] | None:
-    """Split ``25 میلیون`` into number and Persian scale word."""
+    """Split ``25 میلیون`` or ``-3.3 میلیارد`` into number and Persian scale word."""
     for suffix in _FA_COMPACT_SUFFIXES:
         token = f" {suffix}"
         if formatted.endswith(token):
             return formatted[: -len(token)], suffix
     return None
+
+
+def split_signed_prefix(formatted: str) -> tuple[bool, str]:
+    """Return whether *formatted* is negative and the unsigned body."""
+    if formatted.startswith("-"):
+        return True, formatted[1:]
+    return False, formatted
 
 
 # (minimum absolute value, divisor, English suffix, Persian suffix)

@@ -105,6 +105,36 @@ def test_format_money_full_respects_toman_unit():
     assert format_money_full(Decimal("100"), TOMAN) == "10"
 
 
+def test_format_money_compact_negative_persian():
+    assert format_money(Decimal("-3300000000000"), COMPACT, "fa", TOMAN) == "-330 میلیارد"
+
+
+def test_split_fa_compact_amount_negative():
+    from marketing.money_format import split_fa_compact_amount, split_signed_prefix
+
+    assert split_fa_compact_amount("-3.3 میلیارد") == ("-3.3", "میلیارد")
+    assert split_signed_prefix("-3.3") == (True, "3.3")
+
+
+def test_money_filter_renders_minus_before_persian_compact_number():
+    from django.template import Context, Template
+
+    from marketing.money_format import activate_money_display, reset_money_display
+
+    template = Template("{% load marketing_format %}{{ value|money }}")
+    ctx = Context({"value": Decimal("-3300000000000")})
+    token = activate_money_display(COMPACT, "fa", TOMAN)
+    try:
+        html = template.render(ctx)
+    finally:
+        reset_money_display(token)
+    assert 'class="signed-number"' in html
+    assert "dir=\"ltr\"" in html
+    assert "−330" in html or "-330" in html
+    assert "میلیارد" in html
+    assert html.index("−" if "−" in html else "-") < html.index("میلیارد")
+
+
 def test_unit_labels():
     assert unit_label(RIAL, "en") == "IRR"
     assert unit_label(RIAL, "fa") == "ریال"

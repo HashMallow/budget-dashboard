@@ -226,7 +226,7 @@ make import FILE=./path/to/your_workbook.xlsx
 
 **You do not need a local mapping file** if your invoice tab has the expected columns (`Invoice Number`,
 `Vendor Name`, `Invoice Amount (IRR)`, …). The importer auto-detects the tab when the name differs
-from the template (e.g. `Marketing Spend Input` vs `Marketing Spend Input`).
+from the template (e.g. `Your Invoice Tab` vs `Marketing Spend Input`).
 
 Optional — match export tab names to your source workbook:
 
@@ -238,6 +238,11 @@ cp docs/discovery/column_mapping.local.yml.example docs/discovery/column_mapping
 See `docs/discovery/README.md` for details.
 
 The command prints selected sheets, created/updated/skipped counts, and skipped-row reasons.
+
+**Re-import safety:** Running `make import` or `make load-data` again is safe for **invoices**
+(rows are updated, not duplicated). **Budget lines** key on workbook row + **fiscal year** + month —
+if `budget_line_mapping.year` in the mapping changed since the last import, budget rows duplicate
+and planned budget on the dashboard can look doubled. See `docs/discovery/README.md`.
 Re-running the import updates existing rows instead of duplicating them.
 
 Raw Django command equivalent:

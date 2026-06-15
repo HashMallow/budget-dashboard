@@ -11,3 +11,6 @@ workbook: "your_workbook.xlsx"
 sheets:
   invoices:
     actual_sheet_name: "Marketing Spend Input"
+  budget:
+    budget_line_mapping:
+      year: 1405

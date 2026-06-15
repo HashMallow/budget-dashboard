@@ -277,49 +277,12 @@
         }
         var budgetEl = document.getElementById("teamBudgetVarianceChart");
         var budgetNode = document.getElementById("team-budget-variance-chart-data");
-        if (budgetEl && budgetNode) {
+        if (budgetEl && budgetNode && typeof window.createBudgetVarianceChart === "function") {
           var budgetData = JSON.parse(budgetNode.textContent);
-          new Chart(budgetEl, {
-            type: "bar",
-            data: {
-              labels: budgetData.labels,
-              datasets: [
-                {
-                  type: "line",
-                  label: "Planned",
-                  data: budgetData.planned,
-                  borderColor: "#2563eb",
-                  backgroundColor: "rgba(37, 99, 235, 0.12)",
-                  tension: 0.25
-                },
-                {
-                  type: "line",
-                  label: "Actual",
-                  data: budgetData.actual,
-                  borderColor: "#0f766e",
-                  backgroundColor: "rgba(15, 118, 110, 0.12)",
-                  tension: 0.25
-                },
-                {
-                  type: "bar",
-                  label: "Deviation",
-                  data: budgetData.deviation,
-                  backgroundColor: budgetData.deviation.map(function (v) {
-                    return v > 0 ? "rgba(180, 35, 24, 0.55)" : "rgba(6, 118, 71, 0.55)";
-                  }),
-                  borderRadius: 4
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { position: "bottom" },
-                tooltip: moneyOptions.plugins.tooltip
-              },
-              scales: moneyOptions.scales
-            }
+          window.createBudgetVarianceChart(budgetEl, budgetData, {
+            planned: "{% t 'Planned'|escapejs %}",
+            actual: "{% t 'Actual'|escapejs %}",
+            deviation: "{% t 'Deviation'|escapejs %}"
           });
         }
       })();

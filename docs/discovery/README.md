@@ -40,3 +40,19 @@ committed.
 
 Never commit production workbooks, database dumps, or mappings that contain real vendor names,
 employee names, or client branding.
+
+## Re-import without duplicating data
+
+- **Invoices** upsert by source row + vendor + invoice number (safe to run `make import` again).
+- **Budget lines** upsert by source row + **year** + month. If `budget_line_mapping.year` in the
+  mapping differs from a previous import (e.g. template changed from 1405 to 1404), a second import
+  **adds a second copy** of every budget row and dashboard planned budget **doubles**.
+
+Keep `year: 1405` (or your workbook’s fiscal year) in `column_mapping.local.yml` if the public
+template year does not match your data. After a mistaken double import, delete the wrong year:
+
+```bash
+uv run python manage.py shell -c "from marketing.models import BudgetLine; print(BudgetLine.objects.filter(year=1404).delete())"
+```
+
+(Replace `1404` with the duplicate year you see in Admin or the shell.)

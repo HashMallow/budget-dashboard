@@ -14,6 +14,7 @@ from marketing.money_format import (
     format_money_full,
     money_display_title,
     split_fa_compact_amount,
+    split_signed_prefix,
 )
 from marketing.permissions import user_has_admin_access
 from marketing.table_sort import sort_href
@@ -89,8 +90,20 @@ def money(value, mode_override: str = "") -> str:
             parts = split_fa_compact_amount(text)
             if parts:
                 num, suffix = parts
-                # RTL isolate: number is read first, scale word (میلیون/…) immediately after.
-                return mark_safe(f'<span class="money-compact-fa" dir="rtl">{conditional_escape(num)} {suffix}</span>')
+                negative, body = split_signed_prefix(num)
+                sign = "−" if negative else ""
+                # LTR isolate keeps the minus on the correct (left) side of Persian digits.
+                return mark_safe(
+                    f'<span class="money-compact-fa">'
+                    f'<span dir="ltr" class="signed-number">{sign}{conditional_escape(body)}</span>'
+                    f" {suffix}</span>"
+                )
+        if lang == "fa":
+            negative, body = split_signed_prefix(text)
+            if negative:
+                return mark_safe(
+                    f'<span dir="ltr" class="signed-number">−{conditional_escape(body)}</span>'
+                )
         return text
 
     if mode == COMPACT and mode_override != FULL:

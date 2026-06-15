@@ -328,6 +328,11 @@
       white-space: nowrap;
       display: inline-block;
     }
+    .signed-number {
+      direction: ltr;
+      unicode-bidi: isolate;
+      display: inline-block;
+    }
     .data-table thead th {
       vertical-align: bottom;
     }
@@ -814,17 +819,31 @@
       window.formatDigitsForLang = function (text, lang) {
         return lang === "fa" ? window.toPersianDigits(text) : String(text);
       };
+      window.formatSignedNumberForLang = function (text, lang) {
+        var value = String(text);
+        var negative = value.startsWith("-");
+        var body = negative ? value.slice(1) : value;
+        var digits = window.formatDigitsForLang(body, lang);
+        if (!negative) {
+          return digits;
+        }
+        if (lang === "fa") {
+          return "\u2066\u2212" + digits + "\u2069";
+        }
+        return "-" + digits;
+      };
       window.formatChartAmount = function (value) {
         var n = Number(value);
         if (!isFinite(n)) { return String(value); }
         var cfg = window.MARKETING_MONEY;
-        var finalize = function (text) { return window.formatDigitsForLang(text, cfg.lang); };
         if (cfg.unit === "toman") { n = n / 10; }
         if (cfg.mode !== "compact") {
-          return finalize(Math.round(n).toLocaleString("en-US"));
+          return window.formatSignedNumberForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
         }
         var abs = Math.abs(n);
-        if (abs < 1000) { return finalize(Math.round(n).toLocaleString("en-US")); }
+        if (abs < 1000) {
+          return window.formatSignedNumberForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
+        }
         var scales = [
           [1e12, 1e12, "T", " تریلیون", " همت"],
           [1e9, 1e9, "B", " میلیارد", " میلیارد"],
@@ -841,19 +860,19 @@
             var formatted = scaled.toFixed(decimals).replace(/\.?0+$/, "");
             if (cfg.lang === "fa") {
               var faSuffix = cfg.unit === "toman" ? scales[i][4] : scales[i][3];
-              return "\u202B" + finalize(formatted) + faSuffix + "\u202C";
+              return window.formatSignedNumberForLang(formatted, "fa") + faSuffix;
             }
             return formatted + scales[i][2];
           }
         }
-        return finalize(Math.round(n).toLocaleString("en-US"));
+        return window.formatSignedNumberForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
       };
       window.formatChartAmountFull = function (value) {
         var n = Number(value);
         if (!isFinite(n)) { return String(value); }
         var cfg = window.MARKETING_MONEY;
         if (cfg.unit === "toman") { n = n / 10; }
-        return window.formatDigitsForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
+        return window.formatSignedNumberForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
       };
       window.chartMoneyOptions = function () {
         var cfg = window.MARKETING_MONEY;
@@ -906,6 +925,122 @@
             }
           }
         };
+      };
+      window.deviationBarColor = function (value) {
+        var n = Number(value);
+        if (!isFinite(n) || n === 0) { return "rgba(148, 163, 184, 0.35)"; }
+        return n > 0 ? "rgba(180, 35, 24, 0.72)" : "rgba(6, 118, 71, 0.72)";
+      };
+      window.budgetVarianceBarLabelsPlugin = {
+        id: "budgetVarianceBarLabels",
+        afterDatasetsDraw: function (chart) {
+          var datasets = chart.data.datasets || [];
+          var datasetIndex = -1;
+          for (var i = 0; i < datasets.length; i += 1) {
+            if (datasets[i].yAxisID === "y1") { datasetIndex = i; break; }
+          }
+          if (datasetIndex < 0) { return; }
+          var meta = chart.getDatasetMeta(datasetIndex);
+          if (!meta || meta.hidden) { return; }
+          var ctx = chart.ctx;
+          var isDark = document.body.classList.contains("theme-dark");
+          ctx.save();
+          ctx.fillStyle = isDark ? "#e2e8f0" : "#334155";
+          ctx.font = "600 11px Vazirmatn, Segoe UI, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          meta.data.forEach(function (bar, index) {
+            var raw = datasets[datasetIndex].data[index];
+            var n = Number(raw);
+            if (!isFinite(n) || n === 0) { return; }
+            var label = typeof window.formatChartAmount === "function"
+              ? window.formatChartAmount(n)
+              : String(n);
+            var y = n >= 0 ? bar.y - 6 : bar.y + 14;
+            ctx.textBaseline = n >= 0 ? "bottom" : "top";
+            ctx.fillText(label, bar.x, y);
+          });
+          ctx.restore();
+        }
+      };
+      window.createBudgetVarianceChart = function (canvas, budgetData, labels) {
+        labels = labels || {};
+        var plannedLabel = labels.planned || "Planned";
+        var actualLabel = labels.actual || "Actual";
+        var deviationLabel = labels.deviation || "Deviation";
+        var moneyOptions = window.chartMoneyOptions();
+        var deviationColors = budgetData.deviation.map(window.deviationBarColor);
+        var scales = {
+          x: moneyOptions.scales.x,
+          y: {
+            position: "left",
+            beginAtZero: true,
+            ticks: moneyOptions.scales.y.ticks
+          },
+          y1: {
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            ticks: {
+              callback: function (value) { return window.formatChartAmount(value); }
+            }
+          }
+        };
+        return new Chart(canvas, {
+          type: "bar",
+          data: {
+            labels: budgetData.labels,
+            datasets: [
+              {
+                type: "line",
+                label: plannedLabel,
+                data: budgetData.planned,
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37, 99, 235, 0.12)",
+                tension: 0.25,
+                yAxisID: "y",
+                order: 1,
+                pointRadius: 3,
+                pointHoverRadius: 5
+              },
+              {
+                type: "line",
+                label: actualLabel,
+                data: budgetData.actual,
+                borderColor: "#0f766e",
+                backgroundColor: "rgba(15, 118, 110, 0.12)",
+                tension: 0.25,
+                yAxisID: "y",
+                order: 1,
+                pointRadius: 3,
+                pointHoverRadius: 5
+              },
+              {
+                type: "bar",
+                label: deviationLabel,
+                data: budgetData.deviation,
+                backgroundColor: deviationColors,
+                borderRadius: 4,
+                yAxisID: "y1",
+                order: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { font: { family: "Vazirmatn, Segoe UI, sans-serif" } }
+              },
+              tooltip: moneyOptions.plugins.tooltip
+            },
+            scales: scales
+          },
+          plugins: [window.budgetVarianceBarLabelsPlugin]
+        });
       };
     })();
   </script>
