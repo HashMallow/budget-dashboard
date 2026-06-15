@@ -265,6 +265,9 @@ FA: dict[str, str] = {
     "Upload an xlsx file, review the dry-run, then commit to the database": (
         "آپلود فایل xlsx، بررسی اولیه، سپس ثبت در دیتابیس"
     ),
+    "Upload an xlsx file, review the dry-run, then commit invoices, budget, and Data-sheet lookups": (
+        "آپلود فایل xlsx، بررسی اولیه، سپس ثبت فاکتورها، بودجه و مراجع لیست Data"
+    ),
     "First a dry-run only; nothing in the database changes": "ابتدا فقط بررسی می‌شود و چیزی در دیتابیس تغییر نمی‌کند",
     "Check file": "بررسی فایل",
     "Confirm and import to database": "تایید و ورود به دیتابیس",
@@ -365,8 +368,12 @@ FA: dict[str, str] = {
     "Editor": "ویرایشگر",
     "Observer": "ناظر",
     "Admin": "ادمین",
-    # --- Import summary labels (result_summary) ---
+    # --- Import summary labels (workbook_load_summary) ---
     "Teams": "تیم‌ها",
+    "Vendors (invoices)": "وندورها (فاکتورها)",
+    "Vendors (lookup)": "وندورها (لیست مرجع)",
+    "Categories": "دسته‌بندی‌ها",
+    "Sub teams": "زیرتیم‌ها",
     # --- Flash messages ---
     "Invoice saved.": "فاکتور ثبت شد.",
     "Invoice updated.": "فاکتور به‌روزرسانی شد.",
@@ -378,7 +385,9 @@ FA: dict[str, str] = {
         "آپلود فایل انجام نشد. نوع فایل یا دسترسی را بررسی کنید."
     ),
     "There is no file ready to import.": "هیچ فایل آماده‌ای برای ورود وجود ندارد.",
-    "Excel data imported into the database.": "اطلاعات اکسل وارد دیتابیس شد.",
+    "Excel data and reference lookups imported into the database.": (
+        "اطلاعات اکسل و مراجع لیست Data وارد دیتابیس شد."
+    ),
     "Dry-run complete. If the result looks correct, confirm the import.": (
         "بررسی اولیه انجام شد. اگر نتیجه درست است، ورود را تایید کنید."
     ),

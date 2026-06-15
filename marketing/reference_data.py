@@ -7,8 +7,14 @@ from typing import Any
 from django.db import transaction
 from openpyxl import load_workbook
 
-from marketing.importers.excel import discover_workbook, load_mapping
+from marketing.importers.excel import ImportResult, discover_workbook, import_marketing_workbook, load_mapping
 from marketing.models import Requester, SpendCategory, SubTeam, Vendor, normalize_name
+
+
+@dataclass
+class WorkbookLoadResult:
+    import_result: ImportResult
+    reference_result: ReferenceSeedResult
 
 
 @dataclass
@@ -169,3 +175,85 @@ def seed_reference_data_from_workbook(
 
     workbook.close()
     return result
+
+
+def load_workbook_data(
+    workbook_path: str | Path,
+    *,
+    mapping_path: str | Path = "docs/discovery/column_mapping.yml",
+    dry_run: bool = False,
+) -> WorkbookLoadResult:
+    """Import invoices/budget lines and seed Data-sheet lookups (same as ``make load-data``)."""
+    with transaction.atomic():
+        import_result = import_marketing_workbook(
+            workbook_path,
+            mapping_path=mapping_path,
+            dry_run=dry_run,
+        )
+        reference_result = seed_reference_data_from_workbook(
+            workbook_path,
+            mapping_path=mapping_path,
+            dry_run=dry_run,
+        )
+    return WorkbookLoadResult(import_result=import_result, reference_result=reference_result)
+
+
+def workbook_load_summary(load_result: WorkbookLoadResult) -> list[dict[str, int | str]]:
+    imp = load_result.import_result
+    ref = load_result.reference_result
+    return [
+        {
+            "label": "Teams",
+            "created": imp.teams.created,
+            "updated": imp.teams.updated,
+            "skipped": imp.teams.skipped,
+        },
+        {
+            "label": "Vendors (invoices)",
+            "created": imp.vendors.created,
+            "updated": imp.vendors.updated,
+            "skipped": imp.vendors.skipped,
+        },
+        {
+            "label": "Campaigns",
+            "created": imp.campaigns.created,
+            "updated": imp.campaigns.updated,
+            "skipped": imp.campaigns.skipped,
+        },
+        {
+            "label": "Invoices",
+            "created": imp.invoices.created,
+            "updated": imp.invoices.updated,
+            "skipped": imp.invoices.skipped,
+        },
+        {
+            "label": "Budget",
+            "created": imp.budget_lines.created,
+            "updated": imp.budget_lines.updated,
+            "skipped": imp.budget_lines.skipped,
+        },
+        {
+            "label": "Vendors (lookup)",
+            "created": ref.vendors.created,
+            "updated": ref.vendors.updated,
+            "skipped": ref.vendors.skipped,
+        },
+        {
+            "label": "Categories",
+            "created": ref.categories.created,
+            "updated": ref.categories.updated,
+            "skipped": ref.categories.skipped,
+        },
+        {
+            "label": "Sub teams",
+            "created": ref.sub_teams.created,
+            "updated": ref.sub_teams.updated,
+            "skipped": ref.sub_teams.skipped,
+        },
+        {
+            "label": "Requesters",
+            "created": ref.requesters.created,
+            "updated": ref.requesters.updated,
+            "skipped": ref.requesters.skipped,
+        },
+    ]

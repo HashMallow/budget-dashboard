@@ -344,6 +344,20 @@ class Invoice(TimestampedModel):
             models.Index(fields=["cost_bucket", "invoice_date"]),
             models.Index(fields=["payment_stage"]),
         ]
+        constraints = [
+            # Imported rows: stable idempotency key (source row + vendor + invoice number).
+            models.UniqueConstraint(
+                fields=["source_sheet", "source_row_number", "vendor", "invoice_number"],
+                condition=Q(source_row_number__isnull=False),
+                name="unique_invoice_source_row_vendor_number",
+            ),
+            # Manual/UI-created rows: one invoice number per vendor when no source row is set.
+            models.UniqueConstraint(
+                fields=["invoice_number", "vendor"],
+                condition=Q(source_row_number__isnull=True),
+                name="unique_manual_invoice_number_vendor",
+            ),
+        ]
 
     @property
     def days_in_current_stage(self) -> int:

@@ -7,7 +7,7 @@ from django.db.models import Count, QuerySet, Sum
 
 from marketing.cost_buckets import team_spend_cost_buckets
 from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali
-from marketing.models import CostBucket, Invoice, PaymentStage, Team
+from marketing.models import CostBucket, Invoice, PaymentStage, Team, Vendor
 from marketing.translations import translate
 
 ZERO = Decimal("0")
@@ -270,29 +270,46 @@ def overall_spend_pie(team_rows: list[dict], referral_total: Decimal, sms_total:
     }
 
 
-def vendor_grouped_rows(invoices: QuerySet[Invoice]) -> list[dict]:
-    grouped: dict[int, dict] = {}
-    for invoice in invoices.select_related("vendor"):
-        vendor_id = invoice.vendor_id
-        if vendor_id not in grouped:
-            grouped[vendor_id] = {
-                "vendor": invoice.vendor,
-                "total": ZERO,
-                "invoice_count": 0,
-                "invoice_numbers": [],
-                "stages": set(),
-            }
-        row = grouped[vendor_id]
-        row["total"] += invoice.amount or ZERO
-        row["invoice_count"] += 1
-        row["invoice_numbers"].append(invoice.invoice_number)
-        row["stages"].add(invoice.get_payment_stage_display())
+_PAYMENT_STAGE_LABELS = dict(PaymentStage.choices)
 
-    vendor_rows = sorted(grouped.values(), key=lambda item: item["total"], reverse=True)
-    for row in vendor_rows:
-        row["stages"] = sorted(row["stages"])
-        row["visible_invoice_numbers"] = row["invoice_numbers"][:8]
-        row["remaining_invoice_count"] = max(len(row["invoice_numbers"]) - 8, 0)
+
+def vendor_grouped_rows(invoices: QuerySet[Invoice]) -> list[dict]:
+    stats = list(
+        invoices.values("vendor_id")
+        .annotate(total=Sum("amount"), invoice_count=Count("id"))
+        .order_by("-total")
+    )
+    if not stats:
+        return []
+
+    vendor_map = {
+        vendor.id: vendor for vendor in Vendor.objects.filter(id__in=[row["vendor_id"] for row in stats])
+    }
+
+    details: dict[int, dict] = defaultdict(lambda: {"invoice_numbers": [], "stages": set()})
+    for vendor_id, invoice_number, payment_stage in invoices.values_list(
+        "vendor_id", "invoice_number", "payment_stage"
+    ):
+        detail = details[vendor_id]
+        detail["invoice_numbers"].append(invoice_number)
+        detail["stages"].add(_PAYMENT_STAGE_LABELS.get(payment_stage, payment_stage))
+
+    vendor_rows: list[dict] = []
+    for stat in stats:
+        vendor_id = stat["vendor_id"]
+        detail = details[vendor_id]
+        invoice_numbers = detail["invoice_numbers"]
+        vendor_rows.append(
+            {
+                "vendor": vendor_map[vendor_id],
+                "total": stat["total"] or ZERO,
+                "invoice_count": stat["invoice_count"],
+                "invoice_numbers": invoice_numbers,
+                "stages": sorted(detail["stages"]),
+                "visible_invoice_numbers": invoice_numbers[:8],
+                "remaining_invoice_count": max(len(invoice_numbers) - 8, 0),
+            }
+        )
     return vendor_rows
 
 

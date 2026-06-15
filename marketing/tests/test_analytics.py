@@ -13,6 +13,7 @@ from marketing.analytics import (
     monthly_spend_rows,
     monthly_spend_window_rows,
     team_budget_variance_rows,
+    vendor_grouped_rows,
 )
 from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_to_gregorian, jalali_year_bounds
 from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage, Team, Vendor
@@ -226,3 +227,51 @@ def test_team_budget_variance_rows_include_rollup_bucket_spend():
     assert rows[0]["planned"] == Decimal("500")
     assert rows[0]["actual"] == Decimal("400")
     assert rows[0]["deviation"] == Decimal("-100")
+
+
+def test_vendor_grouped_rows_aggregates_by_vendor_descending_total():
+    team = Team.objects.create(name="Growth", slug="growth")
+    vendor_a = Vendor.objects.create(name="Alpha Vendor")
+    vendor_b = Vendor.objects.create(name="Beta Vendor")
+    Invoice.objects.create(
+        invoice_number="A-1",
+        vendor=vendor_a,
+        team=team,
+        category="Performance",
+        cost_bucket=CostBucket.TEAM,
+        invoice_date=date(2026, 1, 1),
+        amount=Decimal("300"),
+        payment_stage=PaymentStage.PAID,
+    )
+    Invoice.objects.create(
+        invoice_number="A-2",
+        vendor=vendor_a,
+        team=team,
+        category="Performance",
+        cost_bucket=CostBucket.TEAM,
+        invoice_date=date(2026, 2, 1),
+        amount=Decimal("200"),
+        payment_stage=PaymentStage.FINANCE_REVIEW,
+    )
+    Invoice.objects.create(
+        invoice_number="B-1",
+        vendor=vendor_b,
+        team=team,
+        category="Performance",
+        cost_bucket=CostBucket.TEAM,
+        invoice_date=date(2026, 1, 1),
+        amount=Decimal("1000"),
+        payment_stage=PaymentStage.PAID,
+    )
+
+    rows = vendor_grouped_rows(Invoice.objects.all())
+
+    assert len(rows) == 2
+    assert rows[0]["vendor"] == vendor_b
+    assert rows[0]["total"] == Decimal("1000")
+    assert rows[1]["vendor"] == vendor_a
+    assert rows[1]["total"] == Decimal("500")
+    assert rows[1]["invoice_count"] == 2
+    assert set(rows[1]["invoice_numbers"]) == {"A-1", "A-2"}
+    assert "Paid" in rows[1]["stages"]
+    assert "Finance review" in rows[1]["stages"]

@@ -207,6 +207,14 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         self._style_fields()
         apply_ui_language(self, ui_lang)
 
+    def clean_team(self):
+        team = self.cleaned_data.get("team")
+        if team is None:
+            return team
+        if not filter_teams_for_user(Team.objects.filter(pk=team.pk), self.user).exists():
+            raise ValidationError("You are not allowed to use this team.")
+        return team
+
     def clean(self):
         cleaned = super().clean()
         vendor = cleaned.get("vendor")
