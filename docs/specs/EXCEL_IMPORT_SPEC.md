@@ -75,7 +75,7 @@ Required invoice concepts:
 
 Optional invoice concepts:
 
-- business line (Excel **Business Section** — business segments: Consumer, Youth, Enterprise, …)
+- business line (Excel **Business Section** — segments such as Consumer, Youth, Enterprise, …)
 - campaign name
 - category
 - description

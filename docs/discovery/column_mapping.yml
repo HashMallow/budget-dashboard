@@ -1,5 +1,5 @@
 workbook: "marketing_spend_workbook.xlsx"
-discovery_status: "proposed_mapping_with_open_questions"
+discovery_status: "example_mapping_template"
 inspected_without_modifying_workbook: true
 
 sheets:
@@ -57,7 +57,7 @@ sheets:
               - "Vendor Name"
               - "Description"
             evidence:
-              - "Marketing Spend Input rows 18 and 39 contain Referral/referral/ریفرال values."
+              - "Some invoice rows contain Referral/referral/ریفرال values in team or vendor columns."
           - bucket: "SMS"
             when_any_source_column_contains:
               - "SMS"
@@ -70,8 +70,7 @@ sheets:
               - "Vendor Name"
               - "Description"
             evidence:
-              - "No SMS invoice rows were found in Marketing Spend Input during discovery."
-              - "SMS values were found in Budget and Data sheets, so the rule should exist for future rows."
+              - "SMS-related labels may appear in budget or lookup sheets even when invoice rows are sparse."
       payment_stage_mapping:
         Paid: "PAID"
         Finance: "FINANCE_REVIEW"
@@ -84,10 +83,10 @@ sheets:
       mkt_confirmation_stage:
         Done: 51
       teams:
-        Growth: 19
+        "Team Alpha": 19
         "Team Beta": 16
-        Brand: 7
-        "Ops & Analytics": 7
+        "Team Gamma": 7
+        "Team Delta": 7
         Referral: 2
       campaign_name:
         "on going": 51
@@ -102,7 +101,7 @@ sheets:
       preferred_key:
         - "Invoice Number"
         - "Vendor Name"
-      risk: "Invoice number 1 with vendor Sample Vendor Co. (ریفرال) appears twice, so this key is not always unique."
+      risk: "Duplicate invoice_number + vendor pairs were observed during discovery; use source_row_number as a tie-breaker when re-importing."
       fallback_key_candidates:
         - ["Invoice Number", "Vendor Name", "invoice date in gregorian"]
         - ["Invoice Number", "Vendor Name", "source_row_number"]
@@ -131,7 +130,7 @@ sheets:
       total_projection: "Total projection"
       total_actual: "Total Actual"
     budget_line_mapping:
-      year: 1405
+      year: 1404
       month: "Derived from month_header_row labels."
       team: "Team"
       campaign_name: null
@@ -192,11 +191,11 @@ sheets:
     special_cost_buckets:
       referral:
         evidence:
-          - "Budget row 4 contains referral summary values."
-          - "Budget rows 33, 34, 45, 46, and 56 contain referral line items."
+          - "Budget summary rows may contain referral totals."
+          - "Some budget line items are tagged as referral spend."
       sms:
         evidence:
-          - "Budget rows 70-85 contain SMS/Retention, SMS/Micro Campaign, SMS/BigCampaign, SMS/Product, and SMS/OtherTeam values."
+          - "Budget rows may contain SMS or retention SMS campaign labels."
     missing_or_unmapped_model_fields:
       campaign_name: null
 

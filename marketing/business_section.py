@@ -1,4 +1,4 @@
-"""Business line / Business Section helpers (Consumer, Blue Junior, etc.)."""
+"""Business line / Business Section helpers (e.g. Consumer, Youth, Enterprise segments)."""
 
 from __future__ import annotations
 

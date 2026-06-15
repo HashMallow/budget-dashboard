@@ -32,8 +32,8 @@ Observer
 | Upload invoice files | Editor can upload invoice images/documents. |
 | Upload payment receipts | Editor can upload payment proof files. |
 
-Multiple access rows combine. Example: Editor for Growth + Observer for Brand means editable Growth
-data and read-only Brand data.
+Multiple access rows combine. Example: Editor for Team Alpha + Observer for Team Beta means editable Team Alpha
+data and read-only Team Beta data.
 
 ## Capability Matrix
 
@@ -93,14 +93,14 @@ Use these when manually checking permissions:
 Admin
   Can open /users/, /imports/, create invoice, export, upload files.
 
-Growth Editor
-  Can see Growth data.
-  Can create/edit Growth invoices.
-  Cannot see Brand invoices.
+Team Alpha Editor
+  Can see Team Alpha data.
+  Can create/edit Team Alpha invoices.
+  Cannot see Team Beta invoices.
   Cannot upload unless upload flags are enabled.
 
-Growth Observer
-  Can see Growth data.
+Team Alpha Observer
+  Can see Team Alpha data.
   Cannot create/edit invoices.
   Cannot upload.
 

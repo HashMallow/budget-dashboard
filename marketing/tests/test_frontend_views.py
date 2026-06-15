@@ -98,7 +98,7 @@ def test_invoice_list_filters_by_business_section(client, frontend_data):
     assert filtered.status_code == 200
     assert invoice in filtered.context["page_obj"]
 
-    search = client.get(reverse("marketing:invoice_list"), {"q": "Retail"})
+    search = client.get(reverse("marketing:invoice_list"), {"q": "Consumer"})
     assert invoice in search.context["page_obj"]
 
 
@@ -163,6 +163,8 @@ def test_workbook_style_export_recreates_source_sheets(client, frontend_data):
 
     from openpyxl import load_workbook
 
+    from marketing.workbook_labels import DEFAULT_INVOICE_SHEET_NAME
+
     client.force_login(frontend_data["admin"])
 
     response = client.get(reverse("marketing:export_workbook_excel"))
@@ -171,12 +173,12 @@ def test_workbook_style_export_recreates_source_sheets(client, frontend_data):
     assert response["Content-Type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     workbook = load_workbook(BytesIO(response.content))
     assert workbook.sheetnames == [
-        "Marketing Spend Input",
+        DEFAULT_INVOICE_SHEET_NAME,
         "Budget",
         "Market Live Spending",
         "Data",
     ]
-    invoice_sheet = workbook["Marketing Spend Input"]
+    invoice_sheet = workbook[DEFAULT_INVOICE_SHEET_NAME]
     header = [cell.value for cell in invoice_sheet[1]]
     assert "Invoice Number" in header
     assert "Invoice Amount (IRR)" in header

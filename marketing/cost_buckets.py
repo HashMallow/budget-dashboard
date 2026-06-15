@@ -24,7 +24,7 @@ PSEUDO_TEAM_NORMALIZED_NAMES = _REFERRAL_PSEUDO_NAMES | _SMS_PSEUDO_NAMES
 
 PSEUDO_TEAM_SLUGS = frozenset({"referral", "sms"})
 
-# Referral rolls into Growth; SMS rolls into Retention — both remain separate cost buckets.
+# Referral and SMS roll up to configured parent teams while remaining separate cost buckets.
 BUCKET_PARENT_TEAM_NAMES: dict[str, str] = {
     CostBucket.REFERRAL: "Growth",
     CostBucket.SMS: "Retention",

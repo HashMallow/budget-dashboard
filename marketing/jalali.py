@@ -1,6 +1,6 @@
 """Jalali (Persian / Solar Hijri) calendar helpers.
 
-The marketing data is organized around the Persian fiscal calendar (year 1405,
+The marketing data is organized around the Persian fiscal calendar (e.g. year 1404,
 months Farvardin..Esfand). Invoice dates are stored as Gregorian ``date`` values,
 so dashboards must convert to the Jalali month/year for any per-month or per-year
 reporting. Grouping by the Gregorian month is wrong: e.g. Farvardin/Ordibehesht

@@ -126,7 +126,7 @@ marketing/                         The single app that holds all the business lo
                          seed_reference_data, bootstrap_dev_admin (the make targets call these).
   reports/pdf.py     ReportLab PDF builders (dashboard, vendors, campaigns, contracts).
   reports/pdf_fonts.py  Vazirmatn registration + arabic-reshaper shaping for FA PDFs.
-  business_section.py   Helpers for Business segment labels from Excel/import.
+  business_section.py   Helpers for business-segment labels from Excel/import.
   templatetags/marketing_format.py  Custom template tags/filters: {% t %} (translate),
                      {% form_errors %}, money/number formatting.
   migrations/        Versioned schema + data migrations (incl. team aliases, campaign canonicalize).

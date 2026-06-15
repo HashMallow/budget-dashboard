@@ -15,6 +15,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from marketing.jalali import JALALI_MONTHS, format_jalali_date, gregorian_to_jalali
 from marketing.models import BudgetLine, Invoice, PaymentStage
+from marketing.workbook_labels import invoice_sheet_name
 
 ZERO = Decimal("0")
 MONTHS = [(number, latin) for number, _persian, latin in JALALI_MONTHS]
@@ -46,7 +47,7 @@ def build_workbook_style_export(invoices: QuerySet[Invoice], budget_lines: Query
 
 
 def _add_invoice_sheet(sheet: Worksheet, invoices: Iterable[Invoice]) -> None:
-    sheet.title = "Marketing Spend Input"
+    sheet.title = invoice_sheet_name()
     headers = [
         "Year",
         "Month",

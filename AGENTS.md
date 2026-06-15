@@ -140,7 +140,7 @@ Fields:
 - `team` optional
 - `campaign` optional
 - `category`
-- `business_section` optional — Business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …)
+- `business_section` optional — business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …)
 - `cost_bucket`: one of `TEAM`, `REFERRAL`, `SMS`, `GENERAL`
 - `description`
 - `invoice_date`

@@ -163,8 +163,8 @@ uv run python manage.py collectstatic --noinput
 uv run python manage.py createsuperuser    # real admin — never use admin/admin12345
 
 # Copy the workbook to the server, then:
-make load-data-dry-run FILE="./your_workbook.xlsx"
-make load-data         FILE="./your_workbook.xlsx"
+make load-data-dry-run FILE="./marketing_spend_workbook.xlsx"
+make load-data         FILE="./marketing_spend_workbook.xlsx"
 ```
 
 The importer is idempotent (`invoice_number` + vendor). After import, the **database** is the source

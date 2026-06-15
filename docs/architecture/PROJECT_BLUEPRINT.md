@@ -79,10 +79,10 @@ The workbook contains names that appear to refer to the same business team:
 
 ```text
 Ops & Analytics
-Operation & Analysis
+Operations & Analysis
 
-Brand
-Brand (PR & Social & CSR)
+Team Beta
+Team Beta (PR & Social)
 ```
 
 Database-backed alias rules are now implemented:
@@ -98,8 +98,8 @@ TeamAlias
 Current seeded aliases:
 
 ```text
-Operation & Analysis -> Ops & Analytics
-Brand (PR & Social & CSR) -> Brand
+Operations & Analysis -> Ops & Analytics
+Team Beta (PR & Social) -> Team Beta
 ```
 
 The importer resolves aliases before creating new teams. Existing imported rows were moved to the canonical teams and the old duplicate teams were marked inactive.

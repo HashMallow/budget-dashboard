@@ -14,7 +14,7 @@ The panel replaces scattered Excel tracking with one place to:
 - Track each invoice from submission through payment
 - Compare **planned budget** vs **actual spend**
 - Track vendor **contracts** and upcoming renewals
-- Filter and report by **business line** (business segments: Consumer, Youth, Enterprise, etc. from Excel)
+- Filter and report by **business line** (segments such as Consumer, Youth, Enterprise from Excel)
 - Export reports to Excel or PDF for meetings and finance
 
 The database is the source of truth after the first Excel import. Day-to-day work happens in the panel; Excel is mainly for bulk import and export.
@@ -138,7 +138,7 @@ If you do not see export buttons, your admin may not have enabled **Can export**
 - **Editors** and **Admins** can add invoices and change payment stage
 - Attach **invoice images** and **payment receipts** if your admin allowed uploads
 
-**Business line** is the business segment from Excel (**Business Section**): Consumer, Youth, Enterprise, etc. It is separate from **team** (Growth, Brand, …).
+**Business line** is the segment from Excel (**Business Section**): Consumer, Youth, Enterprise, etc. It is separate from **team** (Team Alpha, Team Beta, …).
 
 **Payment stages** (workflow): Draft → Submitted → Finance review → Approved → Paid (or Rejected / Cancelled). The detail page shows how many days an invoice has been in the current stage.
 
@@ -155,7 +155,7 @@ If you do not see export buttons, your admin may not have enabled **Can export**
 
 You can also filter the main dashboard to one team, or open **Open team dashboard** from the team filter banner.
 
-**Typical use:** Brand manager checking Brand spend only; growth lead reviewing Growth vendors.
+**Typical use:** Team Beta lead checking Team Beta spend only; Team Alpha lead reviewing Team Alpha vendors.
 
 ---
 
@@ -260,7 +260,7 @@ If you see empty lists everywhere, your admin has not assigned team access yet.
 |------------|--------|
 | Check overall spend this year | **Dashboard** → pick year |
 | See one team only | **Dashboard** → team filter, or **Teams** → pick team |
-| Find invoices for a business segment (e.g. Junior) | **Invoices** → **Business line** filter or search |
+| Find invoices for a business segment (e.g. Youth) | **Invoices** → **Business line** filter or search |
 | Find an invoice by number | **Invoices** → search box |
 | Record a new invoice | **Invoices** → **New invoice** (if you are Editor/Admin) |
 | See who we paid the most | **Vendors** |
@@ -298,8 +298,8 @@ See **[`operations/PASSWORDS_AND_USERS.md`](../operations/PASSWORDS_AND_USERS.md
 | Term | Meaning |
 |------|---------|
 | **Invoice** | A spend record — vendor, amount, date, payment stage |
-| **Team** | Marketing unit (e.g. Growth, Brand) |
-| **Business line** | business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …) — filterable on invoices; separate from team |
+| **Team** | Marketing unit (e.g. Team Alpha, Team Beta) |
+| **Business line** | Segment from Excel **Business Section** (Consumer, Youth, Enterprise, …) — filterable on invoices; separate from team |
 | **Referral / SMS** | Special cost buckets shown separately from team spend |
 | **Payment stage** | Where the invoice sits in the approval/payment workflow |
 | **Budget line** | Planned spend for a month/team/category |

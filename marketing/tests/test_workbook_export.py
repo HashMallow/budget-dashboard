@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 
 from marketing.exports.workbook import _normalize_cell_value, build_workbook_style_export
 from marketing.models import BudgetLine, Invoice
+from marketing.workbook_labels import DEFAULT_INVOICE_SHEET_NAME
 
 
 def _allowed_cell_types(value) -> bool:
@@ -53,7 +54,7 @@ def test_workbook_auto_filter_matches_data_bounds(frontend_data):
     buffer = BytesIO()
     workbook.save(buffer)
     loaded = load_workbook(BytesIO(buffer.getvalue()))
-    invoice_sheet = loaded["Marketing Spend Input"]
+    invoice_sheet = loaded[DEFAULT_INVOICE_SHEET_NAME]
     assert invoice_sheet.auto_filter.ref == f"A1:Y{invoice_sheet.max_row}"
 
 

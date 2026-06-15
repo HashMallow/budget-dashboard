@@ -115,7 +115,7 @@ Fields:
 - `updated_by`: ForeignKey User, nullable/blank, related name `updated_invoices`
 - `source_sheet`: CharField, blank allowed
 - `source_row_number`: PositiveIntegerField, nullable/blank
-- `business_section`: CharField, indexed, blank allowed — Business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …). Imported via `column_mapping.yml`; filterable on invoices.
+- `business_section`: CharField, indexed, blank allowed — business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …). Imported via `column_mapping.yml`; filterable on invoices.
 - `raw_data_json`: JSONField, default dict
 - `created_at`: DateTimeField
 - `updated_at`: DateTimeField

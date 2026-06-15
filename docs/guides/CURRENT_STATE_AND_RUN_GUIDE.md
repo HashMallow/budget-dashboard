@@ -358,7 +358,7 @@ Vendor management
 
 Team aliases
   Implemented as database-backed TeamAlias rows.
-  Current aliases: Operation & Analysis -> Ops & Analytics; Brand (PR & Social & CSR) -> Brand.
+  Example aliases: Operations & Analysis -> Ops & Analytics; Team Beta (PR) -> Team Beta.
 
 BudgetLine UI
   Keep normalized rows in the database.
@@ -621,8 +621,8 @@ payment_stage = PAID
 payment_stage = FINANCE_REVIEW
 cost_bucket = TEAM
 cost_bucket = REFERRAL
-team = Growth
-team = Brand
+team = Team Alpha
+team = Team Beta
 ```
 
 Expected result:
