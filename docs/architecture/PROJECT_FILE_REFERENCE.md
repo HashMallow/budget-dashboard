@@ -1082,16 +1082,17 @@ Sample rows and normalized columns from relevant workbook sheets.
 
 ### `docs/discovery/column_mapping.yml`
 
-Machine-readable mapping from workbook sheets/columns to app concepts.
+Anonymized **import template** (column headers, row ranges, rules). Consumed by the importer and
+merged with optional gitignored `column_mapping.local.yml`.
 
-The importer uses this file. This is the most important discovery file at runtime because it tells
-the importer which real workbook sheet/column maps to each app concept.
-
-Important:
+Sheet resolution: mapped tab name → aliases → header auto-detection. **UI data** (team/vendor
+names) comes from imported workbook rows, not from example labels in this file.
 
 ```text
-If workbook structure changes, update this mapping before importing.
+If workbook structure changes, update the mapping (or your local override) before importing.
 ```
+
+See also: `docs/discovery/README.md` and `column_mapping.local.yml.example`.
 
 ### `docs/discovery/import_risks.md`
 

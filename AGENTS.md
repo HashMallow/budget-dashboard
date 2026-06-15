@@ -81,7 +81,9 @@ Because the exact column names may be Persian, inconsistent, or changed over tim
 Never silently drop rows during import. Every skipped row must be reported with a reason.
 
 
-The Excel importer must consume or mirror the mapping from `docs/discovery/column_mapping.yml` after the discovery phase. If the workbook contains Persian headers, merged headers, hidden sheets, or multiple tables per sheet, document those issues in `docs/discovery/import_risks.md` and handle them explicitly.
+The Excel importer must consume or mirror the mapping from `docs/discovery/column_mapping.yml` after the discovery phase. The tracked file is an anonymized template; deployments may add a gitignored `column_mapping.local.yml` or pass `--mapping` for a private file. When invoice/budget tab names differ from the template, the importer resolves sheets via aliases and header auto-detection before failing.
+
+If the workbook contains Persian headers, merged headers, hidden sheets, or multiple tables per sheet, document those issues in `docs/discovery/import_risks.md` and handle them explicitly.
 
 ## Suggested Domain Model
 

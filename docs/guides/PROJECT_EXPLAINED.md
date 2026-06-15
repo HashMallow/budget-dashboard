@@ -45,7 +45,7 @@ convention.
 ## 3. The big picture (data flow)
 
 ```text
-Excel workbook (.xlsx)            docs/discovery/column_mapping.yml
+Excel workbook (.xlsx)            docs/discovery/column_mapping.yml (+ optional column_mapping.local.yml)
         |                                   |
         |  (admin runs import, or uploads)  |  (tells the importer which column = which field)
         v                                   v
@@ -209,8 +209,9 @@ condition isn't met — same pattern as the decorators you practiced, just appli
 
 `marketing/importers/excel.py` is worth reading top-to-bottom. It:
 
-- **Reads a mapping file** (`docs/discovery/column_mapping.yml`) so column names can change in
-  Excel without rewriting code.
+- **Reads a mapping file** (`docs/discovery/column_mapping.yml`, plus optional gitignored local
+  override) so column names can change in Excel without code edits. Resolves invoice/budget tabs
+  by name, alias, or header auto-detection when tab titles differ from the anonymized template.
 - **Normalizes** text with `normalize_name()` (Unicode NFKC, Arabic→Persian letter fixes,
   casefold) so "same thing written two ways" collapses to one key.
 - **Resolves team aliases** via the `TeamAlias` table (e.g. "Operation & Analysis" → "Ops &

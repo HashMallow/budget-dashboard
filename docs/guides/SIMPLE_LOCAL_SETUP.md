@@ -57,13 +57,19 @@ make --version
 
 ## 3. Add The Excel Workbook
 
-Put the `.xlsx` workbook in the project folder.
-
-Example:
+Put your `.xlsx` workbook in the project folder (any filename — workbooks are gitignored).
 
 ```text
-marketing_spend_workbook.xlsx
+./your_workbook.xlsx
 ```
+
+The tracked `docs/discovery/column_mapping.yml` uses **generic** tab names for the public repo.
+Import still works without extra setup: the importer **auto-detects** the invoice sheet by column
+headers when the tab name differs from the template.
+
+Optional: copy `docs/discovery/column_mapping.local.yml.example` →
+`column_mapping.local.yml` (gitignored) to pin your exact tab name or match Excel export labels.
+See `docs/discovery/README.md`.
 
 ## 4. Run The App
 
@@ -162,8 +168,8 @@ Use the exact workbook path:
 ```bash
 make setup
 make dev-admin
-make load-data-dry-run FILE=./marketing_spend_workbook.xlsx
-make load-data FILE=./marketing_spend_workbook.xlsx
+make load-data-dry-run FILE=./path/to/your_workbook.xlsx
+make load-data FILE=./path/to/your_workbook.xlsx
 make dev
 ```
 

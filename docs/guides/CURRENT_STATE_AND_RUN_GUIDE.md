@@ -295,22 +295,29 @@ make import
 Database updated
 ```
 
-The importer reads this mapping file:
+The importer reads:
 
 ```text
-docs/discovery/column_mapping.yml
+docs/discovery/column_mapping.yml          (tracked anonymized template)
+docs/discovery/column_mapping.local.yml    (optional gitignored overrides)
 ```
 
-The importer currently imports:
+Resolution order for invoice/budget tabs: mapped name → aliases → header auto-detection when the
+workbook tab name differs from the template.
+
+The importer currently targets:
 
 ```text
-Invoices from: Marketing Spend Input
+Invoices from: invoice sheet (template name: Marketing Spend Input; auto-detects real tab)
 Budget lines from: Budget
 Reference behavior from: Data
 Summary sheet ignored for import: Market Live Spending
 ```
 
-The real workbook import produced:
+After import, the database holds your workbook's real team/vendor/business-line names. Generic
+wording in help text or the YAML template does not replace that data.
+
+Example counts from a sample import:
 
 ```text
 Teams: 8

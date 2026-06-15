@@ -7,9 +7,22 @@ Import the initial marketing spend data and budget data from an Excel workbook i
 
 Before implementing the importer, run the workflow in `docs/specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`.
 
-The importer should use `docs/discovery/column_mapping.yml` as its first source of truth for sheet and column mapping. Alias-based auto-detection is still required as a fallback, but the discovered mapping from the actual workbook should take priority.
+The importer uses `docs/discovery/column_mapping.yml` as its source of truth for column headers,
+row ranges, and import rules. That file in the public repo is an **anonymized template** (generic
+tab names such as `Marketing Spend Input`).
 
-If `column_mapping.yml` is missing, the import command may run in `--dry-run`/inspection mode, but it should warn that the discovery phase has not been completed.
+Sheet resolution order at import time:
+
+1. `actual_sheet_name` from the mapping (after merging optional gitignored
+   `docs/discovery/column_mapping.local.yml`)
+2. Optional `sheet_aliases` listed in the mapping
+3. **Header auto-detection** — if exactly one workbook tab contains the required column headers
+   (e.g. `Invoice Number`, `Vendor Name`, `Invoice Amount (IRR)`), use that tab
+
+Live team names, vendors, and business lines always come from **imported workbook data**, not from
+example labels in the YAML template.
+
+If `column_mapping.yml` is missing, the import command should stop with a clear error.
 
 The workbook will be placed in the project/Codex directory. The exact filename is not guaranteed.
 
@@ -268,11 +281,13 @@ python manage.py import_marketing_excel --file path/to/workbook.xlsx --mapping d
 
 Behavior:
 
-1. Load `column_mapping.yml` if present.
-2. Use the mapped `actual_sheet_name`, `header_row`, and `columns` values first.
-3. If a required concept is not mapped, attempt alias detection.
-4. If still missing, stop with a clear error instead of importing partial data silently.
-5. Print the final resolved mapping before importing rows.
-6. Save an import report that references the discovery files used.
+1. Load `docs/discovery/column_mapping.yml`.
+2. Merge `docs/discovery/column_mapping.local.yml` when present (gitignored; see
+   `column_mapping.local.yml.example`).
+3. Resolve each sheet: mapped `actual_sheet_name` → `sheet_aliases` → header auto-detection.
+4. Use mapped `header_row` and `columns` for row parsing.
+5. If a required concept is not mapped, attempt column alias detection where implemented.
+6. If still missing, stop with a clear error instead of importing partial data silently.
+7. Print created/updated/skipped counts and skipped-row reasons.
 
 The importer must be able to work with Persian headers, but internal model fields must remain English.

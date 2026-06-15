@@ -62,7 +62,9 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`discovery/column_mapping.yml`](discovery/column_mapping.yml) | Workbook → model column mapping (consumed by the importer) | 🗂️ Reference |
+| [`discovery/column_mapping.yml`](discovery/column_mapping.yml) | Anonymized import template (columns/rows/rules); merged with optional gitignored `column_mapping.local.yml` | 🗂️ Reference |
+| [`discovery/column_mapping.local.yml.example`](discovery/column_mapping.local.yml.example) | Example local override (copy → `column_mapping.local.yml`) | 🗂️ Reference |
+| [`discovery/README.md`](discovery/README.md) | How mapping, auto-detect, and local overrides work | 🟢 Living |
 | [`discovery/workbook_structure.md`](discovery/workbook_structure.md) | Detected sheets/columns | 🗂️ Reference |
 | [`discovery/workbook_sample_rows.md`](discovery/workbook_sample_rows.md) | Sample rows captured during discovery | 🗂️ Reference |
 | [`discovery/import_risks.md`](discovery/import_risks.md) | Known import edge cases/risks | 🗂️ Reference |
@@ -90,6 +92,6 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 - **Understand roles/permissions** → [`operations/ACCESS_BY_ROLE.md`](operations/ACCESS_BY_ROLE.md) + [`operations/PERMISSIONS_MATRIX.md`](operations/PERMISSIONS_MATRIX.md)
 - **Change admin password / onboard users** → [`operations/PASSWORDS_AND_USERS.md`](operations/PASSWORDS_AND_USERS.md)
 - **Explain the panel to a colleague** → [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) or in-app **Help** (`/help/`)
-- **Change the import / column mapping** → [`specs/EXCEL_IMPORT_SPEC.md`](specs/EXCEL_IMPORT_SPEC.md) + [`discovery/column_mapping.yml`](discovery/column_mapping.yml)
+- **Change the import / column mapping** → [`specs/EXCEL_IMPORT_SPEC.md`](specs/EXCEL_IMPORT_SPEC.md) + [`discovery/README.md`](discovery/README.md) + [`discovery/column_mapping.yml`](discovery/column_mapping.yml)
 - **Add a model field** → [`architecture/DATA_MODEL.md`](architecture/DATA_MODEL.md) + [`architecture/PROJECT_FILE_REFERENCE.md`](architecture/PROJECT_FILE_REFERENCE.md)
 - **See what's next** → [`project/PHASE_2.md`](project/PHASE_2.md)

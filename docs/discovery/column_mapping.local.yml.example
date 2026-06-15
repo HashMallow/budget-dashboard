@@ -1,13 +1,13 @@
 # Local overrides for your real workbook (copy to column_mapping.local.yml).
-# This file is gitignored — safe to put customer-specific sheet names here.
+# Gitignored — safe for customer-specific sheet names.
+#
+# Not required for import: the importer auto-detects the invoice tab by column headers
+# (Invoice Number, Vendor Name, etc.) when the tab name differs from the template.
+#
+# Use this file when you want explicit tab names (e.g. Excel export sheet title parity).
 
-workbook: "marketing_spend_workbook.xlsx"
+workbook: "your_workbook.xlsx"
 
 sheets:
   invoices:
-    # Canonical name in the public template is "Marketing Spend Input".
-    # Your workbook may still use the original tab name:
     actual_sheet_name: "Marketing Spend Input"
-    # Optional extra names to try before header auto-detection:
-    # sheet_aliases:
-    #   - "Marketing Spend Input"

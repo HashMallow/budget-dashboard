@@ -31,7 +31,7 @@ Browser → DNS → EC2 (ports 80/443) → Caddy (HTTPS) → gunicorn 127.0.0.1:
 | Dev DB | SQLite (`db.sqlite3`) |
 | Prod DB | Postgres via `DATABASE_URL` (optional at first; **RDS** when ready) |
 | Config | Environment variables (see below); prod mode when `DJANGO_DEBUG=false` |
-| Initial data | Workbook import: `make load-data` (invoices, budgets, lookup rows) |
+| Initial data | Workbook import: `make load-data` (see `docs/discovery/README.md` for mapping vs local override) |
 
 You do **not** need ECS, EKS, CloudFront, or a separate static host for v1.
 
@@ -162,9 +162,9 @@ uv run python manage.py seed_auth_groups
 uv run python manage.py collectstatic --noinput
 uv run python manage.py createsuperuser    # real admin — never use admin/admin12345
 
-# Copy the workbook to the server, then:
-make load-data-dry-run FILE="./marketing_spend_workbook.xlsx"
-make load-data         FILE="./marketing_spend_workbook.xlsx"
+# Copy the workbook to the server, then (optional local mapping override — see docs/discovery/README.md):
+make load-data-dry-run FILE="./path/to/your_workbook.xlsx"
+make load-data         FILE="./path/to/your_workbook.xlsx"
 ```
 
 The importer is idempotent (`invoice_number` + vendor). After import, the **database** is the source

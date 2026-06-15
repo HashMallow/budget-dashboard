@@ -21,6 +21,9 @@ docs/project/PHASE_2.md
   structure/sample rows, `column_mapping.yml`, and import risks).
 - Django project and `marketing` app are scaffolded with models, RBAC, importer, and **94+ tests**.
 - The Excel importer works from `docs/discovery/column_mapping.yml` (idempotent re-import).
+  Tab names in that file are **generic** for the public repo; import still works via **header
+  auto-detection** when your workbook uses different sheet names. Optional gitignored
+  `docs/discovery/column_mapping.local.yml` pins exact tab names (see **Import The Excel Workbook**).
 - The project uses **`uv`** + **`Makefile`** as the standard local command runner.
 - Custom panel: **sectioned sidebar** (Overview · Spend & teams · Reports · Administration · Help),
   finance overview dashboard (budget vs actual, charts; team-filtered layout), invoices with **business line**
@@ -133,8 +136,8 @@ make dev
 If there is more than one `.xlsx` file in the project, pass the workbook explicitly:
 
 ```bash
-make load-data-dry-run FILE=./marketing_spend_workbook.xlsx
-make load-data FILE=./marketing_spend_workbook.xlsx
+make load-data-dry-run FILE=./path/to/your_workbook.xlsx
+make load-data FILE=./path/to/your_workbook.xlsx
 ```
 
 Fallback without `make`:
@@ -180,7 +183,9 @@ After `make load-data`, manage lookup rows in the panel at **`/reference/`** (ad
 
 ## Import The Excel Workbook
 
-The importer uses `docs/discovery/column_mapping.yml`, so discovery must exist first.
+The importer reads `docs/discovery/column_mapping.yml` (tracked **template** with generic sheet
+names and example labels). It merges an optional **gitignored**
+`docs/discovery/column_mapping.local.yml` when present.
 
 Put a workbook in one of these locations:
 
@@ -207,9 +212,30 @@ make load-data
 If more than one workbook exists, pass the file explicitly:
 
 ```bash
-make import-dry-run FILE=./marketing_spend_workbook.xlsx
-make import FILE=./marketing_spend_workbook.xlsx
+make import-dry-run FILE=./path/to/your_workbook.xlsx
+make import FILE=./path/to/your_workbook.xlsx
 ```
+
+### Sheet names vs what you see in the app
+
+| Source | What it controls |
+|--------|------------------|
+| **Workbook cells** (after import) | Team names, vendors, business lines, amounts — what the dashboard and lists show |
+| **`column_mapping.yml`** | Column headers, row ranges, import rules; generic tab **labels** in docs/export |
+| **`column_mapping.local.yml`** (optional) | Your real invoice tab name, export sheet title, etc. |
+
+**You do not need a local mapping file** if your invoice tab has the expected columns (`Invoice Number`,
+`Vendor Name`, `Invoice Amount (IRR)`, …). The importer auto-detects the tab when the name differs
+from the template (e.g. `Marketing Spend Input` vs `Marketing Spend Input`).
+
+Optional — match export tab names to your source workbook:
+
+```bash
+cp docs/discovery/column_mapping.local.yml.example docs/discovery/column_mapping.local.yml
+# edit sheets.invoices.actual_sheet_name if needed
+```
+
+See `docs/discovery/README.md` for details.
 
 The command prints selected sheets, created/updated/skipped counts, and skipped-row reasons.
 Re-running the import updates existing rows instead of duplicating them.
