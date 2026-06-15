@@ -170,16 +170,18 @@ def resolve_sheet_name(workbook, sheet_mapping: dict[str, Any], *, invoice: bool
     kind = "Invoice" if invoice else "Budget"
     available = ", ".join(workbook.sheetnames) or "(none)"
     tried = ", ".join(candidates) or "(none)"
-    hint = (
-        f" Copy docs/discovery/column_mapping.local.yml.example to column_mapping.local.yml "
+    local_hint = (
+        " Copy docs/discovery/column_mapping.local.yml.example to column_mapping.local.yml "
         f"and set sheets.{kind.lower()}.actual_sheet_name to your workbook tab name."
     )
     if len(matches) > 1:
         raise ValueError(
             f"{kind} sheet ambiguous: multiple tabs match required headers ({', '.join(matches)}). "
-            f"Set actual_sheet_name in column_mapping.local.yml."
+            "Set actual_sheet_name in column_mapping.local.yml."
         )
-    raise ValueError(f"{kind} sheet not found: tried {tried}. Available sheets: {available}.{hint}")
+    raise ValueError(
+        f"{kind} sheet not found: tried {tried}. Available sheets: {available}.{local_hint}"
+    )
 
 
 def cell_to_text(value: Any) -> str:
