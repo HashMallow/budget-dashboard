@@ -42,7 +42,6 @@ marketing_dashboard_codex_instructions_updated.zip
 
 # Accidental local DB copies / verification DBs
 db.sqlite3.*
-!db.sqlite3
 
 # AWS learning PDFs at repo root (optional downloads)
 /AWS_*.pdf
