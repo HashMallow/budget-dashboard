@@ -2,7 +2,7 @@
 
 Quick reference for what each user group can do in the Marketing Spend Dashboard.
 
-For the detailed explanation, see `docs/ACCESS_BY_ROLE.md`. For implementation, see
+For the detailed explanation, see `docs/operations/ACCESS_BY_ROLE.md`. For implementation, see
 `marketing/permissions.py` and `marketing/forms.py`.
 
 ## Roles

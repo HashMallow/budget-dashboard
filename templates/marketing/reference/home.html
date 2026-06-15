@@ -1,0 +1,36 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Reference data" %}{% endblock %}
+{% block page_title %}{% t "Reference data" %}{% endblock %}
+{% block page_subtitle %}{% t "Manage vendors, categories, sub-teams, campaigns and requesters" %}{% endblock %}
+
+{% block content %}
+  <section class="section grid cards">
+    <div class="card">
+      <div class="card-label">{% t "Vendors" %}</div>
+      <div class="card-value number">{{ counts.vendors }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:vendor_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Spend categories" %}</div>
+      <div class="card-value number">{{ counts.categories }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:category_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Sub-teams" %}</div>
+      <div class="card-value number">{{ counts.sub_teams }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:subteam_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Campaigns" %}</div>
+      <div class="card-value number">{{ counts.campaigns }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:campaign_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Requesters" %}</div>
+      <div class="card-value number">{{ counts.requesters }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:requester_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+  </section>
+{% endblock %}

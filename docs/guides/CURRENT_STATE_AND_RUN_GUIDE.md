@@ -76,7 +76,6 @@ Alireza/
 ├── uv.lock / uv.toml / .python-version
 ├── db.sqlite3                      local dev database (gitignored)
 ├── your_workbook.xlsx   source workbook for import (gitignored)
-├── AWS_Infrastructure_..._Edition.pdf        deployment reference (background)
 │
 ├── config/
 │   ├── settings.py                 env-driven; flips to prod mode when DJANGO_DEBUG=false
@@ -89,7 +88,8 @@ Alireza/
 │   ├── admin.py
 │   ├── analytics.py                server-side dashboard/report aggregation helpers
 │   ├── reference_data.py           Data-sheet lookup seeding service
-│   ├── views.py                    all panel views (dashboard, CRUD, reports, exports)
+│   ├── views.py                    panel views (dashboard, CRUD, reports, exports)
+│   ├── reference_views.py          admin reference-data CRUD (/reference/)
 │   ├── urls.py
 │   ├── forms.py                    invoice + user-access forms (with FA/EN labels)
 │   ├── permissions.py              server-side RBAC scope/queryset filtering
@@ -98,7 +98,8 @@ Alireza/
 │   ├── jalali.py                   Gregorian↔Jalali helpers for month/year grouping
 │   ├── templatetags/marketing_format.py   {% t %}, form_errors, stage/bucket labels
 │   ├── importers/excel.py          workbook → DB importer (aliases, canonicalization)
-│   ├── reports/pdf.py              ReportLab PDF builder
+│   ├── reports/pdf.py              ReportLab PDF builder (FA/EN, RTL)
+│   ├── reports/pdf_fonts.py        Vazirmatn registration + Persian shaping
 │   ├── management/commands/
 │   │   ├── bootstrap_dev_admin.py
 │   │   ├── import_marketing_excel.py
@@ -110,7 +111,7 @@ Alireza/
 ├── templates/
 │   ├── registration/login.html
 │   └── marketing/                  base.html + dashboard, invoices/, vendors/, campaigns/,
-│                                   teams/, budgets/, imports/, users/, print/
+│                                   teams/, budgets/, contracts/, reference/, imports/, users/
 │
 ├── docs/
 │   ├── PROJECT_EXPLAINED.md         guided tour of the codebase
@@ -119,7 +120,7 @@ Alireza/
 │   ├── ACCESS_BY_ROLE.md            who can see/do what per role
 │   ├── DEPLOYMENT_AWS.md            deploy-this-app runbook + alternatives
 │   ├── CURRENT_STATE_AND_RUN_GUIDE.md   (this file)
-│   ├── IMPLEMENTATION_PLAN.md / DATA_MODEL.md / RBAC_SPEC.md / ... (specs)
+│   ├── DATA_MODEL.md / RBAC_SPEC.md / EXCEL_IMPORT_SPEC.md / ... (specs)
 │   └── discovery/                  audio transcripts, workbook structure, column_mapping.yml
 │
 ├── data/  imports/                 drop-zones for workbooks (each has a .gitkeep)
@@ -175,31 +176,36 @@ Alireza/
 [x] Dedicated team dashboards at `/teams/` and `/teams/<id>/`
 [x] Monthly trend (line) and per-team (bar) Chart.js charts on the main dashboard
 [x] Vendor and campaign Excel exports (permission-scoped)
-[x] Server-rendered PDF summary via reportlab (`/reports/dashboard.pdf`)
+[x] Server-rendered PDF reports via ReportLab (`/reports/*.pdf`) with Persian/RTL + Vazirmatn when UI is FA
+[x] Contract tracking UI (`/contracts/`) with stages, expiry, and attachments
+[x] Reference-data management UI (`/reference/`) for vendors, categories, sub-teams, requesters (admin)
+[x] Budget planned-vs-actual variance table and chart on main and team dashboards
+[x] Budget planned-by-month and planned-by-team charts on `/budgets/`
 [x] Workbook-style Excel export that recreates the source workbook's sheets (`/exports/workbook.xlsx`)
 [x] Consolidated Settings menu in the top bar (language, amount format, currency unit, theme)
 [x] Compact/full amount display toggle (e.g. 84.3B vs 84,276,543,010) with exact value on hover
 [x] Rial/Toman currency display toggle (display-only; stored values stay in Rial)
 [x] Light/Dark theme toggle (persisted per session)
+[x] همت (hezar milliard) compact label for trillion-tier amounts in Toman mode
 ```
 
 ### Partially Working
 
 ```text
-[~] The custom UI is functional; visual analytics now include a pie chart plus table/bar views.
-[~] Roles and permissions are applied to the main user-facing screens.
-[~] Data is imported and viewable in the custom panel and Django Admin.
-[~] Team aliases are implemented for the obvious workbook duplicates; future aliases can be added in Django Admin.
-[~] The Excel Data sheet can be seeded into lookup tables via `make seed-reference`; those lookup rows are admin-visible but not yet fully wired into every form as dropdown/autocomplete validation.
-[~] The team dashboard budget card is a total planned-budget headline, not planned-vs-actual variance analysis yet.
-[~] The ReportLab PDF is a dashboard summary, not a polished multi-page vendor/campaign PDF suite yet.
+[~] Invoice category field is still free text; seeded SpendCategory rows are not yet enforced dropdowns.
+[~] Budget variance is by month and team; category-level variance from Budget sheet titles is not built yet.
+[~] Campaign CRUD exists in Django Admin only (report + invoice assignment in the panel).
+[~] Lookup rows can be managed at `/reference/` or via `make seed-reference`; not every form validates against them yet.
+[~] PDF exports support Persian/RTL and multi-page vendor/campaign/contract reports; polish/layout can still improve.
+[~] Media uploads use local `media/`; S3 production storage is documented but not provisioned.
 ```
 
 ### Not Built Yet
 
 ```text
 [ ] Separate React front-end (planned later, consumes the same data)
-[ ] Live AWS deployment (settings are ready; infra not provisioned yet — see docs/DEPLOYMENT_AWS.md)
+[ ] Live AWS deployment (settings are ready; infra not provisioned yet — see docs/operations/DEPLOYMENT_AWS.md)
+[ ] JSON API endpoints for a future React front-end
 ```
 
 ## Data Model Overview
@@ -332,7 +338,7 @@ Raw voice notes, WAV conversions, and raw transcripts are kept outside the main 
 ```
 
 That directory is ignored by Git. Durable product decisions from those notes are summarized below
-and in `docs/PROJECT_BLUEPRINT.md`.
+and in `docs/architecture/PROJECT_BLUEPRINT.md`.
 
 Decisions to carry into the next implementation phase:
 
@@ -655,7 +661,7 @@ Ruff lint passes
 Current result:
 
 ```text
-17 tests passed
+86+ tests passed (pytest -q), 1 skipped when LibreOffice conversion is unavailable locally
 ```
 
 ## Current Make Commands
@@ -724,8 +730,17 @@ make prod-install
 make collectstatic
   Collect static files into STATIC_ROOT (for production static serving).
 
-make prod-run
-  Run gunicorn for production (expects a production .env). See docs/DEPLOYMENT_AWS.md.
+make clean-artifacts
+  Remove __pycache__, pytest/ruff caches, staticfiles, discovery WAV artifacts.
+
+make clean-local-db
+  Delete db.sqlite3 (destructive). Re-run make setup and make dev-admin afterward.
+
+Variables:
+  FILE=workbook.xlsx     Pass when multiple .xlsx files exist
+  HOST=127.0.0.1         Server bind host (make dev / make run / make prod-run)
+  PORT=8000              Server port (e.g. make dev PORT=8001)
+  ADMIN_USER / ADMIN_PASSWORD / ADMIN_EMAIL   For make dev-admin
 ```
 
 Raw command equivalent when you do not want to use `make`:
@@ -742,23 +757,33 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 
 ```text
 /login/                        Login
-/                              Dashboard (pie + monthly/team charts + summaries)
+/                              Dashboard (budget vs actual, charts; spend pie hidden when team filtered)
 /teams/                        Team list with links to per-team dashboards
-/teams/<id>/                   Team dashboard (vendors, campaigns, monthly chart)
+/teams/<id>/                   Team dashboard (budget variance, vendors, campaigns, monthly chart)
 /invoices/                     Invoice list/create/detail/edit/stage-update/attachments
 /vendors/                      Vendor spend report (descending)
 /campaigns/                    Campaign spend report
-/budgets/                      Budget table and pivot
+/budgets/                      Budget table, pivot, and planned-budget charts
+/contracts/                    Contract list/create/detail/edit/stage/attachments
+/reference/                    Admin-only lookup CRUD hub
+/reference/vendors/            Manage vendor reference rows
+/reference/categories/         Manage spend categories
+/reference/sub-teams/          Manage sub-teams
+/reference/requesters/         Manage requesters
 /imports/                      Admin-only Excel upload/import
 /users/                        Admin-only user/access management
 /exports/invoices.xlsx         Excel export of filtered invoices (needs can_export)
 /exports/vendors.xlsx          Excel export of vendor report
 /exports/campaigns.xlsx        Excel export of campaign report
+/exports/contracts.xlsx        Excel export of contract list
 /exports/workbook.xlsx         Workbook-style Excel (source-workbook sheet layout)
-/reports/dashboard.pdf          Server-rendered PDF summary (reportlab)
+/reports/dashboard.pdf         Dashboard PDF summary (ReportLab; FA/EN + RTL)
+/reports/vendors.pdf           Vendor spend PDF
+/reports/campaigns.pdf         Campaign spend PDF
+/reports/contracts.pdf         Contract report PDF
 /reports/invoices/print/       Printable invoice report (browser print)
-/preferences/                  Set display preferences (language, amount format, currency unit, theme)
 /admin/                        Django Admin fallback
+/preferences/                  Set display preferences (language, amount format, currency unit, theme)
 ```
 
 **Workbook export (`.xlsx`):** Generated by `marketing/exports/workbook.py` with Excel-safe cells,
@@ -835,11 +860,12 @@ Database import
 Import summary page
 ```
 
-### Phase 3: Visualization and Analysis — PARTIAL
+### Phase 3: Visualization and Analysis — MOSTLY DONE
 
-Goal: build the real dashboard. Done: summary cards, vendor/campaign tables, monthly trend chart,
-per-team chart, dedicated team dashboards, and the overall-spend pie chart. Pending: budget
-planned-vs-actual and richer campaign/budget analysis.
+Goal: build the real dashboard. Done: summary cards, budget vs actual variance (month + team),
+vendor/campaign tables, monthly trend chart, per-team chart, dedicated team dashboards, overall-spend
+pie chart (hidden when a single team is filtered), and budget planned charts on `/budgets/`.
+Pending: category-level budget variance and richer campaign/budget analysis.
 
 Charts and tables:
 
@@ -887,10 +913,10 @@ Goal: allow teams/editors to enter and update invoices.
 
 ### Phase 5: Exports — DONE FOR CURRENT SCOPE
 
-Goal: let permitted users export reports. Done: invoice-table Excel export, vendor Excel export,
-campaign Excel export, printable invoice report, and server-rendered dashboard PDF via ReportLab.
-Future work is richer PDF layouts, Persian/RTL PDF font support, and more report-specific PDF
-endpoints.
+Goal: let permitted users export reports. Done: invoice-table Excel export, vendor/campaign/contract
+Excel exports, workbook-style Excel, printable invoice report, and server-rendered PDF reports
+(dashboard, vendors, campaigns, contracts) via ReportLab with Persian/RTL when the UI is FA.
+Future work: further PDF layout polish, S3 media storage, and scheduled exports if needed.
 
 ```text
 1. Filtered invoice Excel export
@@ -904,7 +930,7 @@ endpoints.
 
 Goal: deploy for non-technical users. The app is production-ready in code (DATABASE_URL/Postgres
 switch, WhiteNoise, HTTPS/security headers, logging, `prod` extra, gunicorn). What remains is
-provisioning the infrastructure. See `docs/DEPLOYMENT_AWS.md` for a concrete, copy-pasteable runbook
+provisioning the infrastructure. See `docs/operations/DEPLOYMENT_AWS.md` for a concrete, copy-pasteable runbook
 (single EC2 + Caddy, then RDS, then S3).
 
 Chosen path:
@@ -972,7 +998,7 @@ CloudWatch             Logs/metrics
 For a file-by-file explanation of the project, see:
 
 ```text
-docs/PROJECT_FILE_REFERENCE.md
+docs/architecture/PROJECT_FILE_REFERENCE.md
 ```
 
 ### Current Panel
@@ -1024,21 +1050,21 @@ If the Excel workbook structure changes, update discovery/mapping before importi
 Deepen the analysis layer where the current charts stop:
 
 ```text
-1. Budget planned-vs-actual analysis
+1. Budget variance by category (Budget sheet line titles)
 2. Richer campaign-over-year visualization
-3. Reference-data management screens for vendors/categories/sub-teams/requesters
-4. Optional JSON endpoints for a later React front-end
+3. Wire SpendCategory / SubTeam / Requester into invoice form dropdowns
+4. Campaign CRUD in the custom panel
+5. Optional JSON endpoints for a later React front-end
 ```
 
 After that, harden and ship it:
 
 ```text
 1. Upload size/type validation and S3 media storage
-2. Persian/RTL PDF support if PDFs need Persian content
-3. CI/CD running `make check`
-4. AWS deployment per docs/DEPLOYMENT_AWS.md (or a PaaS)
+2. CI/CD running make check
+3. AWS deployment per docs/operations/DEPLOYMENT_AWS.md (or a PaaS)
 ```
 
 The React front-end stays a separate, later project that consumes the same server-aggregated data.
 
-For a fuller, prioritized plan of improvements and next steps, see `docs/PHASE_2.md`.
+For a fuller, prioritized plan of improvements and next steps, see `docs/project/PHASE_2.md`.

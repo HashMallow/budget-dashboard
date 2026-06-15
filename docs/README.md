@@ -13,8 +13,9 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 ## Start here
 
 1. [`../README.md`](../README.md) — install, run, import data, verify. 🟢
-2. [`PROJECT_EXPLAINED.md`](PROJECT_EXPLAINED.md) — a plain-language guided tour of the whole project. 🟢
-3. [`CURRENT_STATE_AND_RUN_GUIDE.md`](CURRENT_STATE_AND_RUN_GUIDE.md) — the authoritative list of what works today + run commands. 🟢
+2. [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) — **for end users:** what each menu and page does (also in-app under **Help**). 🟢
+3. [`guides/PROJECT_EXPLAINED.md`](guides/PROJECT_EXPLAINED.md) — a plain-language guided tour of the whole project. 🟢
+4. [`guides/CURRENT_STATE_AND_RUN_GUIDE.md`](guides/CURRENT_STATE_AND_RUN_GUIDE.md) — the authoritative list of what works today + run commands. 🟢
 
 ---
 
@@ -22,36 +23,38 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`PROJECT_EXPLAINED.md`](PROJECT_EXPLAINED.md) | Guided tour: what it is, how the pieces fit | 🟢 Living |
-| [`CURRENT_STATE_AND_RUN_GUIDE.md`](CURRENT_STATE_AND_RUN_GUIDE.md) | Current capabilities + how to run locally | 🟢 Living |
-| [`PROJECT_BLUEPRINT.md`](PROJECT_BLUEPRINT.md) | High-level architecture and intent | 🟢 Living |
-| [`PROJECT_FILE_REFERENCE.md`](PROJECT_FILE_REFERENCE.md) | What each file/module is for | 🟢 Living |
-| [`PHASE_2.md`](PHASE_2.md) | Roadmap: shipped vs. next features | 🟢 Living |
+| [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) | End-user site map: what each screen does | 🟢 Living |
+| [`guides/PROJECT_EXPLAINED.md`](guides/PROJECT_EXPLAINED.md) | Guided tour: what it is, how the pieces fit | 🟢 Living |
+| [`guides/CURRENT_STATE_AND_RUN_GUIDE.md`](guides/CURRENT_STATE_AND_RUN_GUIDE.md) | Current capabilities + how to run locally | 🟢 Living |
+| [`architecture/PROJECT_BLUEPRINT.md`](architecture/PROJECT_BLUEPRINT.md) | High-level architecture and intent | 🟢 Living |
+| [`architecture/PROJECT_FILE_REFERENCE.md`](architecture/PROJECT_FILE_REFERENCE.md) | What each file/module is for | 🟢 Living |
+| [`project/PHASE_2.md`](project/PHASE_2.md) | Roadmap: shipped vs. next features | 🟢 Living |
 
 ## Access & permissions
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`ACCESS_BY_ROLE.md`](ACCESS_BY_ROLE.md) | Who can see/do what, in plain language | 🟢 Living |
-| [`PERMISSIONS_MATRIX.md`](PERMISSIONS_MATRIX.md) | Role × capability matrix | 🟢 Living |
-| [`RBAC_SPEC.md`](RBAC_SPEC.md) | Original RBAC design spec | 📘 Spec |
+| [`operations/ACCESS_BY_ROLE.md`](operations/ACCESS_BY_ROLE.md) | Who can see/do what, in plain language | 🟢 Living |
+| [`operations/PASSWORDS_AND_USERS.md`](operations/PASSWORDS_AND_USERS.md) | Admin password change, creating users, better password options | 🟢 Living |
+| [`operations/PERMISSIONS_MATRIX.md`](operations/PERMISSIONS_MATRIX.md) | Role × capability matrix | 🟢 Living |
+| [`specs/RBAC_SPEC.md`](specs/RBAC_SPEC.md) | Original RBAC design spec | 📘 Spec |
 
 ## Operations & deployment
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`DEPLOYMENT_AWS.md`](DEPLOYMENT_AWS.md) | Copy-pasteable runbook: single EC2 + Caddy, then RDS/S3/CloudWatch | 🟢 Living |
-| [`../AWS_Infrastructure_Field_Guide_Gentle_Steps.md`](../AWS_Infrastructure_Field_Guide_Gentle_Steps.md) | AWS learning background (concepts, not steps for this app) | 🗂️ Reference |
+| [`operations/DEPLOYMENT_AWS.md`](operations/DEPLOYMENT_AWS.md) | Preferred path: EC2 + Caddy + gunicorn (copy-paste runbook) | 🟢 Living |
+| [`reference/AWS_EC2_Deployment_Path_Field_Guide.pdf`](reference/AWS_EC2_Deployment_Path_Field_Guide.pdf) | Gentle Console + CLI companion (checkpoints, diagrams) | 🗂️ Reference |
 
 ## Design specs (reference)
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`PRODUCT_REQUIREMENTS.md`](PRODUCT_REQUIREMENTS.md) | What the product must do | 📘 Spec |
-| [`DATA_MODEL.md`](DATA_MODEL.md) | Models, fields, cost buckets | 📘 Spec |
-| [`DASHBOARD_SPEC.md`](DASHBOARD_SPEC.md) | Dashboard + reporting requirements | 📘 Spec |
-| [`EXCEL_IMPORT_SPEC.md`](EXCEL_IMPORT_SPEC.md) | Importer behavior and rules | 📘 Spec |
-| [`AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`](AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md) | Discovery workflow spec | 📘 Spec |
+| [`specs/PRODUCT_REQUIREMENTS.md`](specs/PRODUCT_REQUIREMENTS.md) | What the product must do | 📘 Spec |
+| [`architecture/DATA_MODEL.md`](architecture/DATA_MODEL.md) | Models, fields, cost buckets | 📘 Spec |
+| [`specs/DASHBOARD_SPEC.md`](specs/DASHBOARD_SPEC.md) | Dashboard + reporting requirements | 📘 Spec |
+| [`specs/EXCEL_IMPORT_SPEC.md`](specs/EXCEL_IMPORT_SPEC.md) | Importer behavior and rules | 📘 Spec |
+| [`specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`](specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md) | Discovery workflow spec | 📘 Spec |
 
 ## Discovery outputs
 
@@ -66,11 +69,8 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 
 | Doc | Purpose | Status |
 |---|---|---|
-| [`DEVELOPER_NOTES.md`](DEVELOPER_NOTES.md) | Assumptions and developer decisions | 🟢 Living |
-| [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) | Original build order | 🕰️ Historical |
-| [`ACCEPTANCE_TESTS.md`](ACCEPTANCE_TESTS.md) | Original acceptance checklist | 🕰️ Historical |
-| [`CODEX_PROMPTS.md`](CODEX_PROMPTS.md) | Prompts used to scaffold the project | 🕰️ Historical |
-| [`END_STATE_CLEANUP_PLAN.md`](END_STATE_CLEANUP_PLAN.md) | Cleanup plan toward the final state | 🕰️ Historical |
+| [`guides/DEVELOPER_NOTES.md`](guides/DEVELOPER_NOTES.md) | Assumptions and developer decisions | 🟢 Living |
+| [`guides/SIMPLE_LOCAL_SETUP.md`](guides/SIMPLE_LOCAL_SETUP.md) | Short Mac/Linux setup guide | 🟢 Living |
 
 ## Agent / build instructions (repo root)
 
@@ -78,15 +78,16 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 |---|---|---|
 | [`../AGENTS.md`](../AGENTS.md) | Product + engineering requirements for AI agents | 🟢 Living |
 | [`../CLAUDE.md`](../CLAUDE.md) | Pointer to `AGENTS.md` | 🟢 Living |
-| [`../README_FOR_CODEX.md`](../README_FOR_CODEX.md) | Codex onboarding + mandatory discovery step | 🟢 Living |
 
 ---
 
 ## Common tasks → which doc
 
-- **Run it locally** → [`../README.md`](../README.md) or [`CURRENT_STATE_AND_RUN_GUIDE.md`](CURRENT_STATE_AND_RUN_GUIDE.md)
-- **Deploy to AWS** → [`DEPLOYMENT_AWS.md`](DEPLOYMENT_AWS.md)
-- **Understand roles/permissions** → [`ACCESS_BY_ROLE.md`](ACCESS_BY_ROLE.md) + [`PERMISSIONS_MATRIX.md`](PERMISSIONS_MATRIX.md)
-- **Change the import / column mapping** → [`EXCEL_IMPORT_SPEC.md`](EXCEL_IMPORT_SPEC.md) + [`discovery/column_mapping.yml`](discovery/column_mapping.yml)
-- **Add a model field** → [`DATA_MODEL.md`](DATA_MODEL.md) + [`PROJECT_FILE_REFERENCE.md`](PROJECT_FILE_REFERENCE.md)
-- **See what's next** → [`PHASE_2.md`](PHASE_2.md)
+- **Run it locally** → [`../README.md`](../README.md) or [`guides/CURRENT_STATE_AND_RUN_GUIDE.md`](guides/CURRENT_STATE_AND_RUN_GUIDE.md)
+- **Deploy to AWS** → [`operations/DEPLOYMENT_AWS.md`](operations/DEPLOYMENT_AWS.md)
+- **Understand roles/permissions** → [`operations/ACCESS_BY_ROLE.md`](operations/ACCESS_BY_ROLE.md) + [`operations/PERMISSIONS_MATRIX.md`](operations/PERMISSIONS_MATRIX.md)
+- **Change admin password / onboard users** → [`operations/PASSWORDS_AND_USERS.md`](operations/PASSWORDS_AND_USERS.md)
+- **Explain the panel to a colleague** → [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) or in-app **Help** (`/help/`)
+- **Change the import / column mapping** → [`specs/EXCEL_IMPORT_SPEC.md`](specs/EXCEL_IMPORT_SPEC.md) + [`discovery/column_mapping.yml`](discovery/column_mapping.yml)
+- **Add a model field** → [`architecture/DATA_MODEL.md`](architecture/DATA_MODEL.md) + [`architecture/PROJECT_FILE_REFERENCE.md`](architecture/PROJECT_FILE_REFERENCE.md)
+- **See what's next** → [`project/PHASE_2.md`](project/PHASE_2.md)

@@ -38,7 +38,7 @@ def test_dashboard_renders_for_admin(client, frontend_data):
     response = client.get(reverse("marketing:dashboard"))
 
     assert response.status_code == 200
-    assert "Spend Dashboard" in response.content.decode()
+    assert "Finance overview" in response.content.decode()
 
 
 def test_invoice_list_is_scoped_for_team_editor(client, frontend_data):
@@ -84,6 +84,22 @@ def test_editor_can_create_invoice_for_own_team(client, frontend_data):
     assert response.status_code == 302
     invoice = Invoice.objects.get(invoice_number="G-UI-2", team=frontend_data["growth"])
     assert invoice.invoice_date == date(2026, 4, 3)
+
+
+def test_invoice_list_filters_by_business_section(client, frontend_data):
+    from django.urls import reverse
+
+    invoice = frontend_data["growth_invoice"]
+    invoice.business_section = "Consumer"
+    invoice.save(update_fields=["business_section"])
+
+    client.force_login(frontend_data["admin"])
+    filtered = client.get(reverse("marketing:invoice_list"), {"business_section": "Consumer"})
+    assert filtered.status_code == 200
+    assert invoice in filtered.context["page_obj"]
+
+    search = client.get(reverse("marketing:invoice_list"), {"q": "Retail"})
+    assert invoice in search.context["page_obj"]
 
 
 def test_admin_can_export_invoice_excel_and_print_report(client, frontend_data):

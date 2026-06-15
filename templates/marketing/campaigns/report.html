@@ -4,7 +4,12 @@
 {% block title %}{% t "Campaign report" %}{% endblock %}
 {% block page_title %}{% t "Campaign report" %}{% endblock %}
 {% block page_subtitle %}{% t "Campaign spend across the year and by month" %}{% endblock %}
-{% block page_actions %}{% endblock %}
+{% block page_actions %}
+  {% if user|is_panel_admin %}
+    <a class="btn" href="{% url 'marketing:campaign_reference_list' %}">{% t "Manage campaigns" %}</a>
+    <a class="btn primary" href="{% url 'marketing:campaign_reference_create' %}">＋ {% t "New campaign" %}</a>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
   <section class="section">

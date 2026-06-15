@@ -17,22 +17,20 @@ The current app now includes:
 
 ```text
 [x] Server-side analytics helpers in marketing/analytics.py
-[x] Main dashboard Chart.js pie chart, monthly trend line, and per-team bar chart
-[x] Dedicated team list and team dashboard pages
-[x] Data-sheet reference seeding for vendors, categories, sub-teams, and requesters
-[x] Vendor report Excel export
-[x] Campaign report Excel export
-[x] Invoice table Excel export
-[x] Workbook-style Excel export (/exports/workbook.xlsx) — familiar sheet layout from DB data
-[x] Server-rendered dashboard summary PDF using ReportLab
+[x] Main dashboard Chart.js: spend pie (all teams), monthly trend, per-team bar, budget vs actual
+[x] Dedicated team list and team dashboard pages with budget variance
+[x] Data-sheet reference seeding (`make seed-reference`) + panel CRUD at `/reference/`
+[x] Vendor / campaign / contract Excel + PDF exports (permission-scoped)
+[x] Invoice table Excel export and workbook-style Excel export
+[x] Server-rendered PDF reports (dashboard, vendors, campaigns, contracts) with Persian/RTL support
 [x] Browser-printable invoice report
+[x] Contract tracking UI (list, create, edit, stages, attachments)
 [x] Permission-scoped export gates through can_export()
 [x] Consolidated Settings menu (language, amount format, currency unit, theme)
-[x] Compact/full amount display toggle with hover for exact values
-[x] Rial/Toman display toggle (display-only; stored values stay in Rial)
+[x] Compact/full amount display; Rial/Toman; همت for trillion-tier Toman amounts
 [x] Light/dark theme toggle (session-persisted)
 [x] Jalali month/year filters and Shamsi date parsing in import + forms
-[x] Tests for reference seeding, team dashboard scope, Excel exports, PDF, money display, and workbook export
+[x] Tests for permissions, imports, analytics, exports, PDF, reference CRUD, money display
 ```
 
 The important architectural choice is still intact: dashboards and exports are built from
@@ -44,22 +42,17 @@ not receive raw spreadsheet data.
 ## Still thin or missing
 
 ```text
-[ ] Budget planned-vs-actual analysis (variance table/chart — highest-value gap)
+[ ] Budget variance by category (Budget sheet line titles)
 [ ] Richer campaign-over-year visualization (monthly bars + budget overlay)
-[ ] Reference-data management screens beyond Django Admin fallback
-[ ] Lookup validation/dropdowns wired into every data-entry form
-[ ] SMS / Referral as first-class dashboard sections (separate from team spend, per product rules)
-[ ] Persian/RTL PDF rendering with an embedded Persian-capable font
-[ ] Upload hardening: file size, content type, extension, and S3 production storage
-[ ] CI/CD pipeline
-[ ] Live AWS or PaaS deployment
+[ ] Lookup validation/dropdowns wired into every invoice data-entry form
+[ ] Campaign CRUD in the custom panel (admin-only Django Admin today)
+[ ] Invoice action-month vs invoice-date reporting toggle
+[ ] Upload hardening: file size limits, content-type checks, S3 production storage
+[ ] CI/CD pipeline running make check
+[ ] Live AWS or PaaS deployment (runbook exists in docs/operations/DEPLOYMENT_AWS.md)
 [ ] JSON API endpoints for a future React front-end
 [ ] Caching for dashboard aggregates if data volume grows
-[ ] High-accuracy GPU transcription workflow (blocked on slow Hugging Face model downloads in some environments)
 ```
-
-ReportLab currently proves the server-PDF pattern with English text and simple tables. If PDFs need
-Persian text, the next step is to register a Persian font and handle RTL/shaping deliberately.
 
 Money and date display got a solid pass (compact/full, Toman toggle, Jalali grouping, Persian
 digits in FA mode). Keep regression tests when touching exports or table layouts.
@@ -69,9 +62,9 @@ digits in FA mode). Keep regression tests when touching exports or table layouts
 These are intentional boundaries of the current implementation:
 
 ```text
-Reference data is seeded, but not yet used throughout the UI.
-  SpendCategory, SubTeam, and Requester exist in the database and Django Admin.
-  Invoice forms still use a free-text category field.
+Reference data can be seeded (`make seed-reference`) and managed in the panel (`/reference/`).
+  SpendCategory, SubTeam, and Requester exist in the database.
+  Invoice forms still use a free-text category field in places.
   Next step: dropdown/autocomplete choices and validation backed by seeded lookups.
 
 Charts are richer, but still rendered inside Django templates.

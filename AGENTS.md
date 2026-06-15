@@ -17,7 +17,7 @@ Before building the Django app, importer, database models, or dashboards, run a 
 5. Map real workbook columns to the app concepts and models.
 6. Save the discovery outputs under `docs/discovery/`.
 
-Use `docs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md` as the detailed specification. If using Codex skills, use `.agents/skills/audio-xlsx-discovery/SKILL.md`.
+Use `docs/specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md` as the detailed specification. If using Codex skills, use `.agents/skills/audio-xlsx-discovery/SKILL.md`.
 
 Do not guess sheet names or column names. Do not implement the final importer until `docs/discovery/column_mapping.yml` exists or the missing mappings are clearly documented.
 

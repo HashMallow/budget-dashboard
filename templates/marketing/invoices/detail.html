@@ -47,6 +47,7 @@
         <table>
           <tbody>
             <tr><th>{% t "Vendor" %}</th><td>{{ invoice.vendor.name }}</td></tr>
+            <tr><th>{% t "Business line" %}</th><td>{{ invoice.business_section|default:"-" }}</td></tr>
             <tr><th>{% t "Campaign" %}</th><td>{{ invoice.campaign.name|default:"-" }}</td></tr>
             <tr><th>{% t "Category" %}</th><td>{{ invoice.category }}</td></tr>
             <tr><th>{% t "Cost type" %}</th><td>{% t invoice.cost_bucket|bucket_label %}</td></tr>

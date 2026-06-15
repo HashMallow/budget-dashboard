@@ -5,30 +5,29 @@ Local Django app for importing, monitoring, entering, reporting, and exporting m
 For a more visual explanation of the current structure, capabilities, run workflow, and roadmap, see:
 
 ```text
-docs/PROJECT_EXPLAINED.md
-docs/PROJECT_BLUEPRINT.md
-docs/CURRENT_STATE_AND_RUN_GUIDE.md
-docs/PROJECT_FILE_REFERENCE.md
-docs/ACCESS_BY_ROLE.md
-docs/DEPLOYMENT_AWS.md
-docs/PHASE_2.md
+docs/guides/PROJECT_EXPLAINED.md
+docs/guides/USER_SITEMAP.md
+docs/architecture/PROJECT_BLUEPRINT.md
+docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md
+docs/architecture/PROJECT_FILE_REFERENCE.md
+docs/operations/ACCESS_BY_ROLE.md
+docs/operations/DEPLOYMENT_AWS.md
+docs/project/PHASE_2.md
 ```
 
 ## Current Status
 
 - Discovery is complete under `docs/discovery/` (audio transcript/summary/requirements, workbook
   structure/sample rows, `column_mapping.yml`, and import risks).
-- Django project and `marketing` app are scaffolded.
-- Core models, admin registration, baseline auth groups, permission helpers, and initial tests are in place.
-- The Excel importer works from `docs/discovery/column_mapping.yml`.
-- The project now uses `uv` as the standard dependency and command runner.
-- A custom UI is available for dashboard, invoices, vendors, campaigns, budgets, imports, and users.
-- The UI is fully bilingual (FA/EN) with Persian-digit display and Jalali-calendar reporting in Persian mode.
-- The dashboard includes Chart.js visuals for overall spend, monthly trend, and per-team spend.
-- Dedicated team dashboards show team spend, vendors, campaigns, monthly trend, and attention invoices.
-- The workbook `Data` sheet can seed lookup rows for vendors, categories, sub-teams, and requesters.
-- Invoices, vendor reports, and campaign reports export to Excel; the dashboard summary, vendor spend, and campaign spend export to server-rendered PDF.
-- Production settings are wired (DATABASE_URL/Postgres switch, WhiteNoise, HTTPS headers, logging) behind a `prod` dependency extra — see `docs/DEPLOYMENT_AWS.md`.
+- Django project and `marketing` app are scaffolded with models, RBAC, importer, and **86+ tests**.
+- The Excel importer works from `docs/discovery/column_mapping.yml` (idempotent re-import).
+- The project uses **`uv`** + **`Makefile`** as the standard local command runner.
+- Custom panel: dashboard (budget vs actual variance, charts), invoices, teams, vendors, campaigns,
+  budgets, **contracts**, **reference-data CRUD** (`/reference/`), imports, and user access.
+- Bilingual FA/EN UI, Jalali reporting, Rial/Toman display, compact/full money formatting.
+- Excel exports (invoices, vendors, campaigns, workbook layout) and **Persian/RTL PDF reports**
+  (dashboard, vendors, campaigns, contracts) via ReportLab + Vazirmatn.
+- Production settings wired (`prod` extra: gunicorn, Postgres, WhiteNoise) — see `docs/operations/DEPLOYMENT_AWS.md`.
 
 ## Prerequisites
 
@@ -156,20 +155,23 @@ http://127.0.0.1:8000/login/
 Current panel sections:
 
 ```text
-/                 Dashboard
+/                 Dashboard (budget vs actual, charts; pie hidden when a team is filtered)
 /teams/           Team list and team dashboards
-/invoices/        Invoice list/create/detail/edit
+/invoices/        Invoice list / create / detail / edit / uploads
 /vendors/         Vendor spend report
 /campaigns/       Campaign spend report
-/budgets/         Budget table and pivot
-/imports/         Admin-only Excel upload/import
-/users/           Admin-only user/access management
+/budgets/         Budget table, pivot, and planned-budget charts
+/contracts/       Contract tracking (stages, expiry, attachments)
+/reference/       Admin-only lookup CRUD (vendors, categories, sub-teams, requesters)
+/imports/         Admin-only Excel upload / import
+/users/           Admin-only user and team-access management
 /exports/*.xlsx   Permission-scoped Excel exports
-/reports/*.pdf    Permission-scoped PDF reports
+/reports/*.pdf    Permission-scoped PDF reports (FA/EN + RTL when UI is Persian)
 /admin/           Django Admin fallback
 ```
 
-Users are stored in the database, not `.env`. Use `/users/` as admin to create or deactivate users and assign team-level roles.
+After `make load-data`, manage lookup rows in the panel at **`/reference/`** (admin) or re-run
+`make seed-reference` from the workbook Data sheet.
 
 ## Import The Excel Workbook
 
@@ -225,6 +227,10 @@ make seed-reference
 
 This creates or updates vendors, spend categories, sub-teams, and requesters from the real workbook mapping.
 
+You can also add or edit these rows in the panel at **`/reference/`** (admin login required).
+
+Users are stored in the database, not `.env`. Use `/users/` as admin to create or deactivate users and assign team-level roles.
+
 ## Documentation
 
 Full, categorized index with status labels: **[`docs/README.md`](docs/README.md)**.
@@ -234,10 +240,11 @@ Most-used docs:
 | Doc | Purpose |
 |---|---|
 | [`docs/README.md`](docs/README.md) | Documentation map — start here to find anything |
-| [`docs/PROJECT_EXPLAINED.md`](docs/PROJECT_EXPLAINED.md) | Plain-language guided tour |
-| [`docs/CURRENT_STATE_AND_RUN_GUIDE.md`](docs/CURRENT_STATE_AND_RUN_GUIDE.md) | What works now + local run commands |
-| [`docs/PHASE_2.md`](docs/PHASE_2.md) | Status and next features |
-| [`docs/DEPLOYMENT_AWS.md`](docs/DEPLOYMENT_AWS.md) | Production deployment runbook |
+| [`docs/guides/USER_SITEMAP.md`](docs/guides/USER_SITEMAP.md) | End-user site map (also in-app: **Help**) |
+| [`docs/guides/PROJECT_EXPLAINED.md`](docs/guides/PROJECT_EXPLAINED.md) | Plain-language guided tour |
+| [`docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md`](docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md) | What works now + local run commands |
+| [`docs/project/PHASE_2.md`](docs/project/PHASE_2.md) | Status and next features |
+| [`docs/operations/DEPLOYMENT_AWS.md`](docs/operations/DEPLOYMENT_AWS.md) | Production deployment runbook |
 | [`AGENTS.md`](AGENTS.md) | Product requirements for agents |
 
 ## Transcribe Future Voice Notes
@@ -262,7 +269,7 @@ Keep raw voice notes, WAV conversions, and raw transcripts under:
 ```
 
 That directory is ignored by Git. Durable product decisions should be copied into
-`docs/PROJECT_BLUEPRINT.md`, `docs/CURRENT_STATE_AND_RUN_GUIDE.md`, or the relevant spec doc.
+`docs/architecture/PROJECT_BLUEPRINT.md`, `docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md`, or the relevant spec doc.
 
 ## Verification
 
@@ -272,14 +279,28 @@ make check
 
 This currently runs Django checks, pytest, and ruff through uv.
 
-## Production / Deployment
+## Local cleanup
 
-Production dependencies live in an optional extra so local dev stays lean:
+Generated caches, discovery transcripts, whisper model downloads, and verification DB copies are not
+part of the source tree. Remove them safely with:
 
 ```bash
-make prod-install      # uv sync --extra prod (gunicorn, psycopg, whitenoise, dj-database-url)
-make collectstatic
-make prod-run          # gunicorn, expects a production .env (DEBUG=false, DATABASE_URL, ...)
+make clean-artifacts
 ```
 
-See `docs/DEPLOYMENT_AWS.md` for the full CLI-first AWS roadmap and cheaper alternatives.
+Voice notes, workbooks, and `db.sqlite3` stay on disk unless you delete them yourself. To reset the
+local database entirely: `make clean-local-db` then `make setup` and `make load-data`.
+
+## Production / Deployment
+
+**Preferred path:** single **EC2** + **Caddy** + **gunicorn** — full steps in [`docs/operations/DEPLOYMENT_AWS.md`](docs/operations/DEPLOYMENT_AWS.md).
+
+**Companion PDF** (gentle Console + CLI walkthrough): [`docs/reference/AWS_EC2_Deployment_Path_Field_Guide.pdf`](docs/reference/AWS_EC2_Deployment_Path_Field_Guide.pdf)
+
+```bash
+make prod-install      # uv sync --extra prod
+make collectstatic
+make prod-run          # gunicorn; expects production .env (DEBUG=false, DATABASE_URL, ...)
+```
+
+PaaS, Lightsail, and VPS alternatives are summarized at the **end** of `docs/operations/DEPLOYMENT_AWS.md`.

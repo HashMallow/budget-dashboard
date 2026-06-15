@@ -16,6 +16,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.datetime import from_excel
 
+from marketing.business_section import normalize_business_section
 from marketing.cost_buckets import (
     detect_cost_bucket_from_text,
     infer_cost_bucket_from_pseudo_team_name,
@@ -249,11 +250,15 @@ def get_or_create_team(name: str, result: ImportResult, dry_run: bool) -> Team:
     if is_pseudo_team_name(name):
         raise ValueError(f"Refusing to create pseudo-team from cost-bucket label: {name!r}")
     name = canonical_team_name(name)
-    alias = TeamAlias.objects.select_related("team").filter(
-        normalized_raw_name=normalize_name(name),
-        is_active=True,
-        team__is_active=True,
-    ).first()
+    alias = (
+        TeamAlias.objects.select_related("team")
+        .filter(
+            normalized_raw_name=normalize_name(name),
+            is_active=True,
+            team__is_active=True,
+        )
+        .first()
+    )
     if alias:
         return alias.team
 
@@ -316,9 +321,7 @@ def merge_aliased_teams() -> None:
         if canonical is None:
             continue
         duplicates = [
-            team
-            for team in Team.objects.exclude(pk=canonical.pk)
-            if normalize_name(team.name) == raw_normalized
+            team for team in Team.objects.exclude(pk=canonical.pk) if normalize_name(team.name) == raw_normalized
         ]
         for alias_team in duplicates:
             TeamAlias.objects.update_or_create(
@@ -384,12 +387,14 @@ def get_or_create_vendor(name: str, result: ImportResult, dry_run: bool) -> Vend
 
 # Generic workbook placeholders that are not real campaign names. The current source workbook uses
 # "on going" on every invoice row, which creates noisy duplicate "Ongoing (1405)" campaigns.
-GENERIC_CAMPAIGN_NAMES = frozenset({
-    normalize_name("on going"),
-    normalize_name("ongoing"),
-    normalize_name("on going campaign"),
-    normalize_name("ongoing campaign"),
-})
+GENERIC_CAMPAIGN_NAMES = frozenset(
+    {
+        normalize_name("on going"),
+        normalize_name("ongoing"),
+        normalize_name("on going campaign"),
+        normalize_name("ongoing campaign"),
+    }
+)
 
 # Canonical spellings for real free-text campaign names coming from the workbook.
 CAMPAIGN_NAME_ALIASES: dict[str, str] = {}
@@ -512,6 +517,7 @@ def update_or_create_invoice(
     campaign: Campaign | None,
     invoice_number: str,
     category: str,
+    business_section: str,
     cost_bucket: str,
     description: str,
     invoice_date: date,
@@ -544,6 +550,7 @@ def update_or_create_invoice(
         "team": team,
         "campaign": campaign,
         "category": category,
+        "business_section": business_section,
         "cost_bucket": cost_bucket,
         "description": description,
         "invoice_date": invoice_date,
@@ -607,6 +614,7 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
         )
         year = parse_year(mapped_value(raw, columns, "year")) or (invoice_date.year if invoice_date else None)
         category = cell_to_text(mapped_value(raw, columns, "category")) or "Uncategorized"
+        business_section = normalize_business_section(mapped_value(raw, columns, "business_section"))
 
         missing = []
         if not invoice_number:
@@ -649,6 +657,7 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
             campaign=campaign,
             invoice_number=invoice_number,
             category=category,
+            business_section=business_section,
             cost_bucket=cost_bucket,
             description=description,
             invoice_date=invoice_date,

@@ -3,13 +3,14 @@ from __future__ import annotations
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import views
+from . import reference_views, views
 
 app_name = "marketing"
 
 urlpatterns = [
     path("favicon.svg", views.favicon_svg, name="favicon_svg"),
     path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("help/", views.help_sitemap, name="help_sitemap"),
     path("preferences/", views.set_display_preferences, name="set_display_preferences"),
     path("logout/", views.logout_view, name="logout"),
     path("", views.dashboard, name="dashboard"),
@@ -32,6 +33,26 @@ urlpatterns = [
     path("budgets/", views.budget_list, name="budget_list"),
     path("imports/", views.import_workbook, name="import_workbook"),
     path("users/", views.user_access, name="user_access"),
+    path("reference/", reference_views.reference_data_home, name="reference_data_home"),
+    path("reference/vendors/", reference_views.vendor_reference_list, name="vendor_reference_list"),
+    path("reference/vendors/new/", reference_views.vendor_reference_create, name="vendor_reference_create"),
+    path("reference/vendors/<int:pk>/edit/", reference_views.vendor_reference_edit, name="vendor_reference_edit"),
+    path("reference/categories/", reference_views.category_reference_list, name="category_reference_list"),
+    path("reference/categories/new/", reference_views.category_reference_create, name="category_reference_create"),
+    path(
+        "reference/categories/<int:pk>/edit/", reference_views.category_reference_edit, name="category_reference_edit"
+    ),
+    path("reference/sub-teams/", reference_views.subteam_reference_list, name="subteam_reference_list"),
+    path("reference/sub-teams/new/", reference_views.subteam_reference_create, name="subteam_reference_create"),
+    path("reference/sub-teams/<int:pk>/edit/", reference_views.subteam_reference_edit, name="subteam_reference_edit"),
+    path("reference/requesters/", reference_views.requester_reference_list, name="requester_reference_list"),
+    path("reference/requesters/new/", reference_views.requester_reference_create, name="requester_reference_create"),
+    path(
+        "reference/requesters/<int:pk>/edit/", reference_views.requester_reference_edit, name="requester_reference_edit"
+    ),
+    path("reference/campaigns/", reference_views.campaign_reference_list, name="campaign_reference_list"),
+    path("reference/campaigns/new/", reference_views.campaign_reference_create, name="campaign_reference_create"),
+    path("reference/campaigns/<int:pk>/edit/", reference_views.campaign_reference_edit, name="campaign_reference_edit"),
     path("exports/invoices.xlsx", views.export_invoices_excel, name="export_invoices_excel"),
     path("exports/vendors.xlsx", views.export_vendors_excel, name="export_vendors_excel"),
     path("exports/campaigns.xlsx", views.export_campaigns_excel, name="export_campaigns_excel"),

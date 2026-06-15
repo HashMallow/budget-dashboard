@@ -12,9 +12,7 @@ Alireza/
 |-- Makefile                         Local command pipeline
 |-- README.md                        Quick start guide
 |-- AGENTS.md                        Canonical agent/product instructions
-|-- CLAUDE.md                        Claude-generated helper context
-|-- README_FOR_CODEX.md              Early Codex bootstrap instructions
-|-- AWS_Infrastructure_...md/.pdf    AWS learning background, not app runtime
+|-- CLAUDE.md                        Pointer to AGENTS.md
 |-- manage.py                        Django command entrypoint
 |-- pyproject.toml                   Project metadata, dependencies, test/lint config
 |-- uv.lock                          Locked dependency graph
@@ -74,12 +72,8 @@ Alireza/
 |   |-- PROJECT_BLUEPRINT.md
 |   |-- CURRENT_STATE_AND_RUN_GUIDE.md
 |   |-- PROJECT_FILE_REFERENCE.md
-|   |-- END_STATE_CLEANUP_PLAN.md
 |   |-- discovery/
-|   |   |-- workbook_structure.md
-|   |   |-- workbook_sample_rows.md
-|   |   |-- column_mapping.yml
-|   |   `-- import_risks.md
+|   |   `-- column_mapping.yml       Importer mapping (tracked; other discovery outputs are local/gitignored)
 |   `-- product/spec docs...
 |
 |-- .artifacts/                      Ignored local/generated artifacts
@@ -146,20 +140,6 @@ Claude-specific project context generated during the Claude update.
 
 Treat this as helper context, not the canonical product spec. If it conflicts with `AGENTS.md`,
 `PROJECT_BLUEPRINT.md`, or the current code, prefer the latter.
-
-### `README_FOR_CODEX.md`
-
-Early bootstrap instructions for Codex.
-
-This is mostly historical now because discovery and the Django foundation are already done, but it
-still explains why the first phase had to transcribe audio and inspect the workbook before coding.
-
-### `AWS_Infrastructure_Research_Project_Practical_Labs_Roadmap_Edition.md`
-
-AWS learning roadmap/background material.
-
-This is not app code and not a deployment script. Use it as learning context for AWS concepts,
-labs, and progression. The app-specific deployment instructions live in `docs/DEPLOYMENT_AWS.md`.
 
 ### `manage.py`
 
@@ -885,23 +865,23 @@ Deployment/AWS docs          How this becomes a real server
 1. README.md
    Fast local start and command summary.
 
-2. docs/CURRENT_STATE_AND_RUN_GUIDE.md
+2. docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md
    What works right now, how to run it, how to test it manually.
 
-3. docs/PROJECT_EXPLAINED.md
+3. docs/guides/PROJECT_EXPLAINED.md
    Plain-language walkthrough of Django concepts and this project's flow.
 
-4. docs/PROJECT_FILE_REFERENCE.md
+4. docs/architecture/PROJECT_FILE_REFERENCE.md
    This map of every important file.
 
-5. docs/PROJECT_BLUEPRINT.md
+5. docs/architecture/PROJECT_BLUEPRINT.md
    Current product direction and chosen AWS path.
 
-6. docs/DEPLOYMENT_AWS.md
+6. docs/operations/DEPLOYMENT_AWS.md
    EC2 + Caddy first, then RDS, then S3.
 ```
 
-### `docs/PROJECT_BLUEPRINT.md`
+### `docs/architecture/PROJECT_BLUEPRINT.md`
 
 Current product direction and decision log.
 
@@ -924,7 +904,7 @@ then S3 media uploads
 serverless later only if the requirements change
 ```
 
-### `docs/CURRENT_STATE_AND_RUN_GUIDE.md`
+### `docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md`
 
 Practical status and runbook for local use.
 
@@ -939,7 +919,7 @@ Manually test admin/editor/viewer behavior.
 See which roadmap phases are done vs pending.
 ```
 
-### `docs/PROJECT_EXPLAINED.md`
+### `docs/guides/PROJECT_EXPLAINED.md`
 
 Guided tour written for your learning style.
 
@@ -949,14 +929,14 @@ UI, CSRF, and the main commands.
 
 Use this when the codebase feels abstract and you want the mental model.
 
-### `docs/PROJECT_FILE_REFERENCE.md`
+### `docs/architecture/PROJECT_FILE_REFERENCE.md`
 
 This file.
 
 It is the table of contents for the repository. It explains the role of root files, Django files,
 templates, markdown docs, discovery outputs, generated files, and safe modification workflows.
 
-### `docs/PHASE_2.md`
+### `docs/project/PHASE_2.md`
 
 Current Phase 2 status and next-step plan.
 
@@ -982,24 +962,26 @@ CI/CD
 AWS deployment
 ```
 
-### `docs/DEPLOYMENT_AWS.md`
+### `docs/operations/DEPLOYMENT_AWS.md`
 
-App-specific AWS deployment runbook.
+App-specific AWS deployment runbook (preferred path: **EC2 + Caddy + gunicorn**).
 
-This is the deployment source of truth. It is intentionally practical and ordered:
+Companion PDF for a gentler Console + CLI walkthrough:
+`docs/reference/AWS_EC2_Deployment_Path_Field_Guide.pdf`
+
+Upgrade order after the single box works:
 
 ```text
-1. EC2 + Caddy + Gunicorn
-2. Add RDS PostgreSQL
-3. Add S3 for uploaded invoice/payment files
-4. Add CloudWatch and CI/CD
-5. Add ALB/Terraform only later
+1. EC2 + Caddy + gunicorn
+2. RDS PostgreSQL
+3. S3 for uploads
+4. CloudWatch + CI/CD
+5. ALB / Terraform only if needed
 ```
 
-It also explains production environment variables, systemd, Caddy, database initialization,
-`make load-data`, and the manual deployment workflow CI/CD should automate later.
+PaaS, Lightsail, and VPS alternatives are in the appendix at the end of the runbook.
 
-### `docs/ACCESS_BY_ROLE.md`
+### `docs/operations/ACCESS_BY_ROLE.md`
 
 Human-readable RBAC guide.
 
@@ -1012,15 +994,7 @@ Who can upload invoice files or payment proofs?
 What should team-limited users see?
 ```
 
-### `docs/END_STATE_CLEANUP_PLAN.md`
-
-Cleanup and repository hygiene plan.
-
-Use this before committing or deploying to know which files are source files and which are local or
-generated artifacts. It helps keep audio transcripts, workbook files, caches, local DBs, and media
-uploads out of the main tracked project unless intentionally needed.
-
-### `docs/PRODUCT_REQUIREMENTS.md`
+### `docs/specs/PRODUCT_REQUIREMENTS.md`
 
 Original product-level requirements.
 
@@ -1028,63 +1002,41 @@ Use this as the broad product reference when checking whether the app still refl
 request: dashboards, users, access control, Excel import, invoice tracking, exports, referral/SMS
 separation, and campaign/vendor reporting.
 
-### `docs/DATA_MODEL.md`
+### `docs/architecture/DATA_MODEL.md`
 
 Original data-model design.
 
 The current Django models were built from this. Use it when checking why tables such as `Invoice`,
 `BudgetLine`, `UserTeamAccess`, `InvoiceAttachment`, and `InvoiceStatusHistory` exist.
 
-### `docs/RBAC_SPEC.md`
+### `docs/specs/RBAC_SPEC.md`
 
 Original role/access-control specification.
 
 The permission helper functions in `marketing/permissions.py` were built from this. Use it when
 changing role behavior or adding a new permission.
 
-### `docs/EXCEL_IMPORT_SPEC.md`
+### `docs/specs/EXCEL_IMPORT_SPEC.md`
 
 Original Excel import requirements.
 
 Use this when changing importer behavior. It explains mapping, aliases, skipped-row reporting,
 idempotency, raw-row traceability, and why the database becomes the source of truth after import.
 
-### `docs/DASHBOARD_SPEC.md`
+### `docs/specs/DASHBOARD_SPEC.md`
 
 Dashboard and analysis requirements.
 
 Use this when adding BI features. It describes expected cards, charts, vendor reports, campaign
 reports, payment-stage summaries, and budget analysis.
 
-### `docs/IMPLEMENTATION_PLAN.md`
-
-Original phase plan.
-
-Some of it is now historical because the app already exists. Use it to understand the intended build
-order, not as the current truth. Current truth lives in `CURRENT_STATE_AND_RUN_GUIDE.md` and
-`PHASE_2.md`.
-
-### `docs/ACCEPTANCE_TESTS.md`
-
-Definition-of-done style acceptance criteria.
-
-Use this before calling a version “ready.” It should eventually align with automated tests and a
-manual QA checklist.
-
-### `docs/DEVELOPER_NOTES.md`
+### `docs/guides/DEVELOPER_NOTES.md`
 
 General developer notes.
 
 Use this for implementation reminders that do not belong in product specs or the run guide.
 
-### `docs/CODEX_PROMPTS.md`
-
-Prompt/reference material for AI-assisted work.
-
-Mostly useful when you want Codex or another agent to perform a structured phase, such as discovery,
-modeling, importer work, RBAC, dashboard work, or deployment.
-
-### `docs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`
+### `docs/specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`
 
 Discovery workflow specification.
 
@@ -1103,8 +1055,8 @@ Ignored local folder for raw voice feedback files:
 .artifacts/voice-feedback/transcripts/  generated transcript markdown
 ```
 
-Durable decisions from voice notes should be copied into `docs/PROJECT_BLUEPRINT.md` and
-`docs/CURRENT_STATE_AND_RUN_GUIDE.md`, including:
+Durable decisions from voice notes should be copied into `docs/architecture/PROJECT_BLUEPRINT.md` and
+`docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md`, including:
 
 ```text
 Data sheet is lookup/reference data.
@@ -1217,24 +1169,10 @@ imports/my-workbook.xlsx
 
 ### `tools/inspect_xlsx_structure.py`
 
-Discovery helper script that inspects XLSX files without modifying them.
+Discovery helper script that inspects XLSX files without modifying them. Writes local markdown under
+`docs/discovery/` (gitignored except `column_mapping.yml`).
 
-It writes:
-
-```text
-docs/discovery/workbook_structure.md
-docs/discovery/workbook_sample_rows.md
-```
-
-### `tools/transcribe_audio.py`
-
-Earlier transcription helper script from the initial project instructions.
-
-The newer reusable skill script lives at:
-
-```text
-.agents/skills/audio-transcription/scripts/transcribe_audio.py
-```
+Transcription uses `make transcribe-audio` / `.agents/skills/audio-transcription/scripts/transcribe_audio.py`.
 
 ## Local Generated Files
 
@@ -1324,8 +1262,8 @@ Recommended order:
 
 ```text
 1. README.md
-2. docs/CURRENT_STATE_AND_RUN_GUIDE.md
-3. docs/PROJECT_FILE_REFERENCE.md
+2. docs/guides/CURRENT_STATE_AND_RUN_GUIDE.md
+3. docs/architecture/PROJECT_FILE_REFERENCE.md
 4. docs/discovery/column_mapping.yml
 5. marketing/models.py
 6. marketing/importers/excel.py

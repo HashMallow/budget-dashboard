@@ -22,6 +22,33 @@ from marketing.translations import translate
 register = template.Library()
 
 
+def _ui_arrow_markup(lang: str) -> str:
+    arrow = "←" if lang == "fa" else "→"
+    return f'<span class="ui-arrow" aria-hidden="true">{arrow}</span>'
+
+
+@register.simple_tag(takes_context=True)
+def nav_path(context, *segments):
+    """Render a menu path with an arrow that matches the active UI direction."""
+    lang = context.get("ui_lang", "en")
+    if not segments:
+        return ""
+    parts = [f'<span class="ui-path-part">{conditional_escape(translate(seg, lang))}</span>' for seg in segments]
+    inner = mark_safe(f" {_ui_arrow_markup(lang)} ".join(parts))
+    return mark_safe(f'<span class="ui-path">{inner}</span>')
+
+
+@register.simple_tag(takes_context=True)
+def ui_flow(context, *stages):
+    """Render a left-to-right or right-to-left stage/workflow sequence."""
+    lang = context.get("ui_lang", "en")
+    if not stages:
+        return ""
+    parts = [f'<span class="ui-flow-step">{conditional_escape(translate(stage, lang))}</span>' for stage in stages]
+    inner = mark_safe(f" {_ui_arrow_markup(lang)} ".join(parts))
+    return mark_safe(f'<span class="ui-flow">{inner}</span>')
+
+
 @register.simple_tag(takes_context=True)
 def t(context, text):
     """Translate a UI string to the active language (English source is the key)."""
@@ -63,10 +90,7 @@ def money(value, mode_override: str = "") -> str:
             if parts:
                 num, suffix = parts
                 # RTL isolate: number is read first, scale word (میلیون/…) immediately after.
-                return mark_safe(
-                    f'<span class="money-compact-fa" dir="rtl">'
-                    f"{conditional_escape(num)} {suffix}</span>"
-                )
+                return mark_safe(f'<span class="money-compact-fa" dir="rtl">{conditional_escape(num)} {suffix}</span>')
         return text
 
     if mode == COMPACT and mode_override != FULL:
@@ -74,9 +98,7 @@ def money(value, mode_override: str = "") -> str:
         if full != formatted:
             display = _display_html(formatted)
             title = money_display_title(value, unit=unit, lang=lang, compact_formatted=formatted)
-            return mark_safe(
-                f'<span class="money-value" title="{conditional_escape(title)}">{display}</span>'
-            )
+            return mark_safe(f'<span class="money-value" title="{conditional_escape(title)}">{display}</span>')
     return _display_html(formatted)
 
 

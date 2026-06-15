@@ -41,9 +41,7 @@ def test_monthly_window_excludes_future_months_and_trims_leading_empty():
     _make_invoice(team, vendor, 1405, 3, "300")
 
     # "Now" is Khordad (month 3) of 1405; trailing 12-month window, no year filter.
-    rows = monthly_spend_window_rows(
-        Invoice.objects.all(), end_year=1405, end_month=3, count=12, ui_lang="en"
-    )
+    rows = monthly_spend_window_rows(Invoice.objects.all(), end_year=1405, end_month=3, count=12, ui_lang="en")
 
     # No future months (nothing past 1405-03) and leading empties before 1404-12 are trimmed.
     assert (rows[0]["year"], rows[0]["month"]) == (1404, 12)
@@ -63,9 +61,7 @@ def test_monthly_window_for_current_year_stops_at_current_month():
     _make_invoice(team, vendor, 1405, 1, "200")
     _make_invoice(team, vendor, 1405, 3, "300")
 
-    rows = monthly_spend_window_rows(
-        Invoice.objects.all(), end_year=1405, end_month=3, count=3, ui_lang="en"
-    )
+    rows = monthly_spend_window_rows(Invoice.objects.all(), end_year=1405, end_month=3, count=3, ui_lang="en")
 
     assert [r["month"] for r in rows] == [1, 2, 3]
     assert all(r["year"] == 1405 for r in rows)

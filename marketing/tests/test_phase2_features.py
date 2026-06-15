@@ -28,15 +28,17 @@ def _write_reference_workbook(path):
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Data"
-    sheet.append([
-        "requester",
-        "Vendor List",
-        "Vendor list unique",
-        "Title",
-        "Title list unique",
-        "Month list",
-        "sub team",
-    ])
+    sheet.append(
+        [
+            "requester",
+            "Vendor List",
+            "Vendor list unique",
+            "Title",
+            "Title list unique",
+            "Month list",
+            "sub team",
+        ]
+    )
     sheet.append(["Ali", "Vendor A", "Vendor A", "Performance", "Performance", "Farvardin", "Growth Ops"])
     sheet.append(["Sara", "Vendor B", "", "Brand", "", "Ordibehesht", ""])
     workbook.save(path)

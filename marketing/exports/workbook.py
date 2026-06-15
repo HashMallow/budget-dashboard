@@ -18,7 +18,7 @@ from marketing.models import BudgetLine, Invoice, PaymentStage
 
 ZERO = Decimal("0")
 MONTHS = [(number, latin) for number, _persian, latin in JALALI_MONTHS]
-MONEY_FORMAT = '#,##0'
+MONEY_FORMAT = "#,##0"
 # 1-based money column indexes per exported sheet (used during final styling pass).
 _SHEET_MONEY_COLUMNS: dict[str, set[int]] = {}
 
@@ -89,35 +89,39 @@ def _add_invoice_sheet(sheet: Worksheet, invoices: Iterable[Invoice]) -> None:
             gregorian_text = invoice.invoice_date.isoformat()
         else:
             jalali_year, month_label, jalali_text, gregorian_text = "", "", "", ""
-        sheet.append(_row_values([
-            _raw(raw, "Year", jalali_year),
-            _raw(raw, "Month", month_label),
-            _raw(raw, "Cost Center", ""),
-            invoice.team.name if invoice.team else "",
-            _raw(raw, "Sub Team", ""),
-            _raw(raw, "Requester", ""),
-            invoice.category,
-            invoice.campaign.name if invoice.campaign else "",
-            _raw(raw, "Business Section", ""),
-            invoice.vendor.name if invoice.vendor_id else "",
-            invoice.description,
-            _raw(raw, "invoice date in Jalali", jalali_text),
-            gregorian_text,
-            invoice.invoice_number,
-            _excel_number(invoice.amount),
-            _excel_number(_raw(raw, "Action Cost (iRR)", "")),
-            _excel_number(_raw(raw, "Tax Amount (IRR)", "")),
-            _raw(raw, "Insurance Rate", ""),
-            _excel_number(_raw(raw, "Insurance Amount (IRR)", "")),
-            _excel_number(
-                _raw(raw, "Paid (IRR)", invoice.amount if invoice.payment_stage == PaymentStage.PAID else "")
-            ),
-            _raw(raw, "MKT Confirmation stage", ""),
-            _raw(raw, "MKT to Finance sent date", ""),
-            _raw(raw, "MKT to Finance sent date in gregorian", ""),
-            _payment_stage_for_excel(invoice),
-            _raw(raw, "lead Time", invoice.days_in_current_stage),
-        ]))
+        sheet.append(
+            _row_values(
+                [
+                    _raw(raw, "Year", jalali_year),
+                    _raw(raw, "Month", month_label),
+                    _raw(raw, "Cost Center", ""),
+                    invoice.team.name if invoice.team else "",
+                    _raw(raw, "Sub Team", ""),
+                    _raw(raw, "Requester", ""),
+                    invoice.category,
+                    invoice.campaign.name if invoice.campaign else "",
+                    invoice.business_section or _raw(raw, "Business Section", ""),
+                    invoice.vendor.name if invoice.vendor_id else "",
+                    invoice.description,
+                    _raw(raw, "invoice date in Jalali", jalali_text),
+                    gregorian_text,
+                    invoice.invoice_number,
+                    _excel_number(invoice.amount),
+                    _excel_number(_raw(raw, "Action Cost (iRR)", "")),
+                    _excel_number(_raw(raw, "Tax Amount (IRR)", "")),
+                    _raw(raw, "Insurance Rate", ""),
+                    _excel_number(_raw(raw, "Insurance Amount (IRR)", "")),
+                    _excel_number(
+                        _raw(raw, "Paid (IRR)", invoice.amount if invoice.payment_stage == PaymentStage.PAID else "")
+                    ),
+                    _raw(raw, "MKT Confirmation stage", ""),
+                    _raw(raw, "MKT to Finance sent date", ""),
+                    _raw(raw, "MKT to Finance sent date in gregorian", ""),
+                    _payment_stage_for_excel(invoice),
+                    _raw(raw, "lead Time", invoice.days_in_current_stage),
+                ]
+            )
+        )
 
     _SHEET_MONEY_COLUMNS[sheet.title] = {15, 16, 17, 19, 20}
 
@@ -225,15 +229,19 @@ def _add_data_sheet(sheet: Worksheet, budget_lines: Iterable[BudgetLine], invoic
     for index in range(rows_count):
         vendor = _list_value(vendors, index)
         category = _list_value(categories, index)
-        sheet.append(_row_values([
-            _list_value(requesters, index),
-            vendor,
-            vendor,
-            category,
-            category,
-            _list_value(month_labels, index),
-            _list_value(sub_teams, index),
-        ]))
+        sheet.append(
+            _row_values(
+                [
+                    _list_value(requesters, index),
+                    vendor,
+                    vendor,
+                    category,
+                    category,
+                    _list_value(month_labels, index),
+                    _list_value(sub_teams, index),
+                ]
+            )
+        )
 
     _SHEET_MONEY_COLUMNS[sheet.title] = set()
 
@@ -283,12 +291,16 @@ def _empty_budget_row(team: str, category: str) -> dict:
 
 def _append_month_summary_row(sheet: Worksheet, team: str, title: str, values_by_month: dict[int, Decimal]) -> None:
     month_values = [values_by_month[month_number] for month_number, _month_label in MONTHS]
-    sheet.append(_row_values([
-        team,
-        title,
-        *[_excel_number(value) for value in month_values],
-        _excel_number(sum(month_values, ZERO)),
-    ]))
+    sheet.append(
+        _row_values(
+            [
+                team,
+                title,
+                *[_excel_number(value) for value in month_values],
+                _excel_number(sum(month_values, ZERO)),
+            ]
+        )
+    )
 
 
 def _append_header(sheet: Worksheet, headers: list[str]) -> None:
@@ -425,4 +437,3 @@ def _list_value(values: list[str], index: int) -> str:
     if index >= len(values):
         return ""
     return values[index]
-

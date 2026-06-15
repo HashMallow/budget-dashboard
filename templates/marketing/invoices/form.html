@@ -9,6 +9,32 @@
 {% endblock %}
 
 {% block content %}
+  <style>
+    .amount-entry-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .amount-entry-row .form-control { flex: 1 1 auto; min-width: 0; }
+    .amount-entry-row select.form-control {
+      flex: 0 0 170px;
+      max-width: 200px;
+    }
+    .field-hint {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .amount-preview {
+      margin-top: 6px;
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 1.2em;
+    }
+    .amount-preview:empty { display: none; }
+  </style>
   <section class="section panel">
     <form method="post">
       {% csrf_token %}
@@ -21,10 +47,20 @@
           {{ form.invoice_number }}
           {% form_errors form.invoice_number.errors %}
         </div>
-        <div class="field">
+        <div class="field wide amount-entry-field">
           <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
-          {{ form.amount }}
+          <div class="amount-entry-row">
+            {{ form.amount }}
+            {{ form.currency }}
+          </div>
+          {% if currency_unit == "toman" %}
+            <p class="field-hint">{% t "Enter the invoice total in Iranian Rial (IRR). Amounts are always stored in Rial. Example: 10,000,000 Toman = 100,000,000 Rial." %}</p>
+          {% else %}
+            <p class="field-hint">{% t "Enter the full invoice total in Iranian Rial (IRR). This is the number stored in the database and used in reports." %}</p>
+          {% endif %}
+          <div id="amount-preview" class="amount-preview" aria-live="polite"></div>
           {% form_errors form.amount.errors %}
+          {% form_errors form.currency.errors %}
         </div>
         <div class="field">
           <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
@@ -40,6 +76,12 @@
           <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
           {{ form.team }}
           {% form_errors form.team.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.business_section.id_for_label }}">{% t form.business_section.label %}</label>
+          {{ form.business_section }}
+          <p class="field-hint">{% t "Business segment such as Consumer, Youth, or Enterprise (from Excel Business Section)." %}</p>
+          {% form_errors form.business_section.errors %}
         </div>
         <div class="field">
           <label for="{{ form.campaign.id_for_label }}">{% t form.campaign.label %}</label>
@@ -67,11 +109,6 @@
           {% form_errors form.due_date.errors %}
         </div>
         <div class="field">
-          <label for="{{ form.currency.id_for_label }}">{% t form.currency.label %}</label>
-          {{ form.currency }}
-          {% form_errors form.currency.errors %}
-        </div>
-        <div class="field">
           <label for="{{ form.payment_stage.id_for_label }}">{% t form.payment_stage.label %}</label>
           {{ form.payment_stage }}
           {% form_errors form.payment_stage.errors %}
@@ -88,4 +125,47 @@
       </div>
     </form>
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      var amountInput = document.getElementById("{{ form.amount.id_for_label }}");
+      var preview = document.getElementById("amount-preview");
+      if (!amountInput || !preview) { return; }
+
+      var cfg = window.MARKETING_MONEY || { lang: "en", unit: "rial" };
+      var rialLabel = cfg.lang === "fa" ? "ریال" : "Rial";
+      var tomanLabel = cfg.lang === "fa" ? "تومان" : "Toman";
+
+      function parseAmount(text) {
+        if (!text) { return NaN; }
+        var normalized = text.replace(/[,\u066C\u060C\s]/g, "").replace(/[۰-۹]/g, function (d) {
+          return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+        });
+        return Number(normalized);
+      }
+
+      function formatNumber(value) {
+        try {
+          return Math.round(value).toLocaleString(cfg.lang === "fa" ? "fa-IR" : "en-US");
+        } catch (e) {
+          return String(Math.round(value));
+        }
+      }
+
+      function updatePreview() {
+        var rial = parseAmount(amountInput.value);
+        if (!isFinite(rial) || rial <= 0) {
+          preview.textContent = "";
+          return;
+        }
+        preview.textContent = "≈ " + formatNumber(rial) + " " + rialLabel + "  ·  " + formatNumber(rial / 10) + " " + tomanLabel;
+      }
+
+      amountInput.addEventListener("input", updatePreview);
+      amountInput.addEventListener("change", updatePreview);
+      updatePreview();
+    })();
+  </script>
 {% endblock %}

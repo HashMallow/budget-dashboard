@@ -1,0 +1,251 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Help" %}{% endblock %}
+{% block page_title %}{% t "Help" %}{% endblock %}
+{% block page_subtitle %}{% t "What each part of the panel does" %}{% endblock %}
+
+{% block content %}
+  <style>
+    .help-intro { margin-bottom: 20px; color: var(--muted); line-height: 1.65; max-width: 72ch; }
+    .help-toc { margin: 0 0 24px; padding: 16px 18px; border-radius: 10px; background: var(--surface-soft); border: 1px solid var(--line); }
+    .help-toc strong { display: block; margin-bottom: 8px; }
+    .help-toc ul { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: 6px; }
+    .help-toc a { color: var(--primary); font-weight: 600; }
+    .help-section { margin-bottom: 24px; scroll-margin-top: 80px; }
+    .help-section h2 { font-size: 18px; margin: 0 0 10px; }
+    .help-section p, .help-section li { color: var(--text); line-height: 1.65; }
+    .help-section ul { margin: 8px 0 0; padding-inline-start: 1.25rem; }
+    .help-section li + li { margin-top: 6px; }
+    .help-map td:first-child { font-weight: 600; white-space: nowrap; }
+    .help-map td a { font-weight: 600; }
+    .help-role-table td:nth-child(2) { color: var(--muted); }
+    .help-tasks td:last-child { color: var(--muted); text-align: start; }
+    .help-tasks .ui-path { color: inherit; }
+    .help-role-table td { vertical-align: top; }
+    .help-glossary td { vertical-align: top; }
+    .help-glossary td:first-child { font-weight: 600; white-space: nowrap; }
+    .help-note { margin-top: 12px; color: var(--muted); font-size: 13px; }
+    code.help-code { font-size: 12px; background: var(--surface-soft); padding: 2px 6px; border-radius: 4px; }
+  </style>
+
+  <p class="help-intro">{% t "This hub brings together budgets, invoices, vendor payments, and reports. Use the map below to find the right screen for your task." %}</p>
+
+  <nav class="help-toc" aria-label="{% t 'On this page' %}">
+    <strong>{% t "On this page" %}</strong>
+    <ul>
+      <li><a href="#help-menu">{% t "Left menu — quick map" %}</a></li>
+      <li><a href="#help-settings">{% t "Top bar — Settings and Exports" %}</a></li>
+      <li><a href="#help-pages">{% t "Page guides" %}</a></li>
+      {% if user.is_authenticated and user|is_panel_admin %}
+      <li><a href="#help-admin">{% t "Admin-only pages" %}</a></li>
+      <li><a href="#help-passwords">{% t "Passwords and new users" %}</a></li>
+      {% endif %}
+      <li><a href="#help-roles">{% t "Roles in one sentence" %}</a></li>
+      <li><a href="#help-tasks">{% t "Common tasks" %}</a></li>
+      <li><a href="#help-glossary">{% t "Glossary" %}</a></li>
+    </ul>
+  </nav>
+
+  <section id="help-menu" class="section help-section panel">
+    <h2>{% t "Left menu — quick map" %}</h2>
+    <div class="table-wrap">
+      <table class="help-map">
+        <thead>
+          <tr>
+            <th>{% t "Menu" %}</th>
+            <th>{% t "What it does" %}</th>
+            <th>{% t "Who can use it" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if user.is_authenticated %}
+          <tr>
+            <td><a href="{% url 'marketing:dashboard' %}">{% t "Dashboard" %}</a></td>
+            <td>{% t "Overview charts, totals, budget vs actual, items needing attention" %}</td>
+            <td>{% t "Everyone (within their access)" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:invoice_list' %}">{% t "Invoices" %}</a></td>
+            <td>{% t "Search, view, create and edit marketing invoices" %}</td>
+            <td>{% t "View: everyone. Edit: Editors and Admins" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:team_list' %}">{% t "Teams" %}</a></td>
+            <td>{% t "Open a team-focused dashboard" %}</td>
+            <td>{% t "Teams you are assigned to" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:vendor_report' %}">{% t "Vendors" %}</a></td>
+            <td>{% t "Supplier spend ranked high to low" %}</td>
+            <td>{% t "Everyone (within their access)" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:contract_list' %}">{% t "Contracts" %}</a></td>
+            <td>{% t "Vendor agreements, dates, stages, attachments" %}</td>
+            <td>{% t "Everyone (within their access)" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:campaign_report' %}">{% t "Campaigns" %}</a></td>
+            <td>{% t "Campaign spend table and chart for the year" %}</td>
+            <td>{% t "Everyone (within their access)" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:budget_list' %}">{% t "Budget" %}</a></td>
+            <td>{% t "Planned monthly budgets from the workbook" %}</td>
+            <td>{% t "Everyone (within their access)" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:help_sitemap' %}">{% t "Help" %}</a></td>
+            <td>{% t "This guide — how each part of the panel works" %}</td>
+            <td>{% t "Everyone" %}</td>
+          </tr>
+          {% if user|is_panel_admin %}
+          <tr>
+            <td><a href="{% url 'marketing:import_workbook' %}">{% t "Excel Import" %}</a></td>
+            <td>{% t "Upload the master workbook to refresh data" %}</td>
+            <td>{% t "Admins only" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:user_access' %}">{% t "Users" %}</a></td>
+            <td>{% t "Create logins and team permissions" %}</td>
+            <td>{% t "Admins only" %}</td>
+          </tr>
+          <tr>
+            <td><a href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a></td>
+            <td>{% t "Maintain vendors, categories, sub-teams, campaigns, and requesters" %}</td>
+            <td>{% t "Admins only" %}</td>
+          </tr>
+          {% endif %}
+          {% else %}
+          <tr>
+            <td><a href="{% url 'marketing:login' %}">{% t "Sign in" %}</a></td>
+            <td colspan="2">{% t "Sign in first to open the dashboard and other menu items." %}</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="help-settings" class="section help-section panel">
+    <h2>{% t "Top bar — Settings and Exports" %}</h2>
+    <p><strong>{% t "Settings" %}</strong> — {% t "Language, amount format, Rial/Toman, and light/dark theme. These only change how numbers and labels look for you." %}</p>
+    <p style="margin-top:12px;"><strong>{% t "Exports" %}</strong> — {% t "Download Excel or PDF using your current filters. You only receive data you are allowed to see." %}</p>
+    <ul>
+      <li>{% t "Invoices spreadsheet" %}</li>
+      <li>{% t "Vendor spend report" %}</li>
+      <li>{% t "Campaign spend report" %}</li>
+      <li>{% t "Dashboard summary PDF" %}</li>
+      <li>{% t "Contracts report" %}</li>
+    </ul>
+    <p class="help-note">{% t "If you do not see export buttons, your admin may not have enabled export permission for your account." %}</p>
+  </section>
+
+  <section id="help-pages" class="section help-section panel">
+    <h2>{% t "Page guides" %}</h2>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Dashboard" %}</h3>
+    <p>{% t "Your home screen: total spend, paid amount, Referral and SMS totals, year/team filters, monthly charts, budget vs actual table, invoices needing attention, and contract alerts." %}</p>
+    <p class="help-note">{% t "When you filter to one team, overall spend pie and spend-by-team charts hide — use the team dashboard for a single-team view." %}</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Invoices" %}</h3>
+    <p>{% t "The working list of spend. Search by invoice number, vendor, campaign, category, business line, or description. Open a row for payment history, days in current stage, and uploaded invoice or receipt images." %}</p>
+    <p class="help-note">{% t "Business line is the business segment from Excel (Consumer, Youth, Enterprise, etc.) — use the Business line filter or search." %}</p>
+    <p>{% t "Editors and Admins can add invoices and move payment stages" %} ({% ui_flow "Draft" "Submitted" "Finance review" "Approved" "Paid" %}).</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Teams" %}</h3>
+    <p>{% t "Pick a marketing team to see its own spend, vendors, campaigns, and attention items — useful when you only care about one team." %}</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Vendors" %}</h3>
+    <p>{% t "Shows which suppliers you paid, sorted from highest to lowest spend, with invoice counts and payment stages." %}</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Contracts" %}</h3>
+    <p>{% t "Track vendor agreements separately from invoices: start/end dates, contract stage, notes, and file attachments." %}</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Campaigns" %}</h3>
+    <p>{% t "Annual campaign spend in a table and chart — helpful for planning and post-campaign reviews." %}</p>
+    <p class="help-note">{% t "Campaigns are linked on invoices. Admins can add campaigns under Reference data or from the Campaigns page." %}</p>
+
+    <h3 style="font-size:15px;margin:18px 0 8px;">{% t "Budget" %}</h3>
+    <p>{% t "Planned spend by month and category (from the budget sheet). Compare with actuals on the Dashboard budget variance section." %}</p>
+    <p class="help-note">{% t "When you filter to one team, the planned budget by team chart hides — the monthly chart and tables still show that team's plan." %}</p>
+  </section>
+
+  {% if user.is_authenticated and user|is_panel_admin %}
+  <section id="help-admin" class="section help-section panel">
+    <h2>{% t "Admin-only pages" %}</h2>
+    <ul>
+      <li><strong>{% t "Excel Import" %}</strong> — {% t "Loads invoice and budget data from the official workbook. Skipped rows are reported with reasons." %}</li>
+      <li><strong>{% t "Users" %}</strong> — {% t "Assign roles (Manager, Editor, Observer), teams, upload rights, and export permission." %}</li>
+      <li><strong>{% t "Reference data" %}</strong> — {% t "Edit vendor names, spend categories, sub-teams, campaigns, and requesters used on forms and reports." %}</li>
+    </ul>
+  </section>
+
+  <section id="help-passwords" class="section help-section panel">
+    <h2>{% t "Passwords and new users" %}</h2>
+    <ul>
+      <li>{% t "Create colleagues on Users with a unique temporary password; share it privately (not in email threads)." %}</li>
+      <li>{% t "Local admin password:" %} <code class="help-code">make dev-admin</code> {% t "or" %} <code class="help-code">python manage.py changepassword USERNAME</code></li>
+      <li>{% t "Production admin password: run changepassword on the server — never keep the dev bootstrap password." %}</li>
+      <li>{% t "The panel has no Forgot password link yet — locked-out users need an admin reset via changepassword or Django admin." %}</li>
+    </ul>
+  </section>
+  {% endif %}
+
+  <section id="help-roles" class="section help-section panel">
+    <h2>{% t "Roles in one sentence" %}</h2>
+    <div class="table-wrap">
+      <table class="help-role-table">
+        <tbody>
+          <tr><td>{% t "Full admin" %}</td><td>{% t "Sees and changes everything; manages users and imports." %}</td></tr>
+          <tr><td>{% t "Manager" %}</td><td>{% t "Reads dashboards and reports for assigned teams; does not edit invoices." %}</td></tr>
+          <tr><td>{% t "Editor" %}</td><td>{% t "Creates and updates invoices for assigned teams (uploads if allowed)." %}</td></tr>
+          <tr><td>{% t "Observer" %}</td><td>{% t "Read-only access for stakeholders." %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="help-note">{% t "If every list is empty, ask an admin to assign your team access on the Users page." %}</p>
+    {% if user.is_authenticated %}
+    <p class="help-note">{% t "Sign out using Logout at the bottom of the left menu." %}</p>
+    {% endif %}
+  </section>
+
+  <section id="help-tasks" class="section help-section panel">
+    <h2>{% t "Common tasks" %}</h2>
+    <div class="table-wrap">
+      <table class="help-tasks">
+        <tbody>
+          <tr><td>{% t "Check overall spend this year" %}</td><td>{% nav_path "Dashboard" "choose year" %}</td></tr>
+          <tr><td>{% t "Focus on one team" %}</td><td>{% t "Dashboard team filter, or" %} {% nav_path "Teams" "pick a team" %}</td></tr>
+          <tr><td>{% t "Find an invoice" %}</td><td>{% nav_path "Invoices" "search box" %}</td></tr>
+          <tr><td>{% t "Record new spend" %}</td><td>{% nav_path "Invoices" "New invoice" %}</td></tr>
+          <tr><td>{% t "See top suppliers" %}</td><td>{% t "Vendors" %}</td></tr>
+          <tr><td>{% t "Download for finance" %}</td><td>{% t "Exports on the current page (if enabled)" %}</td></tr>
+          {% if user.is_authenticated and user|is_panel_admin %}
+          <tr><td>{% t "Add a campaign" %}</td><td>{% nav_path "Reference data" "Campaigns" %} {% t "or" %} {% nav_path "Campaigns" "New campaign" %}</td></tr>
+          <tr><td>{% t "Refresh data from Excel" %}</td><td>{% t "Excel Import" %}</td></tr>
+          <tr><td>{% t "Onboard a colleague" %}</td><td>{% nav_path "Users" "New user" %}</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="help-glossary" class="section help-section panel">
+    <h2>{% t "Glossary" %}</h2>
+    <div class="table-wrap">
+      <table class="help-glossary">
+        <tbody>
+          <tr><td>{% t "Invoice" %}</td><td>{% t "A spend record: vendor, amount, date, and payment stage." %}</td></tr>
+          <tr><td>{% t "Team" %}</td><td>{% t "A marketing unit such as Growth or Brand." %}</td></tr>
+          <tr><td>Referral / SMS</td><td>{% t "Special spend types shown separately from normal team totals." %}</td></tr>
+          <tr><td>{% t "Payment stage" %}</td><td>{% t "Where the invoice sits in approval and payment workflow." %}</td></tr>
+          <tr><td>{% t "Budget" %}</td><td>{% t "Planned spend for a month, team, or category." %}</td></tr>
+          <tr><td>{% t "Vendor" %}</td><td>{% t "A supplier or agency you pay." %}</td></tr>
+          <tr><td>{% t "Campaign" %}</td><td>{% t "A named marketing initiative tied to spend." %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

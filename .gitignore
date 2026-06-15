@@ -40,5 +40,15 @@ docs/discovery/workbook_*.md
 docs/discovery/import_risks.md
 marketing_dashboard_codex_instructions_updated.zip
 
+# Accidental local DB copies / verification DBs
+db.sqlite3.*
+!db.sqlite3
+
+# AWS learning PDFs at repo root (optional downloads)
+/AWS_*.pdf
+
+# Tracked reference PDFs live under docs/reference/
+!docs/reference/*.pdf
+
 # Keep docs/discovery/column_mapping.yml tracked — the importer reads it.
 !docs/discovery/column_mapping.yml

@@ -5,17 +5,21 @@ from django.db.models import QuerySet
 from marketing.models import CostBucket, Team, normalize_name
 
 # Workbook labels that mark cost buckets, not marketing teams (per product voice notes).
-_REFERRAL_PSEUDO_NAMES = frozenset({
-    normalize_name("Referral"),
-    normalize_name("referral"),
-    normalize_name("ریفرال"),
-})
-_SMS_PSEUDO_NAMES = frozenset({
-    normalize_name("SMS"),
-    normalize_name("sms"),
-    normalize_name("پیامک"),
-    normalize_name("اس ام اس"),
-})
+_REFERRAL_PSEUDO_NAMES = frozenset(
+    {
+        normalize_name("Referral"),
+        normalize_name("referral"),
+        normalize_name("ریفرال"),
+    }
+)
+_SMS_PSEUDO_NAMES = frozenset(
+    {
+        normalize_name("SMS"),
+        normalize_name("sms"),
+        normalize_name("پیامک"),
+        normalize_name("اس ام اس"),
+    }
+)
 PSEUDO_TEAM_NORMALIZED_NAMES = _REFERRAL_PSEUDO_NAMES | _SMS_PSEUDO_NAMES
 
 PSEUDO_TEAM_SLUGS = frozenset({"referral", "sms"})

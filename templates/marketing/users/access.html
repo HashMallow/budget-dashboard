@@ -79,8 +79,9 @@
       <div class="table-wrap">
         <table>
           <tbody>
-            <tr><th>{% t "Bootstrap admin" %}</th><td>{% t "Created for local development with" %} <code>make dev-admin</code>.</td></tr>
-            <tr><th>{% t "Regular users" %}</th><td>{% t "Created from this page and stored in the database." %}</td></tr>
+            <tr><th>{% t "Bootstrap admin" %}</th><td>{% t "Created for local development with" %} <code>make dev-admin</code>. {% t "Change with" %} <code>make dev-admin ADMIN_PASSWORD='…'</code> {% t "or" %} <code>changepassword</code>.</td></tr>
+            <tr><th>{% t "Regular users" %}</th><td>{% t "Created from this page with username and initial password." %}</td></tr>
+            <tr><th>{% t "Passwords" %}</th><td>{% t "Use a unique random temp password per user; share privately. Panel password reset is not built yet — use changepassword on the server or Django /admin/." %}</td></tr>
             <tr><th>{% t "Safe delete" %}</th><td>{% t "A user is deactivated (not deleted) so invoice history stays intact." %}</td></tr>
             <tr><th>{% t ".env file" %}</th><td>{% t "Holds" %} <code>SECRET_KEY</code>, {% t "server settings and the database connection — not day-to-day users." %}</td></tr>
           </tbody>

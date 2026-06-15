@@ -1,0 +1,55 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Requesters" %}{% endblock %}
+{% block page_title %}{% t "Requesters" %}{% endblock %}
+{% block page_subtitle %}{% t "Manage requester reference data" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn primary" href="{% url 'marketing:requester_reference_create' %}">＋ {% t "New requester" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}">
+      </div>
+      <div class="field">
+        <label for="active">{% t "Status" %}</label>
+        <select id="active" name="active">
+          <option value="">{% t "All" %}</option>
+          <option value="1" {% if filters.active == "1" %}selected{% endif %}>{% t "Active" %}</option>
+          <option value="0" {% if filters.active == "0" %}selected{% endif %}>{% t "Inactive" %}</option>
+        </select>
+      </div>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
+    </form>
+  </section>
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Requester" %}</th>
+            <th>{% t "Status" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{% if row.is_active %}{% t "Active" %}{% else %}{% t "Inactive" %}{% endif %}</td>
+              <td><a class="btn" href="{% url 'marketing:requester_reference_edit' row.pk %}">{% t "Edit" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">{% t "No requesters to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "marketing/reference/_pagination.html" %}
+  </section>
+{% endblock %}

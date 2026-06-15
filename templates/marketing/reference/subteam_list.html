@@ -1,0 +1,66 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Sub-teams" %}{% endblock %}
+{% block page_title %}{% t "Sub-teams" %}{% endblock %}
+{% block page_subtitle %}{% t "Manage sub-team reference data" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn primary" href="{% url 'marketing:subteam_reference_create' %}">＋ {% t "New sub-team" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}">
+      </div>
+      <div class="field">
+        <label for="team">{% t "Team" %}</label>
+        <select id="team" name="team">
+          <option value="">{% t "All" %}</option>
+          {% for team in teams %}
+            <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="active">{% t "Status" %}</label>
+        <select id="active" name="active">
+          <option value="">{% t "All" %}</option>
+          <option value="1" {% if filters.active == "1" %}selected{% endif %}>{% t "Active" %}</option>
+          <option value="0" {% if filters.active == "0" %}selected{% endif %}>{% t "Inactive" %}</option>
+        </select>
+      </div>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
+    </form>
+  </section>
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Sub-team" %}</th>
+            <th>{% t "Team" %}</th>
+            <th>{% t "Status" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.team.name|default:"-" }}</td>
+              <td>{% if row.is_active %}{% t "Active" %}{% else %}{% t "Inactive" %}{% endif %}</td>
+              <td><a class="btn" href="{% url 'marketing:subteam_reference_edit' row.pk %}">{% t "Edit" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty">{% t "No sub-teams to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "marketing/reference/_pagination.html" %}
+  </section>
+{% endblock %}

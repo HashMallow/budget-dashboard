@@ -5,7 +5,7 @@ Import the initial marketing spend data and budget data from an Excel workbook i
 
 ## Dependency on Discovery Phase
 
-Before implementing the importer, run the workflow in `docs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`.
+Before implementing the importer, run the workflow in `docs/specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md`.
 
 The importer should use `docs/discovery/column_mapping.yml` as its first source of truth for sheet and column mapping. Alias-based auto-detection is still required as a fallback, but the discovered mapping from the actual workbook should take priority.
 

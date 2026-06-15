@@ -35,6 +35,7 @@ from .analytics import (
     team_spend_rows,
     vendor_grouped_rows,
 )
+from .business_section import distinct_business_sections
 from .cost_buckets import exclude_pseudo_teams, team_spend_cost_buckets
 from .exports.workbook import build_workbook_style_export
 from .forms import (
@@ -80,6 +81,7 @@ from .reports.pdf import (
     build_dashboard_summary_pdf,
     build_vendor_report_pdf,
 )
+from .reports.pdf_fonts import PdfLocale
 from .table_sort import SortState, apply_ordering, parse_sort, sort_rows
 from .translations import translate
 
@@ -106,6 +108,7 @@ def favicon_svg(request):
     response = HttpResponse(_FAVICON_SVG, content_type="image/svg+xml")
     response["Cache-Control"] = "public, max-age=86400"
     return response
+
 
 INVOICE_SORT_FIELDS = {
     "number": "invoice_number",
@@ -202,6 +205,11 @@ def get_ui_lang(request) -> str:
     return ui_lang if ui_lang in {"fa", "en"} else "en"
 
 
+def pdf_locale_for_request(request) -> PdfLocale:
+    unit = getattr(request, "currency_unit", "rial")
+    return PdfLocale(lang=get_ui_lang(request), unit=unit)
+
+
 def get_months(request) -> list[tuple[int, str]]:
     """Persian (Jalali) month labels, localized to the active UI language."""
     if request.session.get("ui_lang", "en") == "fa":
@@ -268,6 +276,7 @@ def filter_invoice_queryset(request, queryset):
         "team": request.GET.get("team", "").strip(),
         "stage": request.GET.get("stage", "").strip(),
         "bucket": request.GET.get("bucket", "").strip(),
+        "business_section": request.GET.get("business_section", "").strip(),
     }
 
     if filters["q"]:
@@ -277,6 +286,7 @@ def filter_invoice_queryset(request, queryset):
             | Q(campaign__name__icontains=filters["q"])
             | Q(category__icontains=filters["q"])
             | Q(description__icontains=filters["q"])
+            | Q(business_section__icontains=filters["q"])
         )
     if filters["year"].isdigit():
         queryset = filter_by_jalali_year(queryset, filters["year"])
@@ -286,6 +296,8 @@ def filter_invoice_queryset(request, queryset):
         queryset = queryset.filter(payment_stage=filters["stage"])
     if filters["bucket"]:
         queryset = queryset.filter(cost_bucket=filters["bucket"])
+    if filters["business_section"]:
+        queryset = queryset.filter(business_section=filters["business_section"])
     return queryset, filters
 
 
@@ -412,12 +424,21 @@ def dashboard(request):
     attention = attention_invoices(invoices)
 
     spend_pie = overall_spend_pie(team_total_rows, referral_total, sms_total, ui_lang)
+    # Hide multi-team breakdown charts when the dashboard is filtered to one team.
+    show_spend_pie = not selected_team.isdigit()
+    is_team_filtered = selected_team.isdigit()
+    filtered_team = None
+    if is_team_filtered:
+        filtered_team = visible_team_queryset(request).filter(pk=int(selected_team)).first()
 
     context = {
         "scope": get_user_scope(request.user),
         "years": years,
         "selected_year": selected_year,
         "selected_team": selected_team,
+        "is_team_filtered": is_team_filtered,
+        "filtered_team": filtered_team,
+        "show_team_budget_table": len(team_budget_rows) > 1,
         "teams": visible_team_queryset(request),
         "total_spend": total_spend,
         "paid_spend": paid_spend,
@@ -438,7 +459,8 @@ def dashboard(request):
         "stage_rows": stage_rows,
         "attention_invoices": attention,
         "spend_pie": spend_pie,
-        "spend_pie_has_data": bool(spend_pie["values"]),
+        "show_spend_pie": show_spend_pie,
+        "spend_pie_has_data": show_spend_pie and bool(spend_pie["values"]),
         "monthly_chart": monthly_chart,
         "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
         "budget_variance_chart": budget_variance_chart,
@@ -446,7 +468,7 @@ def dashboard(request):
             value for value in budget_variance_chart["planned"] + budget_variance_chart["actual"]
         ),
         "team_chart": team_chart,
-        "team_chart_has_data": bool(team_chart["values"]),
+        "team_chart_has_data": show_spend_pie and bool(team_chart["values"]),
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
     }
@@ -472,12 +494,14 @@ def invoice_list(request):
         tiebreaker="-id",
     )
     paginator = Paginator(queryset, 25)
+    scope_queryset = visible_invoice_queryset(request)
     page_obj = paginator.get_page(request.GET.get("page"))
     context = {
         "page_obj": page_obj,
         "filters": filters,
         "teams": visible_team_queryset(request),
-        "years": distinct_jalali_years(visible_invoice_queryset(request)),
+        "business_sections": distinct_business_sections(scope_queryset),
+        "years": distinct_jalali_years(scope_queryset),
         "payment_stages": PaymentStage.choices,
         "cost_buckets": CostBucket.choices,
         "can_create_invoice": user_can_create_invoice(request.user),
@@ -755,11 +779,13 @@ def team_list(request):
             team=team,
             cost_bucket__in=team_spend_cost_buckets(team),
         )
-        team_summaries.append({
-            "team": team,
-            "total_spend": decimal_sum(invoices),
-            "invoice_count": invoices.count(),
-        })
+        team_summaries.append(
+            {
+                "team": team,
+                "total_spend": decimal_sum(invoices),
+                "invoice_count": invoices.count(),
+            }
+        )
     team_summaries = sort_rows(
         team_summaries,
         sort,
@@ -916,9 +942,7 @@ def campaign_report(request):
 
     monthly_campaigns = defaultdict(lambda: {month: ZERO for month, _label in months})
     for row in (
-        queryset.filter(campaign__isnull=False)
-        .values("campaign__name", "invoice_date")
-        .annotate(total=Sum("amount"))
+        queryset.filter(campaign__isnull=False).values("campaign__name", "invoice_date").annotate(total=Sum("amount"))
     ):
         invoice_date = row["invoice_date"]
         if not invoice_date:
@@ -1022,6 +1046,7 @@ def budget_list(request):
         "labels": [translate(name, get_ui_lang(request)) for name, value in sorted_team_totals if value],
         "values": [float(value) for _name, value in sorted_team_totals if value],
     }
+    show_budget_team_chart = not team.isdigit()
 
     paginator = Paginator(queryset, 50)
     context = {
@@ -1036,7 +1061,8 @@ def budget_list(request):
         "budget_month_chart": budget_month_chart,
         "budget_month_chart_has_data": any(budget_month_chart["values"]),
         "budget_team_chart": budget_team_chart,
-        "budget_team_chart_has_data": bool(budget_team_chart["values"]),
+        "show_budget_team_chart": show_budget_team_chart,
+        "budget_team_chart_has_data": show_budget_team_chart and bool(budget_team_chart["values"]),
     }
     return render(request, "marketing/budgets/list.html", context)
 
@@ -1146,33 +1172,37 @@ def export_invoices_excel(request):
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Invoices"
-    sheet.append([
-        "Invoice number",
-        "Vendor",
-        "Team",
-        "Campaign",
-        "Category",
-        "Cost bucket",
-        "Invoice date",
-        "Amount",
-        "Currency",
-        "Payment stage",
-        "Days in stage",
-    ])
+    sheet.append(
+        [
+            "Invoice number",
+            "Vendor",
+            "Team",
+            "Campaign",
+            "Category",
+            "Cost bucket",
+            "Invoice date",
+            "Amount",
+            "Currency",
+            "Payment stage",
+            "Days in stage",
+        ]
+    )
     for invoice in queryset:
-        sheet.append([
-            invoice.invoice_number,
-            invoice.vendor.name,
-            invoice.team.name if invoice.team else "",
-            invoice.campaign.name if invoice.campaign else "",
-            invoice.category,
-            invoice.cost_bucket,
-            invoice.invoice_date.isoformat(),
-            invoice.amount,
-            invoice.currency,
-            invoice.payment_stage,
-            invoice.days_in_current_stage,
-        ])
+        sheet.append(
+            [
+                invoice.invoice_number,
+                invoice.vendor.name,
+                invoice.team.name if invoice.team else "",
+                invoice.campaign.name if invoice.campaign else "",
+                invoice.category,
+                invoice.cost_bucket,
+                invoice.invoice_date.isoformat(),
+                invoice.amount,
+                invoice.currency,
+                invoice.payment_stage,
+                invoice.days_in_current_stage,
+            ]
+        )
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1193,13 +1223,15 @@ def export_vendors_excel(request):
     sheet.title = "Vendors"
     sheet.append(["Vendor", "Invoice count", "Invoice numbers", "Payment stages", "Total spend"])
     for row in vendor_rows:
-        sheet.append([
-            row["vendor"].name,
-            row["invoice_count"],
-            ", ".join(row["invoice_numbers"]),
-            ", ".join(row["stages"]),
-            row["total"],
-        ])
+        sheet.append(
+            [
+                row["vendor"].name,
+                row["invoice_count"],
+                ", ".join(row["invoice_numbers"]),
+                ", ".join(row["stages"]),
+                row["total"],
+            ]
+        )
     response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response["Content-Disposition"] = 'attachment; filename="marketing-vendors.xlsx"'
     workbook.save(response)
@@ -1222,13 +1254,15 @@ def export_campaigns_excel(request):
     sheet.title = "Campaigns"
     sheet.append(["Campaign", "Year", "Team", "Invoice count", "Total spend"])
     for row in campaign_rows:
-        sheet.append([
-            row["campaign__name"],
-            row["campaign__year"],
-            row["campaign__team__name"] or "",
-            row["invoice_count"],
-            row["total"],
-        ])
+        sheet.append(
+            [
+                row["campaign__name"],
+                row["campaign__year"],
+                row["campaign__team__name"] or "",
+                row["invoice_count"],
+                row["total"],
+            ]
+        )
     response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response["Content-Disposition"] = 'attachment; filename="marketing-campaigns.xlsx"'
     workbook.save(response)
@@ -1265,21 +1299,18 @@ def dashboard_report_pdf(request):
         return forbidden("You do not have permission to export.")
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     vendor_rows = list(
-        queryset.values("vendor__name")
-        .annotate(total=Sum("amount"), invoice_count=Count("id"))
-        .order_by("-total")[:15]
+        queryset.values("vendor__name").annotate(total=Sum("amount"), invoice_count=Count("id")).order_by("-total")[:15]
     )
-    stage_rows = list(
-        queryset.values("payment_stage").annotate(invoice_count=Count("id")).order_by("payment_stage")
-    )
+    stage_rows = list(queryset.values("payment_stage").annotate(invoice_count=Count("id")).order_by("payment_stage"))
     pdf_bytes = build_dashboard_summary_pdf(
-        title="Marketing spend summary",
+        title=translate("Marketing spend summary", get_ui_lang(request)),
         generated_at=timezone.now(),
         total_spend=decimal_sum(queryset),
         invoice_count=queryset.count(),
         vendor_rows=vendor_rows,
         stage_rows=stage_rows,
         filters=filters,
+        locale=pdf_locale_for_request(request),
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="marketing-dashboard-summary.pdf"'
@@ -1293,10 +1324,11 @@ def export_vendors_pdf(request):
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     vendor_rows = vendor_grouped_rows(queryset)
     pdf_bytes = build_vendor_report_pdf(
-        title="Vendor spend report",
+        title=translate("Vendor spend report", get_ui_lang(request)),
         generated_at=timezone.now(),
         vendor_rows=vendor_rows,
         filters=filters,
+        locale=pdf_locale_for_request(request),
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="marketing-vendors.pdf"'
@@ -1315,10 +1347,11 @@ def export_campaigns_pdf(request):
         .order_by("-total")
     )
     pdf_bytes = build_campaign_report_pdf(
-        title="Campaign spend report",
+        title=translate("Campaign spend report", get_ui_lang(request)),
         generated_at=timezone.now(),
         campaign_rows=campaign_rows,
         filters=filters,
+        locale=pdf_locale_for_request(request),
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="marketing-campaigns.pdf"'
@@ -1333,33 +1366,37 @@ def export_contracts_excel(request):
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Contracts"
-    sheet.append([
-        "Title",
-        "Contract number",
-        "Vendor",
-        "Team",
-        "Stage",
-        "Start date",
-        "End date",
-        "Days until expiry",
-        "Contract value",
-        "Currency",
-        "Counterparty contact",
-    ])
+    sheet.append(
+        [
+            "Title",
+            "Contract number",
+            "Vendor",
+            "Team",
+            "Stage",
+            "Start date",
+            "End date",
+            "Days until expiry",
+            "Contract value",
+            "Currency",
+            "Counterparty contact",
+        ]
+    )
     for contract in queryset:
-        sheet.append([
-            contract.title,
-            contract.contract_number,
-            contract.vendor.name,
-            contract.team.name if contract.team else "",
-            contract.get_stage_display(),
-            contract.start_date.isoformat() if contract.start_date else "",
-            contract.end_date.isoformat() if contract.end_date else "",
-            contract.days_until_expiry if contract.days_until_expiry is not None else "",
-            contract.amount if contract.amount is not None else "",
-            contract.currency,
-            contract.counterparty_contact,
-        ])
+        sheet.append(
+            [
+                contract.title,
+                contract.contract_number,
+                contract.vendor.name,
+                contract.team.name if contract.team else "",
+                contract.get_stage_display(),
+                contract.start_date.isoformat() if contract.start_date else "",
+                contract.end_date.isoformat() if contract.end_date else "",
+                contract.days_until_expiry if contract.days_until_expiry is not None else "",
+                contract.amount if contract.amount is not None else "",
+                contract.currency,
+                contract.counterparty_contact,
+            ]
+        )
     response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response["Content-Disposition"] = 'attachment; filename="marketing-contracts.xlsx"'
     workbook.save(response)
@@ -1372,10 +1409,11 @@ def export_contracts_pdf(request):
         return forbidden("You do not have permission to export.")
     queryset, filters = filter_contract_queryset(request, visible_contract_queryset(request))
     pdf_bytes = build_contract_report_pdf(
-        title="Vendor contract report",
+        title=translate("Vendor contract report", get_ui_lang(request)),
         generated_at=timezone.now(),
         contracts=queryset,
         filters=filters,
+        locale=pdf_locale_for_request(request),
     )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="marketing-contracts.pdf"'
@@ -1388,9 +1426,7 @@ def invoice_report_print(request):
         return forbidden("You do not have permission to view reports.")
     queryset, filters = filter_invoice_queryset(request, visible_invoice_queryset(request))
     vendor_rows = list(
-        queryset.values("vendor__name")
-        .annotate(total=Sum("amount"), invoice_count=Count("id"))
-        .order_by("-total")[:30]
+        queryset.values("vendor__name").annotate(total=Sum("amount"), invoice_count=Count("id")).order_by("-total")[:30]
     )
     context = {
         "generated_at": timezone.now(),
@@ -1427,7 +1463,10 @@ def set_display_preferences(request):
     return redirect(next_url)
 
 
-@require_POST
+def help_sitemap(request):
+    return render(request, "marketing/help_sitemap.html")
+
+
 def logout_view(request):
     logout(request)
     return redirect("marketing:login")

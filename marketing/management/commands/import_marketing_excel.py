@@ -83,6 +83,4 @@ class Command(BaseCommand):
         )
 
     def _print_counter(self, label, counter):
-        self.stdout.write(
-            f"{label}: created={counter.created}, updated={counter.updated}, skipped={counter.skipped}"
-        )
+        self.stdout.write(f"{label}: created={counter.created}, updated={counter.updated}, skipped={counter.skipped}")

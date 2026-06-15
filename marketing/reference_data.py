@@ -104,9 +104,7 @@ def seed_reference_data_from_workbook(
     sheet = workbook[sheet_name]
 
     headers = {
-        _cell_text(cell.value): idx
-        for idx, cell in enumerate(sheet[header_row], start=1)
-        if _cell_text(cell.value)
+        _cell_text(cell.value): idx for idx, cell in enumerate(sheet[header_row], start=1) if _cell_text(cell.value)
     }
 
     def col_index(key: str) -> int | None:

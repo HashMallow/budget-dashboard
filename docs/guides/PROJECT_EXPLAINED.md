@@ -136,7 +136,7 @@ templates/marketing/   The HTML. base.html is the shell (nav, styles, language t
 docs/                  All the written docs (specs, run guide, deployment, this file, etc.).
 ```
 
-A file-by-file reference also lives in `docs/PROJECT_FILE_REFERENCE.md`.
+A file-by-file reference also lives in `docs/architecture/PROJECT_FILE_REFERENCE.md`.
 
 ---
 
@@ -222,7 +222,7 @@ condition isn't met — same pattern as the decorators you practiced, just appli
 
 `marketing/permissions.py` turns a user's `UserTeamAccess` rows into a `UserScope` (a frozen
 dataclass), then every list/report/export is filtered through `filter_*_for_user(...)`. Admins
-bypass everything. The full rules and a capability matrix are in **`docs/ACCESS_BY_ROLE.md`** —
+bypass everything. The full rules and a capability matrix are in **`docs/operations/ACCESS_BY_ROLE.md`** —
 read that next if you care about who-can-see-what.
 
 The important principle: **the UI hiding a button is not security**; the queryset filter is. Buttons
@@ -251,7 +251,7 @@ This is a deliberately lightweight alternative to Django's full `gettext`/`.po` 
   imported). This is a nice pattern: optional dependencies imported lazily inside an `if`/`try`.
 - WhiteNoise (static files) and the security headers only switch on when their package is installed
   / when `DEBUG=False`. So dev stays simple, prod gets hardened.
-- Deployment specifics live in `docs/DEPLOYMENT_AWS.md`.
+- Deployment specifics live in `docs/operations/DEPLOYMENT_AWS.md`.
 
 ### 6.9 CSRF protection (why forms include `{% csrf_token %}`)
 
@@ -329,7 +329,7 @@ print(Invoice.objects.filter(payment_stage="PAID").query)
 3. `marketing/permissions.py` — how data gets narrowed per user.
 4. `marketing/importers/excel.py` — the most logic-dense file.
 5. `templates/marketing/base.html` + `dashboard.html` — how it's displayed.
-6. `docs/ACCESS_BY_ROLE.md`, `docs/DATA_MODEL.md`, `docs/DEPLOYMENT_AWS.md` — deeper dives.
+6. `docs/operations/ACCESS_BY_ROLE.md`, `docs/architecture/DATA_MODEL.md`, `docs/operations/DEPLOYMENT_AWS.md` — deeper dives.
 
 ---
 

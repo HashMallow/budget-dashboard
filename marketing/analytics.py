@@ -89,11 +89,7 @@ def budget_actual_variance_window_rows(
     window = _month_window(end_year, end_month, count)
     if trim_leading_empty:
         first_with_data = next(
-            (
-                idx
-                for idx, ym in enumerate(window)
-                if planned_totals.get(ym) or actual_totals.get(ym)
-            ),
+            (idx for idx, ym in enumerate(window) if planned_totals.get(ym) or actual_totals.get(ym)),
             None,
         )
         window = window[first_with_data:] if first_with_data is not None else window[-1:]
@@ -101,10 +97,7 @@ def budget_actual_variance_window_rows(
     show_year = len({year for year, _month in window}) > 1
     labels = _MONTH_LABELS_FA if ui_lang == "fa" else _MONTH_LABELS_EN
     max_magnitude = max(
-        (
-            max(planned_totals.get(ym, ZERO), actual_totals.get(ym, ZERO))
-            for ym in window
-        ),
+        (max(planned_totals.get(ym, ZERO), actual_totals.get(ym, ZERO)) for ym in window),
         default=ZERO,
     )
 
@@ -114,15 +107,17 @@ def budget_actual_variance_window_rows(
         actual = actual_totals.get((year, month), ZERO)
         deviation = actual - planned
         label = f"{labels[month]} {year}" if show_year else labels[month]
-        rows.append({
-            "month": month,
-            "year": year,
-            "label": label,
-            "planned": planned,
-            "actual": actual,
-            "deviation": deviation,
-            "percent": percent(max(planned, actual), max_magnitude),
-        })
+        rows.append(
+            {
+                "month": month,
+                "year": year,
+                "label": label,
+                "planned": planned,
+                "actual": actual,
+                "deviation": deviation,
+                "percent": percent(max(planned, actual), max_magnitude),
+            }
+        )
     return rows
 
 
@@ -156,9 +151,7 @@ def team_budget_variance_rows(
     """Per-team planned budget, actual spend, and deviation for the current filter scope."""
     planned_by_team = {
         row["team_id"]: row["total"] or ZERO
-        for row in budget_lines.filter(team__isnull=False)
-        .values("team_id")
-        .annotate(total=Sum("planned_amount"))
+        for row in budget_lines.filter(team__isnull=False).values("team_id").annotate(total=Sum("planned_amount"))
     }
     rows = []
     for team in teams:
@@ -167,13 +160,15 @@ def team_budget_variance_rows(
         )
         planned = planned_by_team.get(team.id, ZERO)
         deviation = actual - planned
-        rows.append({
-            "team_id": team.id,
-            "team_name": translate(team.name, ui_lang),
-            "planned": planned,
-            "actual": actual,
-            "deviation": deviation,
-        })
+        rows.append(
+            {
+                "team_id": team.id,
+                "team_name": translate(team.name, ui_lang),
+                "planned": planned,
+                "actual": actual,
+                "deviation": deviation,
+            }
+        )
     rows.sort(key=lambda item: item["actual"], reverse=True)
     max_actual = max((row["actual"] for row in rows), default=ZERO)
     for row in rows:
@@ -222,13 +217,15 @@ def monthly_spend_window_rows(
     for year, month in window:
         total = totals.get((year, month), ZERO)
         label = f"{labels[month]} {year}" if show_year else labels[month]
-        rows.append({
-            "month": month,
-            "year": year,
-            "label": label,
-            "total": total,
-            "percent": percent(total, max_total),
-        })
+        rows.append(
+            {
+                "month": month,
+                "year": year,
+                "label": label,
+                "total": total,
+                "percent": percent(total, max_total),
+            }
+        )
     return rows
 
 
@@ -262,11 +259,7 @@ def team_chart_data(team_rows: list[dict], ui_lang: str) -> dict[str, list]:
 
 
 def overall_spend_pie(team_rows: list[dict], referral_total: Decimal, sms_total: Decimal, ui_lang: str) -> dict:
-    pie_segments = [
-        (translate(row["team_name"], ui_lang), row["total"])
-        for row in team_rows
-        if row["total"]
-    ]
+    pie_segments = [(translate(row["team_name"], ui_lang), row["total"]) for row in team_rows if row["total"]]
     if referral_total:
         pie_segments.append((translate("Referral", ui_lang), referral_total))
     if sms_total:

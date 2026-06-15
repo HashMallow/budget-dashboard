@@ -1,0 +1,33 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% if mode == "edit" %}{% t "Edit" %}{% else %}{% t "New" %}{% endif %} {{ entity_label }}{% endblock %}
+{% block page_title %}{% if mode == "edit" %}{% t "Edit" %}{% else %}{% t "New" %}{% endif %} {% t entity_label %}{% endblock %}
+{% block page_subtitle %}{% t "Reference data is saved to the database" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{{ list_url }}">{% t "Back" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="message">{% form_errors form.non_field_errors %}</div>
+      {% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          <div class="field {% if field.field.widget.input_type == 'checkbox' %}checkbox-field{% endif %}{% if field.name == 'notes' %} wide{% endif %}">
+            <label for="{{ field.id_for_label }}">{% t field.label %}</label>
+            {{ field }}
+            {% form_errors field.errors %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="actions" style="margin-top: 18px;">
+        <button class="btn primary" type="submit">{% t "Save" %}</button>
+        <a class="btn" href="{{ list_url }}">{% t "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -89,11 +89,13 @@ class ContractStage(models.TextChoices):
 
 
 # Stages that mean the contract is no longer an open legal/active item.
-CONTRACT_CLOSED_STAGES = frozenset({
-    ContractStage.EXPIRED,
-    ContractStage.TERMINATED,
-    ContractStage.CANCELLED,
-})
+CONTRACT_CLOSED_STAGES = frozenset(
+    {
+        ContractStage.EXPIRED,
+        ContractStage.TERMINATED,
+        ContractStage.CANCELLED,
+    }
+)
 
 
 class ContractAttachmentType(models.TextChoices):
@@ -300,6 +302,12 @@ class Invoice(TimestampedModel):
     team = models.ForeignKey(Team, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices")
     campaign = models.ForeignKey(Campaign, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices")
     category = models.CharField(max_length=180)
+    business_section = models.CharField(
+        max_length=120,
+        blank=True,
+        db_index=True,
+        help_text="Business segment from Excel Business Section (e.g. Consumer, Youth, Enterprise).",
+    )
     cost_bucket = models.CharField(max_length=20, choices=CostBucket.choices, default=CostBucket.TEAM)
     description = models.TextField(blank=True)
     invoice_date = models.DateField()

@@ -47,15 +47,17 @@ def get_user_scope(user) -> UserScope:
             can_upload_payment_proofs=True,
         )
 
-    accesses = list(active_access_for_user(user).values(
-        "team_id",
-        "role",
-        "is_global",
-        "can_view_referral_sms",
-        "can_export",
-        "can_upload_invoice_files",
-        "can_upload_payment_proofs",
-    ))
+    accesses = list(
+        active_access_for_user(user).values(
+            "team_id",
+            "role",
+            "is_global",
+            "can_view_referral_sms",
+            "can_export",
+            "can_upload_invoice_files",
+            "can_upload_payment_proofs",
+        )
+    )
     return UserScope(
         is_admin=False,
         is_global=any(access["is_global"] for access in accesses),
@@ -118,9 +120,7 @@ def can_view_invoice(user, invoice: Invoice) -> bool:
 def _matching_accesses_for_invoice(user, invoice: Invoice) -> QuerySet[UserTeamAccess]:
     accesses = active_access_for_user(user)
     if invoice.cost_bucket in REFERRAL_SMS_BUCKETS and invoice.team_id:
-        accesses = accesses.filter(
-            Q(is_global=True) | Q(team_id=invoice.team_id) | Q(can_view_referral_sms=True)
-        )
+        accesses = accesses.filter(Q(is_global=True) | Q(team_id=invoice.team_id) | Q(can_view_referral_sms=True))
     elif invoice.cost_bucket in REFERRAL_SMS_BUCKETS:
         accesses = accesses.filter(Q(is_global=True) | Q(can_view_referral_sms=True))
     elif invoice.team_id:
@@ -154,19 +154,27 @@ def can_edit_invoice(user, invoice: Invoice) -> bool:
 def can_upload_invoice_file(user, invoice: Invoice) -> bool:
     if user_has_admin_access(user):
         return True
-    return _matching_accesses_for_invoice(user, invoice).filter(
-        role=Role.EDITOR,
-        can_upload_invoice_files=True,
-    ).exists()
+    return (
+        _matching_accesses_for_invoice(user, invoice)
+        .filter(
+            role=Role.EDITOR,
+            can_upload_invoice_files=True,
+        )
+        .exists()
+    )
 
 
 def can_upload_payment_proof(user, invoice: Invoice) -> bool:
     if user_has_admin_access(user):
         return True
-    return _matching_accesses_for_invoice(user, invoice).filter(
-        role=Role.EDITOR,
-        can_upload_payment_proofs=True,
-    ).exists()
+    return (
+        _matching_accesses_for_invoice(user, invoice)
+        .filter(
+            role=Role.EDITOR,
+            can_upload_payment_proofs=True,
+        )
+        .exists()
+    )
 
 
 def can_export(user, scope=None) -> bool:

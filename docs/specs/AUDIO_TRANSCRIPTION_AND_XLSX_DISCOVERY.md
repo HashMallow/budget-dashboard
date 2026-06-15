@@ -183,7 +183,7 @@ Create `docs/discovery/audio_transcript.fa.md` with:
 Audio transcription could not be completed locally because no speech-to-text tool was available.
 ```
 
-Then continue using the Persian requirements already provided in `AGENTS.md` and `docs/PRODUCT_REQUIREMENTS.md`, but mark this limitation in `docs/discovery/import_risks.md`.
+Then continue using the Persian requirements already provided in `AGENTS.md` and `docs/specs/PRODUCT_REQUIREMENTS.md`, but mark this limitation in `docs/discovery/import_risks.md`.
 
 ## XLSX Structure Discovery Script Requirements
 

@@ -100,6 +100,23 @@ username: admin
 password: admin12345
 ```
 
+Main panel routes (after login):
+
+```text
+/                 Dashboard
+/teams/           Team dashboards
+/invoices/        Invoices
+/vendors/         Vendor report
+/campaigns/       Campaign report
+/budgets/         Budget
+/contracts/       Contracts
+/reference/       Reference data (admin: vendors, categories, sub-teams, requesters)
+/imports/         Excel import (admin)
+/users/           Users and access (admin)
+```
+
+Run `make help` anytime for the full command list.
+
 The order matters: `make setup` must create the database before `make dev-admin` can add
 the admin user, and the data must be imported with `make load-data` before it shows up in the
 dashboard. If you run `make dev` first, you will see an empty app or a login error because the

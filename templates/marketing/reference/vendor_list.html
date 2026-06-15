@@ -1,0 +1,49 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Vendors" %}{% endblock %}
+{% block page_title %}{% t "Vendors" %}{% endblock %}
+{% block page_subtitle %}{% t "Manage vendor reference data" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn primary" href="{% url 'marketing:vendor_reference_create' %}">＋ {% t "New vendor" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}" placeholder="{% t 'Vendor name' %}">
+      </div>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
+    </form>
+  </section>
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Vendor" %}</th>
+            <th>{% t "Tax ID" %}</th>
+            <th>{% t "Notes" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for vendor in page_obj %}
+            <tr>
+              <td>{{ vendor.name }}</td>
+              <td>{{ vendor.tax_id|default:"-" }}</td>
+              <td>{{ vendor.notes|truncatechars:80|default:"-" }}</td>
+              <td><a class="btn" href="{% url 'marketing:vendor_reference_edit' vendor.pk %}">{% t "Edit" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty">{% t "No vendors to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "marketing/reference/_pagination.html" %}
+  </section>
+{% endblock %}

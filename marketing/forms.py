@@ -4,6 +4,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
@@ -20,7 +21,10 @@ from .models import (
     Invoice,
     InvoiceAttachment,
     PaymentStage,
+    Requester,
     Role,
+    SpendCategory,
+    SubTeam,
     Team,
     UserTeamAccess,
     Vendor,
@@ -125,9 +129,18 @@ class StyledFormMixin:
 
 
 class InvoiceForm(StyledFormMixin, forms.ModelForm):
+    CURRENCY_CHOICES = [
+        ("IRR", "Iranian Rial (IRR)"),
+    ]
+
     new_vendor_name = forms.CharField(label="New vendor", required=False, max_length=255)
     invoice_date = FlexibleDateField(label="Invoice date", required=True)
     due_date = FlexibleDateField(label="Due date", required=False)
+    currency = forms.ChoiceField(
+        label="Currency",
+        choices=CURRENCY_CHOICES,
+        initial=settings.DEFAULT_CURRENCY,
+    )
 
     class Meta:
         model = Invoice
@@ -138,6 +151,7 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "team",
             "campaign",
             "category",
+            "business_section",
             "cost_bucket",
             "description",
             "invoice_date",
@@ -148,6 +162,13 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
+            "amount": forms.TextInput(
+                attrs={
+                    "inputmode": "decimal",
+                    "autocomplete": "off",
+                    "placeholder": "100000000",
+                }
+            ),
         }
         labels = {
             "invoice_number": "Invoice number",
@@ -155,17 +176,19 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "team": "Team",
             "campaign": "Campaign",
             "category": "Category / budget line",
+            "business_section": "Business line",
             "cost_bucket": "Cost type",
             "description": "Description",
             "invoice_date": "Invoice date",
             "due_date": "Due date",
-            "amount": "Amount",
+            "amount": "Amount (Rial)",
             "currency": "Currency",
             "payment_stage": "Payment stage",
         }
 
     def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
         self.user = user
+        self.ui_lang = ui_lang
         super().__init__(*args, **kwargs)
         self.fields["vendor"].queryset = Vendor.objects.order_by("name")
         self.fields["vendor"].required = False
@@ -173,6 +196,11 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         self.fields["team"].required = False
         self.fields["campaign"].queryset = filter_campaigns_for_user(Campaign.objects.select_related("team"), user)
         self.fields["campaign"].required = False
+        if not self.instance.pk and not self.initial.get("currency"):
+            self.fields["currency"].initial = settings.DEFAULT_CURRENCY
+        if ui_lang == "fa":
+            self.fields["amount"].widget.attrs["placeholder"] = "۱۰۰۰۰۰۰۰۰"
+            self.fields["amount"].widget.attrs["dir"] = "ltr"
         display_jalali = ui_lang == "fa"
         self.fields["invoice_date"].display_jalali = display_jalali
         self.fields["due_date"].display_jalali = display_jalali
@@ -243,10 +271,12 @@ class InvoiceAttachmentForm(StyledFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         choices = []
         if can_upload_invoice_file(user, invoice):
-            choices.extend([
-                (AttachmentType.INVOICE_IMAGE, "Invoice image / file"),
-                (AttachmentType.OTHER, "Other documents"),
-            ])
+            choices.extend(
+                [
+                    (AttachmentType.INVOICE_IMAGE, "Invoice image / file"),
+                    (AttachmentType.OTHER, "Other documents"),
+                ]
+            )
         if can_upload_payment_proof(user, invoice):
             choices.append((AttachmentType.PAYMENT_PROOF, "Payment receipt / proof"))
         self.fields["attachment_type"].choices = choices
@@ -539,6 +569,159 @@ class TeamAccessForm(StyledFormMixin, forms.ModelForm):
         if commit:
             access.save()
         return access
+
+
+class VendorReferenceForm(forms.ModelForm):
+    class Meta:
+        model = Vendor
+        fields = ["name", "tax_id", "notes"]
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise ValidationError("Enter a vendor name.")
+        normalized = normalize_name(name)
+        queryset = Vendor.objects.filter(normalized_name=normalized)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError("A vendor with this name already exists.")
+        return name
+
+
+class SpendCategoryForm(forms.ModelForm):
+    class Meta:
+        model = SpendCategory
+        fields = ["name", "is_active"]
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise ValidationError("Enter a category name.")
+        normalized = normalize_name(name)
+        queryset = SpendCategory.objects.filter(normalized_name=normalized)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError("A category with this name already exists.")
+        return name
+
+
+class SubTeamForm(forms.ModelForm):
+    class Meta:
+        model = SubTeam
+        fields = ["name", "team", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["team"].queryset = exclude_pseudo_teams(Team.objects.filter(is_active=True).order_by("name"))
+        self.fields["team"].required = False
+        self.fields["team"].empty_label = "—"
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise ValidationError("Enter a sub-team name.")
+        normalized = normalize_name(name)
+        queryset = SubTeam.objects.filter(normalized_name=normalized)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError("A sub-team with this name already exists.")
+        return name
+
+
+class CampaignReferenceForm(StyledFormMixin, forms.ModelForm):
+    STATUS_CHOICES = [
+        ("PLANNED", "Planned"),
+        ("ACTIVE", "Active"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    class Meta:
+        model = Campaign
+        fields = [
+            "name",
+            "year",
+            "team",
+            "planned_start_date",
+            "planned_end_date",
+            "status",
+            "notes",
+        ]
+        labels = {
+            "name": "Campaign name",
+            "year": "Year",
+            "team": "Team",
+            "planned_start_date": "Planned start",
+            "planned_end_date": "Planned end",
+            "status": "Status",
+            "notes": "Notes",
+        }
+        widgets = {
+            "planned_start_date": DateInput(),
+            "planned_end_date": DateInput(),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["team"].queryset = exclude_pseudo_teams(Team.objects.filter(is_active=True).order_by("name"))
+        self.fields["team"].required = False
+        self.fields["team"].empty_label = "—"
+        self.fields["status"] = forms.ChoiceField(
+            choices=self.STATUS_CHOICES,
+            initial=self.instance.status if self.instance.pk else "PLANNED",
+        )
+        if not self.instance.pk and "year" not in self.data:
+            from django.utils import timezone
+
+            from .jalali import gregorian_to_jalali
+
+            today = timezone.now().date()
+            self.fields["year"].initial = gregorian_to_jalali(today.year, today.month, today.day)[0]
+        self._style_fields()
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip()
+        if not name:
+            raise ValidationError("Enter a campaign name.")
+        return name
+
+    def clean(self):
+        cleaned = super().clean()
+        name = cleaned.get("name")
+        year = cleaned.get("year")
+        team = cleaned.get("team")
+        if name and year is not None:
+            queryset = Campaign.objects.filter(name=name, year=year, team=team)
+            if self.instance.pk:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            if queryset.exists():
+                raise ValidationError("A campaign with this name, year and team already exists.")
+        return cleaned
+
+
+class RequesterForm(forms.ModelForm):
+    class Meta:
+        model = Requester
+        fields = ["name", "is_active"]
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise ValidationError("Enter a requester name.")
+        normalized = normalize_name(name)
+        queryset = Requester.objects.filter(normalized_name=normalized)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError("A requester with this name already exists.")
+        return name
 
 
 def user_can_create_invoice(user) -> bool:

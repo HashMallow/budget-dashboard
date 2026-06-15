@@ -3,7 +3,7 @@
 This document explains, in practical terms, what each user group/role can access in the
 Marketing Spend Dashboard. It reflects what the code actually enforces (see
 `marketing/permissions.py` and `marketing/forms.py`). For the underlying design spec, see
-`docs/RBAC_SPEC.md`.
+`docs/specs/RBAC_SPEC.md`.
 
 > **Golden rule:** access is enforced **server-side** on every queryset, view, and export.
 > Hiding a button in the UI is never the security boundary — the data is filtered for the
@@ -122,6 +122,10 @@ These are the server-side filters applied to every list, report, chart, and expo
    `Upload payment receipts`, `Can export`.
 5. Add more rows for the same user to combine scopes (e.g. Editor on one team + Observer on
    another). Deactivating a row (or the user) removes that access without deleting history.
+
+> **Passwords:** see [`PASSWORDS_AND_USERS.md`](PASSWORDS_AND_USERS.md) for changing the admin
+> password, whether admins should set user passwords, and recommended next features (reset link,
+> self-service change).
 
 > Day-to-day users live in the **database**, created here — not in `.env`. The `.env` file is only
 > for deployment settings/secrets (`SECRET_KEY`, `DATABASE_URL`, allowed hosts).

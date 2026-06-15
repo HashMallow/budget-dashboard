@@ -34,7 +34,7 @@
     </form>
   </section>
 
-  <section class="section grid two">
+  <section class="section{% if show_budget_team_chart %} grid two{% endif %}">
     <div class="panel">
       <div class="section-header">
         <div>
@@ -49,6 +49,7 @@
       {% endif %}
     </div>
 
+    {% if show_budget_team_chart %}
     <div class="panel">
       <div class="section-header">
         <div>
@@ -62,6 +63,7 @@
         <div class="empty">{% t "No budget to display." %}</div>
       {% endif %}
     </div>
+    {% endif %}
   </section>
 
   <section class="section panel">
@@ -149,7 +151,7 @@
 {% block extra_scripts %}
   {% if budget_month_chart_has_data or budget_team_chart_has_data %}
     {% if budget_month_chart_has_data %}{{ budget_month_chart|json_script:"budget-month-chart-data" }}{% endif %}
-    {% if budget_team_chart_has_data %}{{ budget_team_chart|json_script:"budget-team-chart-data" }}{% endif %}
+    {% if show_budget_team_chart and budget_team_chart_has_data %}{{ budget_team_chart|json_script:"budget-team-chart-data" }}{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
       (function () {
