@@ -1,6 +1,6 @@
 # Deploying this dashboard on AWS
 
-Copy-paste runbook for the **Marketing Spend Dashboard** (Django 5 + gunicorn + WhiteNoise).
+Copy-paste runbook for the **Marketing Finance Hub** (Django 5 + gunicorn + WhiteNoise).
 This document covers the **preferred path only**: one **EC2** instance with **Caddy** and **gunicorn**.
 
 For a gentler, step-by-step Console + CLI walkthrough with checkpoints and diagrams, use the

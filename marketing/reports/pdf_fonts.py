@@ -15,6 +15,15 @@ FONT_DIR = Path(__file__).resolve().parent / "fonts"
 REGULAR_FONT = "Vazirmatn"
 BOLD_FONT = "Vazirmatn-Bold"
 
+# Arabic/Persian blocks — used to decide when bidi shaping is required.
+_RTL_CHAR_RANGES = (
+    (0x0600, 0x06FF),
+    (0x0750, 0x077F),
+    (0x08A0, 0x08FF),
+    (0xFB50, 0xFDFF),
+    (0xFE70, 0xFEFF),
+)
+
 
 @dataclass(frozen=True)
 class PdfLocale:
@@ -32,6 +41,15 @@ class PdfLocale:
         return "Toman" if self.unit == "toman" else "IRR"
 
 
+def contains_rtl_script(text: str) -> bool:
+    for char in text:
+        code = ord(char)
+        for start, end in _RTL_CHAR_RANGES:
+            if start <= code <= end:
+                return True
+    return False
+
+
 @lru_cache(maxsize=1)
 def register_pdf_fonts() -> bool:
     regular = FONT_DIR / "Vazirmatn-Regular.ttf"
@@ -46,13 +64,25 @@ def register_pdf_fonts() -> bool:
 
 
 def shape_pdf_text(text: str | None, locale: PdfLocale) -> str:
+    """Shape Persian/Arabic for ReportLab's LTR text engine.
+
+    ReportLab places glyphs in storage order. ``arabic_reshaper`` joins letters and
+    ``get_display`` reorders runs for visual RTL. Pure ASCII/Latin strings (invoice
+    numbers, amounts) are left unchanged.
+    """
     if text is None:
         return ""
     value = str(text)
-    if not locale.rtl:
+    if not locale.rtl or not contains_rtl_script(value):
         return value
-    reshaped = arabic_reshaper.reshape(value)
-    return get_display(reshaped)
+    return get_display(arabic_reshaper.reshape(value))
+
+
+def shape_pdf_parts(parts: list[str], locale: PdfLocale) -> str:
+    """Join logical fragments, shaping only segments that contain RTL script."""
+    if not locale.rtl:
+        return "".join(parts)
+    return "".join(shape_pdf_text(part, locale) if contains_rtl_script(part) else part for part in parts)
 
 
 def pdf_font_names(locale: PdfLocale) -> tuple[str, str]:

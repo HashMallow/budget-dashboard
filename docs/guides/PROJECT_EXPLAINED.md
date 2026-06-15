@@ -1,6 +1,6 @@
 # Project Explained (a guided tour)
 
-This is a plain-language walkthrough of how the **Marketing Spend Dashboard** works, written to
+This is a plain-language walkthrough of how the **Marketing Finance Hub** works, written to
 get you a full mental model fast. It assumes you're comfortable with intermediate Python (classes,
 decorators, iterators, enums, context managers) and have seen SQLAlchemy, FastAPI, Docker, and Go,
 but are newer to **Django**. Where useful, it maps Django ideas onto things you already know.
@@ -12,7 +12,7 @@ works"**.
 
 ## 1. What the app is, in one paragraph
 
-It's an internal web dashboard for tracking marketing spend. An admin imports an Excel workbook
+It's an internal web dashboard (**Marketing Finance Hub**) for tracking marketing spend. An admin imports an Excel workbook
 (invoices + budgets), the data is normalized into a relational database, and then users log in and
 see dashboards, invoice lists, vendor/campaign reports, and budgets — **but only the slice of data
 their role allows**. Admins can enter/edit invoices, track payment stages, upload invoice/receipt
@@ -124,14 +124,17 @@ marketing/                         The single app that holds all the business lo
                      campaign names, idempotent upsert, raw-row traceability.
   management/commands/   CLI commands: import_marketing_excel, seed_auth_groups,
                          seed_reference_data, bootstrap_dev_admin (the make targets call these).
-  reports/pdf.py     ReportLab PDF builder for the dashboard summary.
+  reports/pdf.py     ReportLab PDF builders (dashboard, vendors, campaigns, contracts).
+  reports/pdf_fonts.py  Vazirmatn registration + arabic-reshaper shaping for FA PDFs.
+  business_section.py   Helpers for Business segment labels from Excel/import.
   templatetags/marketing_format.py  Custom template tags/filters: {% t %} (translate),
                      {% form_errors %}, money/number formatting.
   migrations/        Versioned schema + data migrations (incl. team aliases, campaign canonicalize).
   tests/             pytest tests for permissions, the importer, and frontend views.
 
-templates/marketing/   The HTML. base.html is the shell (nav, styles, language toggle,
-                       Persian-digit script); the rest extend it.
+templates/marketing/   The HTML. base.html is the shell (sectioned sidebar nav, styles, language toggle,
+                       Persian-digit script); dashboard.html is the Finance overview layout; help_sitemap.html
+                       is the in-app guide at /help/.
 
 docs/                  All the written docs (specs, run guide, deployment, this file, etc.).
 ```

@@ -2,6 +2,8 @@
 
 A guide to every doc in this repo, grouped by purpose so you can find the right one fast.
 
+**Keep in sync:** When changing panel navigation, dashboard layout, or user-facing flows, update the 🟢 **Living** docs — especially [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md), in-app **Help** (`templates/marketing/help_sitemap.html`), and [`guides/CURRENT_STATE_AND_RUN_GUIDE.md`](guides/CURRENT_STATE_AND_RUN_GUIDE.md).
+
 **Status legend**
 - 🟢 **Living** — kept in sync with the running app; trust these first.
 - 📘 **Spec** — design reference written before/while building; mostly stable.

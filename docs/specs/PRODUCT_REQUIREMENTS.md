@@ -1,4 +1,6 @@
-# Product Requirements — Marketing Spend Monitoring Dashboard
+# Product Requirements — Marketing Finance Hub
+
+> Historical title: *Marketing Spend Monitoring Dashboard*. Requirements below are unchanged.
 
 ## Source Material and Discovery
 

@@ -759,31 +759,34 @@ Shared RTL layout for the panel.
 Contains:
 
 ```text
-Sidebar navigation
+Sidebar navigation (grouped sections: Overview, Spend & teams, Reports, Administration, Help)
 Responsive layout CSS
 Table/form/card styling
 Print styles
 ```
 
+### `templates/marketing/help_sitemap.html`
+
+In-app Help page (`/help/`). Mirrors `docs/guides/USER_SITEMAP.md` with RTL-friendly `nav_path` / `ui_flow` tags for FA.
+
 ### `templates/registration/login.html`
 
-Custom panel login page.
+Standalone login page (split layout; links to Help).
 
 ### `templates/marketing/dashboard.html`
 
-Main dashboard page.
+Main dashboard (**Finance overview**).
 
 Current purpose:
 
 ```text
-Summary cards
-Overall spend pie chart
-Monthly trend Chart.js line chart
-Per-team Chart.js bar chart
-Referral/SMS totals
-Vendor and campaign previews
-Payment stage summary
-Finance-review attention list
+Compact filter toolbar + scope banner when one team is selected
+Primary KPI cards (spend, budget, deviation, invoice count)
+Secondary stat strip (paid, referral, SMS, contracts)
+Paired budget-vs-actual and monthly-trend charts
+Spend pie + spend-by-team row (all teams only)
+Collapsible budget-by-team table
+Vendor/campaign previews; payment stages; finance-review attention list
 ```
 
 ### `templates/marketing/teams/list.html`

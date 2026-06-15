@@ -76,8 +76,8 @@ help:
 	@echo "Variables: FILE=workbook.xlsx  HOST=$(HOST)  PORT=$(PORT)"
 	@echo "           ADMIN_USER / ADMIN_PASSWORD / ADMIN_EMAIL for dev-admin"
 	@echo ""
-	@echo "Panel (after make dev): /login/  dashboard  invoices  teams  vendors  campaigns"
-	@echo "  budgets  contracts  /reference/ (admin lookup CRUD)  /imports/  /users/"
+	@echo "Panel (after make dev): /login/  /help/  dashboard  invoices  teams"
+	@echo "  budgets  vendors  campaigns  contracts  /reference/  /imports/  /users/"
 
 check-uv:
 	@command -v "$(UV)" >/dev/null 2>&1 || ( \

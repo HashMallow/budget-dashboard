@@ -1,17 +1,17 @@
 # Dashboard and Reporting Specification
 
+> **Implemented UI (2026):** The live panel uses the **Marketing Finance Hub** branding, a **sectioned sidebar**, and a **Finance overview** dashboard with primary KPI cards, a secondary stat strip, paired budget/trend charts, and team-filtered layouts (pie/team charts hidden for a single team). See [`guides/USER_SITEMAP.md`](../guides/USER_SITEMAP.md) for the end-user map. This spec remains the requirements reference.
+
 ## Dashboard Navigation
 
 Provide a simple internal dashboard with these main sections:
 
-1. Overview
-2. Teams
-3. Vendors
-4. Campaigns
-5. Invoices
-6. Budget
-7. Exports
-8. User Access Management, admin only
+1. Overview (Dashboard)
+2. Spend & teams (Invoices, Teams)
+3. Reports (Budget, Vendors, Campaigns, Contracts)
+4. Administration (Excel Import, Users, Reference data) — admin only
+5. Help — bottom of sidebar; also `/help/`
+6. Exports — top bar on relevant pages
 
 ## Overview Dashboard
 

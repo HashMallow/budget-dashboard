@@ -1,6 +1,6 @@
 # Permissions Matrix
 
-Quick reference for what each user group can do in the Marketing Spend Dashboard.
+Quick reference for what each user group can do in the **Marketing Finance Hub**.
 
 For the detailed explanation, see `docs/operations/ACCESS_BY_ROLE.md`. For implementation, see
 `marketing/permissions.py` and `marketing/forms.py`.

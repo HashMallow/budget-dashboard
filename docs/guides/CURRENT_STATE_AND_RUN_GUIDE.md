@@ -165,7 +165,13 @@ Alireza/
 [x] Persian-digit display in FA mode (display-only; form inputs stay Latin)
 [x] Jalali (Persian-calendar) month/year grouping and year filters in reports
 [x] Shamsi/Jalali date parsing in Excel import and invoice forms (`1405/01/10`, `۱۴۰۵/۰۱/۱۰`, and Gregorian ISO)
-[x] Overall-spend pie chart (Chart.js doughnut, server-aggregated, team + referral/SMS)
+[x] Overall-spend pie chart (Chart.js doughnut; hidden when a single team is filtered on the main dashboard)
+[x] Sectioned sidebar navigation (Overview / Spend & teams / Reports / Administration / Help at bottom)
+[x] In-app Help page at `/help/` (mirrors USER_SITEMAP; RTL-friendly navigation paths in FA)
+[x] Invoice `business_section` field (business segments from Excel Business Section) — filter, search, import, export
+[x] Finance overview dashboard layout (primary KPI cards, stat strip, paired budget/trend charts, collapsible team budget table)
+[x] Campaign reference CRUD in panel (`/reference/campaigns/`)
+[x] Persian PDF reports: arabic-reshaper only (no python-bidi reversal) for correct RTL words in ReportLab
 [x] Excel export of the (permission-filtered) invoice table
 [x] Printable invoice report page (browser print-to-PDF)
 [x] Campaign-name canonicalization (e.g. "on going" -> "Ongoing") in importer + data migration
@@ -194,9 +200,9 @@ Alireza/
 ```text
 [~] Invoice category field is still free text; seeded SpendCategory rows are not yet enforced dropdowns.
 [~] Budget variance is by month and team; category-level variance from Budget sheet titles is not built yet.
-[~] Campaign CRUD exists in Django Admin only (report + invoice assignment in the panel).
+[~] Campaign CRUD exists in the panel at `/reference/campaigns/` (and links from the campaign report); Django Admin remains a fallback.
 [~] Lookup rows can be managed at `/reference/` or via `make seed-reference`; not every form validates against them yet.
-[~] PDF exports support Persian/RTL and multi-page vendor/campaign/contract reports; polish/layout can still improve.
+[~] PDF exports support Persian shaping (Vazirmatn + arabic-reshaper); layout polish can still improve.
 [~] Media uploads use local `media/`; S3 production storage is documented but not provisioned.
 ```
 
@@ -566,7 +572,8 @@ Expected result:
 
 ```text
 Custom panel opens successfully.
-Dashboard, invoices, vendors, campaigns, budgets, imports, and users sections are visible as permitted.
+Sectioned sidebar: Overview, Spend & teams, Reports, Administration (admin), Help at bottom.
+Dashboard, invoices, vendors, campaigns, budgets, imports, and users are visible as permitted.
 ```
 
 ### 2. Check Imported Data
@@ -574,13 +581,12 @@ Dashboard, invoices, vendors, campaigns, budgets, imports, and users sections ar
 In the custom panel, open:
 
 ```text
-Dashboard
-├── Invoices
-├── Vendors
-├── Campaigns
-├── Budgets
-├── Imports
-└── Users
+Dashboard (Finance overview)
+├── Invoices (incl. business line filter)
+├── Teams
+├── Reports: Budget · Vendors · Campaigns · Contracts
+├── Administration: Imports · Users · Reference data
+└── Help (bottom of menu)
 ```
 
 Expected counts:
@@ -661,7 +667,7 @@ Ruff lint passes
 Current result:
 
 ```text
-86+ tests passed (pytest -q), 1 skipped when LibreOffice conversion is unavailable locally
+94+ tests passed (pytest -q), 1 skipped when LibreOffice conversion is unavailable locally
 ```
 
 ## Current Make Commands
@@ -757,10 +763,11 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 
 ```text
 /login/                        Login
-/                              Dashboard (budget vs actual, charts; spend pie hidden when team filtered)
+/help/                         In-app guide (public; mirrors USER_SITEMAP.md)
+/                              Finance overview dashboard (sectioned layout; pie hidden when team filtered)
 /teams/                        Team list with links to per-team dashboards
 /teams/<id>/                   Team dashboard (budget variance, vendors, campaigns, monthly chart)
-/invoices/                     Invoice list/create/detail/edit/stage-update/attachments
+/invoices/                     Invoice list/create/detail/edit (business line filter + search)
 /vendors/                      Vendor spend report (descending)
 /campaigns/                    Campaign spend report
 /budgets/                      Budget table, pivot, and planned-budget charts
@@ -769,6 +776,7 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 /reference/vendors/            Manage vendor reference rows
 /reference/categories/         Manage spend categories
 /reference/sub-teams/          Manage sub-teams
+/reference/campaigns/          Manage campaigns (admin)
 /reference/requesters/         Manage requesters
 /imports/                      Admin-only Excel upload/import
 /users/                        Admin-only user/access management
@@ -777,7 +785,7 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 /exports/campaigns.xlsx        Excel export of campaign report
 /exports/contracts.xlsx        Excel export of contract list
 /exports/workbook.xlsx         Workbook-style Excel (source-workbook sheet layout)
-/reports/dashboard.pdf         Dashboard PDF summary (ReportLab; FA/EN + RTL)
+/reports/dashboard.pdf         Dashboard PDF summary (ReportLab; FA shaping via Vazirmatn)
 /reports/vendors.pdf           Vendor spend PDF
 /reports/campaigns.pdf         Campaign spend PDF
 /reports/contracts.pdf         Contract report PDF
@@ -785,6 +793,8 @@ uv run python manage.py runserver 127.0.0.1:8000 --noreload
 /admin/                        Django Admin fallback
 /preferences/                  Set display preferences (language, amount format, currency unit, theme)
 ```
+
+**Sidebar sections:** Overview · Spend & teams · Reports · Administration (admin) · Help (bottom).
 
 **Workbook export (`.xlsx`):** Generated by `marketing/exports/workbook.py` with Excel-safe cells,
 explicit auto-filter bounds, and regression tests in `marketing/tests/test_workbook_export.py`.

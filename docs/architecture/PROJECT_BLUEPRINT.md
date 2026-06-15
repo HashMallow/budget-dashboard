@@ -228,7 +228,12 @@ learning/control to fastest possible public URL.
 [x] uv-based command pipeline implemented
 [x] Data-sheet reference seeding implemented
 [x] Dedicated team dashboards implemented
-[x] Dashboard Chart.js pie/monthly/team charts implemented
+[x] Dashboard Chart.js pie/monthly/team charts implemented (pie hidden when main dashboard is team-filtered)
+[x] Sectioned sidebar navigation and in-app Help at `/help/`
+[x] Invoice business line field and filters
+[x] Finance overview dashboard layout
+[x] Campaign reference CRUD in panel
+[x] Persian PDF shaping (Vazirmatn + arabic-reshaper)
 [x] Vendor and campaign Excel exports implemented
 [x] Server-rendered dashboard PDF implemented with ReportLab
 [x] Frontend smoke/permission tests passing
@@ -239,18 +244,23 @@ learning/control to fastest possible public URL.
 
 ```text
 /login/           Login
-/                 Dashboard
+/help/            In-app guide
+/                 Finance overview dashboard
 /teams/           Team list and per-team dashboards
-/invoices/        Invoice list/create/detail/edit
+/invoices/        Invoice list/create/detail/edit (business line)
 /vendors/         Vendor spend report
 /campaigns/       Campaign spend report
 /budgets/         Budget table and pivot
+/contracts/       Contract tracking
+/reference/       Admin lookup CRUD (vendors, categories, sub-teams, campaigns, requesters)
 /imports/         Admin-only Excel upload/import
 /users/           Admin-only user/access management
 /exports/*.xlsx   Permission-scoped Excel exports
 /reports/*.pdf    Permission-scoped PDF reports
 /admin/           Django Admin fallback
 ```
+
+Sidebar: Overview · Spend & teams · Reports · Administration · Help (bottom).
 
 Users are database records. Do not manage ordinary users in `.env`; use the `/users/` panel as admin. `.env` is for secrets and deployment configuration.
 

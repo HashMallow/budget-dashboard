@@ -27,6 +27,46 @@ def test_persian_dashboard_pdf_uses_embedded_font():
     assert b"Vazirmatn" in pdf_bytes or b"/Font" in pdf_bytes
 
 
+def test_shape_pdf_text_uses_bidi_for_rtl_and_skips_ascii():
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    from marketing.reports.pdf_fonts import PdfLocale, shape_pdf_text
+
+    locale = PdfLocale(lang="fa")
+    assert shape_pdf_text("ریال", locale) == get_display(arabic_reshaper.reshape("ریال"))
+    assert shape_pdf_text("123, 456", locale) == "123, 456"
+    assert shape_pdf_text("Vendor", PdfLocale(lang="en")) == "Vendor"
+
+
+def test_persian_vendor_pdf_keeps_rtl_words_in_logical_order():
+    from datetime import datetime
+    from unittest.mock import MagicMock
+
+    from marketing.reports.pdf import build_vendor_report_pdf
+
+    vendor = MagicMock()
+    vendor.name = "Sample Vendor Co."
+    pdf_bytes = build_vendor_report_pdf(
+        title="گزارش هزینه وندورها",
+        generated_at=datetime(2026, 6, 15, 7, 2),
+        vendor_rows=[
+            {
+                "vendor": vendor,
+                "invoice_count": 1,
+                "invoice_numbers": ["123"],
+                "stages": ["Paid"],
+                "total": Decimal("1000"),
+            }
+        ],
+        locale=PdfLocale(lang="fa", unit="rial"),
+    )
+    # Reversed-by-bidi artifacts must not appear as literal UTF-8 in the PDF stream.
+    assert "لایر".encode() not in pdf_bytes
+    assert "دیلوت".encode() not in pdf_bytes
+    assert "اهرودنو".encode() not in pdf_bytes
+
+
 def test_admin_can_manage_vendor_reference_data(client):
     from django.contrib.auth import get_user_model
 

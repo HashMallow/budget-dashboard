@@ -27,6 +27,11 @@ The current app now includes:
 [x] Contract tracking UI (list, create, edit, stages, attachments)
 [x] Permission-scoped export gates through can_export()
 [x] Consolidated Settings menu (language, amount format, currency unit, theme)
+[x] Sectioned sidebar + in-app Help (`/help/`)
+[x] Invoice business line (`business_section`) from Excel Business Section
+[x] Finance overview dashboard layout (team-filter UX, paired charts)
+[x] Campaign CRUD at `/reference/campaigns/`
+[x] Persian PDF glyph shaping fix (arabic-reshaper without python-bidi reversal)
 [x] Compact/full amount display; Rial/Toman; همت for trillion-tier Toman amounts
 [x] Light/dark theme toggle (session-persisted)
 [x] Jalali month/year filters and Shamsi date parsing in import + forms
@@ -45,7 +50,7 @@ not receive raw spreadsheet data.
 [ ] Budget variance by category (Budget sheet line titles)
 [ ] Richer campaign-over-year visualization (monthly bars + budget overlay)
 [ ] Lookup validation/dropdowns wired into every invoice data-entry form
-[ ] Campaign CRUD in the custom panel (admin-only Django Admin today)
+[ ] Campaign CRUD in the custom panel — **done** at `/reference/campaigns/`; keep improving campaign report UX
 [ ] Invoice action-month vs invoice-date reporting toggle
 [ ] Upload hardening: file size limits, content-type checks, S3 production storage
 [ ] CI/CD pipeline running make check
@@ -75,7 +80,7 @@ Charts are richer, but still rendered inside Django templates.
 PDF export is a summary, not a polished full report suite.
   /reports/dashboard.pdf covers totals, top vendors, and payment stages.
   /reports/invoices/print/ still exists for browser print-to-PDF.
-  Next step: report-specific PDFs for vendors/campaigns with better layout and Persian/RTL support.
+  Vendor/campaign/contract PDFs exist; Persian uses Vazirmatn + arabic-reshaper (not python-bidi display reversal).
 
 Workbook export is a clean DB round-trip, not a byte-for-byte clone.
   /exports/workbook.xlsx recreates familiar sheet names and monthly budget/actual views.

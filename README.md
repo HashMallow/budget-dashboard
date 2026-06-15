@@ -1,6 +1,6 @@
-# Marketing Spend Monitoring Dashboard
+# Marketing Finance Hub
 
-Local Django app for importing, monitoring, entering, reporting, and exporting marketing spend data.
+Local Django panel for importing, monitoring, entering, reporting, and exporting marketing spend data (also referred to in older docs as *Marketing Spend Monitoring Dashboard*).
 
 For a more visual explanation of the current structure, capabilities, run workflow, and roadmap, see:
 
@@ -19,11 +19,13 @@ docs/project/PHASE_2.md
 
 - Discovery is complete under `docs/discovery/` (audio transcript/summary/requirements, workbook
   structure/sample rows, `column_mapping.yml`, and import risks).
-- Django project and `marketing` app are scaffolded with models, RBAC, importer, and **86+ tests**.
+- Django project and `marketing` app are scaffolded with models, RBAC, importer, and **94+ tests**.
 - The Excel importer works from `docs/discovery/column_mapping.yml` (idempotent re-import).
 - The project uses **`uv`** + **`Makefile`** as the standard local command runner.
-- Custom panel: dashboard (budget vs actual variance, charts), invoices, teams, vendors, campaigns,
-  budgets, **contracts**, **reference-data CRUD** (`/reference/`), imports, and user access.
+- Custom panel: **sectioned sidebar** (Overview · Spend & teams · Reports · Administration · Help),
+  finance overview dashboard (budget vs actual, charts; team-filtered layout), invoices with **business line**
+  filter, teams, vendors, campaigns, budgets, **contracts**, **reference-data CRUD** (`/reference/`),
+  in-app **Help** (`/help/`), imports, and user access.
 - Bilingual FA/EN UI, Jalali reporting, Rial/Toman display, compact/full money formatting.
 - Excel exports (invoices, vendors, campaigns, workbook layout) and **Persian/RTL PDF reports**
   (dashboard, vendors, campaigns, contracts) via ReportLab + Vazirmatn.
@@ -155,20 +157,23 @@ http://127.0.0.1:8000/login/
 Current panel sections:
 
 ```text
-/                 Dashboard (budget vs actual, charts; pie hidden when a team is filtered)
+/                 Finance overview dashboard (sectioned layout; pie hidden when a team is filtered)
+/help/            In-app guide (public; admin sections gated)
 /teams/           Team list and team dashboards
-/invoices/        Invoice list / create / detail / edit / uploads
+/invoices/        Invoice list / create / detail / edit / uploads (business line filter)
 /vendors/         Vendor spend report
-/campaigns/       Campaign spend report
+/campaigns/       Campaign spend report (+ admin campaign CRUD links)
 /budgets/         Budget table, pivot, and planned-budget charts
 /contracts/       Contract tracking (stages, expiry, attachments)
-/reference/       Admin-only lookup CRUD (vendors, categories, sub-teams, requesters)
+/reference/       Admin-only lookup CRUD (vendors, categories, sub-teams, campaigns, requesters)
 /imports/         Admin-only Excel upload / import
 /users/           Admin-only user and team-access management
 /exports/*.xlsx   Permission-scoped Excel exports
-/reports/*.pdf    Permission-scoped PDF reports (FA/EN + RTL when UI is Persian)
+/reports/*.pdf    Permission-scoped PDF reports (Persian glyph shaping + Vazirmatn when UI is FA)
 /admin/           Django Admin fallback
 ```
+
+**Sidebar groups:** Overview (Dashboard) · Spend & teams (Invoices, Teams) · Reports (Budget, Vendors, Campaigns, Contracts) · Administration (Excel Import, Users, Reference data) · **Help** at the bottom.
 
 After `make load-data`, manage lookup rows in the panel at **`/reference/`** (admin) or re-run
 `make seed-reference` from the workbook Data sheet.

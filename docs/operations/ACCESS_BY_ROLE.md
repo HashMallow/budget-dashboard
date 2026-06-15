@@ -1,7 +1,7 @@
 # Access by Role (who can see and do what)
 
 This document explains, in practical terms, what each user group/role can access in the
-Marketing Spend Dashboard. It reflects what the code actually enforces (see
+**Marketing Finance Hub**. It reflects what the code actually enforces (see
 `marketing/permissions.py` and `marketing/forms.py`). For the underlying design spec, see
 `docs/specs/RBAC_SPEC.md`.
 

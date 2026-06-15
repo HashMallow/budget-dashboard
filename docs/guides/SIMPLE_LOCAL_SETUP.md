@@ -103,17 +103,20 @@ password: admin12345
 Main panel routes (after login):
 
 ```text
-/                 Dashboard
+/                 Finance overview dashboard
+/help/            In-app guide
 /teams/           Team dashboards
-/invoices/        Invoices
+/invoices/        Invoices (business line filter)
 /vendors/         Vendor report
 /campaigns/       Campaign report
 /budgets/         Budget
 /contracts/       Contracts
-/reference/       Reference data (admin: vendors, categories, sub-teams, requesters)
+/reference/       Reference data (admin: vendors, categories, sub-teams, campaigns, requesters)
 /imports/         Excel import (admin)
 /users/           Users and access (admin)
 ```
+
+Sidebar is grouped: **Overview** · **Spend & teams** · **Reports** · **Administration** · **Help** (bottom).
 
 Run `make help` anytime for the full command list.
 

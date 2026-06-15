@@ -88,7 +88,18 @@
     .brand { display: grid; gap: 4px; padding: 8px 8px 20px; border-bottom: 1px solid rgba(255,255,255,.12); }
     .brand strong { font-size: 18px; letter-spacing: 0; }
     .brand span { color: #b7c6cf; font-size: 12px; }
-    .nav { display: grid; gap: 6px; margin-top: 20px; }
+    .nav { display: grid; gap: 14px; margin-top: 20px; }
+    .nav-section { display: grid; gap: 4px; }
+    .nav-section-label {
+      margin: 0;
+      padding: 0 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7b8f9a;
+    }
+    .nav-section-links { display: grid; gap: 4px; }
     .nav a {
       display: flex;
       align-items: center;
@@ -99,9 +110,11 @@
       color: #d8e2e8;
     }
     .nav a:hover, .nav a.active { background: rgba(255,255,255,.12); color: #fff; }
-    .nav a:nth-child(2n) .nav-icon { color: #fbbf24; }
-    .nav a:nth-child(3n) .nav-icon { color: #a78bfa; }
-    .nav a:nth-child(4n) .nav-icon { color: #fb7185; }
+    .nav-section-links a:nth-child(4n+1) .nav-icon { color: #7dd3fc; }
+    .nav-section-links a:nth-child(4n+2) .nav-icon { color: #fbbf24; }
+    .nav-section-links a:nth-child(4n+3) .nav-icon { color: #a78bfa; }
+    .nav-section-links a:nth-child(4n+4) .nav-icon { color: #fb7185; }
+    .nav-help { margin-top: 4px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.1); }
     .nav-icon { width: 22px; text-align: center; color: #7dd3fc; }
     .sidebar-footer { margin-top: 28px; padding: 12px 8px; border-top: 1px solid rgba(255,255,255,.12); }
     .user-meta { color: #c6d3da; font-size: 12px; margin-bottom: 10px; }
@@ -573,6 +586,11 @@
       font-size: 0.95em;
     }
     html[dir="rtl"] .nav-icon-login { transform: scaleX(-1); }
+    html[dir="rtl"] .nav-section-label {
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 11px;
+    }
     code { background: var(--surface-soft); padding: 1px 6px; border-radius: 5px; font-size: 12px; direction: ltr; unicode-bidi: isolate; }
     .print-only { display: none; }
     @media (max-width: 1100px) {
@@ -612,41 +630,69 @@
       {% if user.is_authenticated %}
         {% with current=request.resolver_match.url_name %}
           <nav class="nav">
-            <a href="{% url 'marketing:dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}">
-              <span class="nav-icon">⌂</span><span>{% t "Dashboard" %}</span>
-            </a>
-            <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' %}active{% endif %}">
-              <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>
-            </a>
-            <a href="{% url 'marketing:team_list' %}" class="{% if current == 'team_list' or current == 'team_dashboard' %}active{% endif %}">
-              <span class="nav-icon">◉</span><span>{% t "Teams" %}</span>
-            </a>
-            <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
-              <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
-            </a>
-            <a href="{% url 'marketing:contract_list' %}" class="{% if current == 'contract_list' or current == 'contract_detail' or current == 'contract_create' or current == 'contract_edit' %}active{% endif %}">
-              <span class="nav-icon">✎</span><span>{% t "Contracts" %}</span>
-            </a>
-            <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
-              <span class="nav-icon">◇</span><span>{% t "Campaigns" %}</span>
-            </a>
-            <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
-              <span class="nav-icon">▦</span><span>{% t "Budget" %}</span>
-            </a>
-            <a href="{% url 'marketing:help_sitemap' %}" class="{% if current == 'help_sitemap' %}active{% endif %}">
-              <span class="nav-icon">?</span><span>{% t "Help" %}</span>
-            </a>
+            <div class="nav-section">
+              <p class="nav-section-label">{% t "Overview" %}</p>
+              <div class="nav-section-links">
+                <a href="{% url 'marketing:dashboard' %}" class="{% if current == 'dashboard' %}active{% endif %}">
+                  <span class="nav-icon">⌂</span><span>{% t "Dashboard" %}</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="nav-section">
+              <p class="nav-section-label">{% t "Spend & teams" %}</p>
+              <div class="nav-section-links">
+                <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' or current == 'invoice_create' or current == 'invoice_edit' %}active{% endif %}">
+                  <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>
+                </a>
+                <a href="{% url 'marketing:team_list' %}" class="{% if current == 'team_list' or current == 'team_dashboard' %}active{% endif %}">
+                  <span class="nav-icon">◉</span><span>{% t "Teams" %}</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="nav-section">
+              <p class="nav-section-label">{% t "Reports" %}</p>
+              <div class="nav-section-links">
+                <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
+                  <span class="nav-icon">▦</span><span>{% t "Budget" %}</span>
+                </a>
+                <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
+                  <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
+                </a>
+                <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">
+                  <span class="nav-icon">◇</span><span>{% t "Campaigns" %}</span>
+                </a>
+                <a href="{% url 'marketing:contract_list' %}" class="{% if current == 'contract_list' or current == 'contract_detail' or current == 'contract_create' or current == 'contract_edit' %}active{% endif %}">
+                  <span class="nav-icon">✎</span><span>{% t "Contracts" %}</span>
+                </a>
+              </div>
+            </div>
+
             {% if user|is_panel_admin %}
-              <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
-                <span class="nav-icon">⇧</span><span>{% t "Excel Import" %}</span>
-              </a>
-              <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
-                <span class="nav-icon">◎</span><span>{% t "Users" %}</span>
-              </a>
-              <a href="{% url 'marketing:reference_data_home' %}" class="{% if current == 'reference_data_home' or current == 'vendor_reference_list' or current == 'vendor_reference_create' or current == 'vendor_reference_edit' or current == 'category_reference_list' or current == 'category_reference_create' or current == 'category_reference_edit' or current == 'subteam_reference_list' or current == 'subteam_reference_create' or current == 'subteam_reference_edit' or current == 'requester_reference_list' or current == 'requester_reference_create' or current == 'requester_reference_edit' or current == 'campaign_reference_list' or current == 'campaign_reference_create' or current == 'campaign_reference_edit' %}active{% endif %}">
-                <span class="nav-icon">≡</span><span>{% t "Reference data" %}</span>
-              </a>
+              <div class="nav-section">
+                <p class="nav-section-label">{% t "Administration" %}</p>
+                <div class="nav-section-links">
+                  <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
+                    <span class="nav-icon">⇧</span><span>{% t "Excel Import" %}</span>
+                  </a>
+                  <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
+                    <span class="nav-icon">◎</span><span>{% t "Users" %}</span>
+                  </a>
+                  <a href="{% url 'marketing:reference_data_home' %}" class="{% if current == 'reference_data_home' or current == 'vendor_reference_list' or current == 'vendor_reference_create' or current == 'vendor_reference_edit' or current == 'category_reference_list' or current == 'category_reference_create' or current == 'category_reference_edit' or current == 'subteam_reference_list' or current == 'subteam_reference_create' or current == 'subteam_reference_edit' or current == 'requester_reference_list' or current == 'requester_reference_create' or current == 'requester_reference_edit' or current == 'campaign_reference_list' or current == 'campaign_reference_create' or current == 'campaign_reference_edit' %}active{% endif %}">
+                    <span class="nav-icon">≡</span><span>{% t "Reference data" %}</span>
+                  </a>
+                </div>
+              </div>
             {% endif %}
+
+            <div class="nav-section nav-help">
+              <div class="nav-section-links">
+                <a href="{% url 'marketing:help_sitemap' %}" class="{% if current == 'help_sitemap' %}active{% endif %}">
+                  <span class="nav-icon">?</span><span>{% t "Help" %}</span>
+                </a>
+              </div>
+            </div>
           </nav>
         {% endwith %}
         <div class="sidebar-footer">
@@ -662,12 +708,16 @@
       {% else %}
         {% with current=request.resolver_match.url_name %}
           <nav class="nav">
-            <a href="{% url 'marketing:help_sitemap' %}" class="{% if current == 'help_sitemap' %}active{% endif %}">
-              <span class="nav-icon">?</span><span>{% t "Help" %}</span>
-            </a>
-            <a href="{% url 'marketing:login' %}" class="{% if current == 'login' %}active{% endif %}">
-              <span class="nav-icon nav-icon-login" aria-hidden="true">→</span><span>{% t "Sign in" %}</span>
-            </a>
+            <div class="nav-section nav-help">
+              <div class="nav-section-links">
+                <a href="{% url 'marketing:help_sitemap' %}" class="{% if current == 'help_sitemap' %}active{% endif %}">
+                  <span class="nav-icon">?</span><span>{% t "Help" %}</span>
+                </a>
+                <a href="{% url 'marketing:login' %}" class="{% if current == 'login' %}active{% endif %}">
+                  <span class="nav-icon nav-icon-login" aria-hidden="true">→</span><span>{% t "Sign in" %}</span>
+                </a>
+              </div>
+            </div>
           </nav>
         {% endwith %}
       {% endif %}
@@ -756,16 +806,25 @@
         lang: "{{ ui_lang|default:'en' }}",
         unit: "{{ currency_unit|default:'rial' }}"
       };
+      window.toPersianDigits = function (text) {
+        return String(text).replace(/[0-9]/g, function (d) {
+          return "۰۱۲۳۴۵۶۷۸۹"[d.charCodeAt(0) - 48];
+        });
+      };
+      window.formatDigitsForLang = function (text, lang) {
+        return lang === "fa" ? window.toPersianDigits(text) : String(text);
+      };
       window.formatChartAmount = function (value) {
         var n = Number(value);
         if (!isFinite(n)) { return String(value); }
         var cfg = window.MARKETING_MONEY;
+        var finalize = function (text) { return window.formatDigitsForLang(text, cfg.lang); };
         if (cfg.unit === "toman") { n = n / 10; }
         if (cfg.mode !== "compact") {
-          return Math.round(n).toLocaleString("en-US");
+          return finalize(Math.round(n).toLocaleString("en-US"));
         }
         var abs = Math.abs(n);
-        if (abs < 1000) { return Math.round(n).toLocaleString("en-US"); }
+        if (abs < 1000) { return finalize(Math.round(n).toLocaleString("en-US")); }
         var scales = [
           [1e12, 1e12, "T", " تریلیون", " همت"],
           [1e9, 1e9, "B", " میلیارد", " میلیارد"],
@@ -782,21 +841,26 @@
             var formatted = scaled.toFixed(decimals).replace(/\.?0+$/, "");
             if (cfg.lang === "fa") {
               var faSuffix = cfg.unit === "toman" ? scales[i][4] : scales[i][3];
-              return "\u202B" + formatted + faSuffix + "\u202C";
+              return "\u202B" + finalize(formatted) + faSuffix + "\u202C";
             }
             return formatted + scales[i][2];
           }
         }
-        return Math.round(n).toLocaleString("en-US");
+        return finalize(Math.round(n).toLocaleString("en-US"));
       };
       window.formatChartAmountFull = function (value) {
         var n = Number(value);
         if (!isFinite(n)) { return String(value); }
         var cfg = window.MARKETING_MONEY;
         if (cfg.unit === "toman") { n = n / 10; }
-        return Math.round(n).toLocaleString("en-US");
+        return window.formatDigitsForLang(Math.round(n).toLocaleString("en-US"), cfg.lang);
       };
       window.chartMoneyOptions = function () {
+        var cfg = window.MARKETING_MONEY;
+        var xTickCallback = function (value) {
+          var label = this.getLabelForValue(value);
+          return cfg.lang === "fa" ? window.toPersianDigits(label) : label;
+        };
         return {
           plugins: {
             tooltip: {
@@ -807,7 +871,6 @@
                     ? (parsed.y != null ? parsed.y : parsed)
                     : parsed;
                   var label = ctx.label || ctx.dataset.label || "";
-                  var cfg = window.MARKETING_MONEY;
                   var formatted = window.formatChartAmount(amount);
                   var line = label ? (label + ": " + formatted) : formatted;
                   if (cfg.mode === "compact") {
@@ -830,6 +893,11 @@
             }
           },
           scales: {
+            x: {
+              ticks: {
+                callback: xTickCallback
+              }
+            },
             y: {
               beginAtZero: true,
               ticks: {
@@ -848,10 +916,9 @@
     // touched; form controls (input/select/textarea) keep their Latin values so server-side
     // parsing and form submission are unaffected.
     (function () {
-      var map = { "0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴", "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹" };
       var skip = { SCRIPT: 1, STYLE: 1, INPUT: 1, TEXTAREA: 1, SELECT: 1, OPTION: 1 };
       function toFa(text) {
-        return text.replace(/[0-9]/g, function (d) { return map[d]; });
+        return window.toPersianDigits ? window.toPersianDigits(text) : text;
       }
       function walk(node) {
         for (var child = node.firstChild; child; child = child.nextSibling) {

@@ -1,4 +1,4 @@
-# AGENTS.md — Marketing Spend Monitoring Dashboard
+# AGENTS.md — Marketing Finance Hub (Marketing Spend Monitoring Dashboard)
 
 ## Purpose
 Build a web-based admin panel for monitoring, entering, analyzing, and exporting marketing spend data. The app must start from an Excel workbook that will be placed in the Codex/project directory. The workbook includes at least two sheets: an input/data-entry sheet and a budget sheet.
@@ -140,6 +140,7 @@ Fields:
 - `team` optional
 - `campaign` optional
 - `category`
+- `business_section` optional — Business segment from Excel **Business Section** (Consumer, Youth, Enterprise, …)
 - `cost_bucket`: one of `TEAM`, `REFERRAL`, `SMS`, `GENERAL`
 - `description`
 - `invoice_date`
@@ -259,6 +260,7 @@ Required invoice form fields:
 - team or cost bucket
 - campaign optional
 - category
+- business line optional
 - invoice date
 - amount
 - payment stage
