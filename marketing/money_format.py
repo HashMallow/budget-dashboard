@@ -26,7 +26,29 @@ _display_ctx: ContextVar[dict[str, str] | None] = ContextVar(
     default=None,
 )
 
-_FA_COMPACT_SUFFIXES = ("تریلیون", "میلیارد", "میلیون", "هزار")
+_FA_COMPACT_SUFFIXES = ("تریلیون", "همت", "میلیارد", "میلیون", "هزار")
+
+
+def persian_compact_suffix(en_suffix: str, fa_suffix: str, unit: str) -> str:
+    """Persian scale word for compact amounts at the trillion tier.
+
+    ``همت`` is short for ``هزار میلیارد`` (1,000 × 1,000,000,000) — i.e. one trillion —
+    and is used only when amounts are shown in **Toman**. Rial compact display keeps
+    ``تریلیون`` for the same numeric tier.
+    """
+    if en_suffix == "T":
+        return "همت" if unit == TOMAN else "تریلیون"
+    return fa_suffix
+
+
+def money_display_title(value, *, unit: str, lang: str, compact_formatted: str = "") -> str:
+    """Hover text for compact amounts: full figure plus unit (and scale hint in Persian)."""
+    full = format_money_full(value, unit)
+    label = unit_label(unit, lang)
+    title = f"{full} {label}"
+    if lang == "fa" and unit == TOMAN and compact_formatted.endswith(" همت"):
+        return f"{title} — هزار میلیارد"
+    return title
 
 
 def split_fa_compact_amount(formatted: str) -> tuple[str, str] | None:
@@ -109,7 +131,7 @@ def format_money(value, mode: str = FULL, lang: str = "en", unit: str = RIAL) ->
                 Decimal("1").scaleb(-decimals),
                 rounding=ROUND_HALF_UP,
             )
-            suffix = fa_suffix if lang == "fa" else en_suffix
+            suffix = persian_compact_suffix(en_suffix, fa_suffix, unit) if lang == "fa" else en_suffix
             if decimals:
                 formatted = f"{scaled:,.{decimals}f}".rstrip("0").rstrip(".")
             else:

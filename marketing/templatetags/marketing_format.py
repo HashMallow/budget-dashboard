@@ -12,6 +12,7 @@ from marketing.money_format import (
     current_money_display,
     format_money,
     format_money_full,
+    money_display_title,
     split_fa_compact_amount,
 )
 from marketing.permissions import user_has_admin_access
@@ -72,8 +73,9 @@ def money(value, mode_override: str = "") -> str:
         full = format_money_full(value, unit)
         if full != formatted:
             display = _display_html(formatted)
+            title = money_display_title(value, unit=unit, lang=lang, compact_formatted=formatted)
             return mark_safe(
-                f'<span class="money-value" title="{conditional_escape(full)}">{display}</span>'
+                f'<span class="money-value" title="{conditional_escape(title)}">{display}</span>'
             )
     return _display_html(formatted)
 

@@ -2,12 +2,22 @@
 
 Use this guide for a fresh local setup on macOS or Linux.
 
+> Already set up before and just want the newest version? Jump to
+> [Get The Latest Changes (git pull)](#get-the-latest-changes-git-pull).
+
 ## 1. Open The Project
 
 Open a terminal and go to the project folder:
 
 ```bash
 cd /path/to/budget-dashboard-main
+```
+
+If you do not have the project yet, clone it first:
+
+```bash
+git clone <your-repo-url> budget-dashboard
+cd budget-dashboard
 ```
 
 ## 2. Install Prerequisites
@@ -57,7 +67,7 @@ marketing_spend_workbook.xlsx
 
 ## 4. Run The App
 
-Paste only these command lines into the terminal:
+Paste only these command lines into the terminal, in this order:
 
 ```bash
 make setup
@@ -65,6 +75,16 @@ make dev-admin
 make load-data-dry-run
 make load-data
 make dev
+```
+
+What each step does (run them in this exact order):
+
+```text
+make setup              Install dependencies, create the database, run migrations, seed roles.
+make dev-admin          Create the local admin login (admin / admin12345).
+make load-data-dry-run  Preview the Excel import. Nothing is written to the database yet.
+make load-data          Import the workbook into the database (invoices, budgets, lookups).
+make dev                Start the local server (with auto-reload).
 ```
 
 Then open:
@@ -79,6 +99,41 @@ Login:
 username: admin
 password: admin12345
 ```
+
+The order matters: `make setup` must create the database before `make dev-admin` can add
+the admin user, and the data must be imported with `make load-data` before it shows up in the
+dashboard. If you run `make dev` first, you will see an empty app or a login error because the
+database and admin user do not exist yet.
+
+## Get The Latest Changes (git pull)
+
+Use this when you already set the project up once and just want the newest code.
+
+Git only carries **code**, not your data. The Excel workbook, the database (`db.sqlite3`), uploads,
+and voice files are intentionally kept out of git, so a `git pull` never changes your local data.
+
+```bash
+git pull
+make setup
+make dev
+```
+
+What each step does after a pull:
+
+```text
+git pull     Download the latest code changes from GitHub.
+make setup   Install any new dependencies and apply any new database migrations.
+make dev     Start the server again.
+```
+
+Notes:
+
+- You do **not** need `make dev-admin` again — your admin user is already in the local database.
+- You only need `make load-data` again if you received a **new Excel workbook** or want to
+  re-import. Re-importing updates existing rows instead of duplicating them.
+- If `git pull` reports a conflict on a data file (for example the `.xlsx` or `db.sqlite3`), it
+  usually means that file was committed by mistake earlier. Those files are now ignored, so keep
+  your local copy and continue.
 
 ## If There Is More Than One Excel File
 

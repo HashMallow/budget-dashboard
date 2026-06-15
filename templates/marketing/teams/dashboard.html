@@ -82,9 +82,9 @@
             {% if budget_variance_rows %}
               <tr>
                 <th>{% t "Total" %}</th>
-                <th class="col-num money-cell">{{ budget_total|money }}</th>
-                <th class="col-num money-cell">{{ total_spend|money }}</th>
-                <th class="col-num money-cell {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</th>
+                <th class="col-num money-cell">{{ budget_variance_totals.planned|money }}</th>
+                <th class="col-num money-cell">{{ budget_variance_totals.actual|money }}</th>
+                <th class="col-num money-cell {{ budget_variance_totals.deviation|deviation_class }}">{{ budget_variance_totals.deviation|money }}</th>
               </tr>
             {% endif %}
           </tbody>

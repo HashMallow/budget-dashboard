@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from collections import defaultdict
 from datetime import timedelta
 from decimal import Decimal
@@ -25,6 +24,7 @@ from .analytics import (
     attention_invoices,
     budget_actual_variance_window_rows,
     budget_variance_chart_data,
+    budget_variance_row_totals,
     decimal_sum,
     monthly_chart_data,
     monthly_spend_window_rows,
@@ -86,37 +86,25 @@ from .translations import translate
 User = get_user_model()
 ZERO = Decimal("0")
 
-# Small set of gradient palettes + glyphs used to build a random tab logo (favicon).
-_FAVICON_PALETTES = [
-    ("#0f766e", "#14b8a6"),
-    ("#7c3aed", "#a855f7"),
-    ("#2563eb", "#06b6d4"),
-    ("#dc2626", "#f97316"),
-    ("#db2777", "#f43f5e"),
-    ("#ca8a04", "#facc15"),
-    ("#059669", "#34d399"),
-    ("#4f46e5", "#818cf8"),
-]
-_FAVICON_GLYPHS = ["📊", "📈", "💸", "📉", "🧾", "💹", "🎯", "📌", "🪙", "📣"]
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    '<stop offset="0" stop-color="#ca8a04"/><stop offset="1" stop-color="#facc15"/>'
+    "</linearGradient></defs>"
+    '<rect width="64" height="64" rx="14" fill="url(#g)"/>'
+    '<rect x="18" y="14" width="28" height="36" rx="3" fill="#fff"/>'
+    '<circle cx="24" cy="20" r="3" fill="#2563eb"/>'
+    '<line x1="22" y1="26" x2="42" y2="26" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>'
+    '<line x1="22" y1="32" x2="42" y2="32" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>'
+    '<line x1="22" y1="38" x2="38" y2="38" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>'
+    "</svg>"
+)
 
 
 def favicon_svg(request):
-    """Return a randomly themed SVG app icon so the browser tab shows a fun logo, not a blank box."""
-    color_start, color_end = random.choice(_FAVICON_PALETTES)
-    glyph = random.choice(_FAVICON_GLYPHS)
-    svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-        f'<stop offset="0" stop-color="{color_start}"/><stop offset="1" stop-color="{color_end}"/>'
-        "</linearGradient></defs>"
-        '<rect width="64" height="64" rx="14" fill="url(#g)"/>'
-        '<text x="32" y="33" font-size="36" text-anchor="middle" '
-        f'dominant-baseline="central">{glyph}</text>'
-        "</svg>"
-    )
-    response = HttpResponse(svg, content_type="image/svg+xml")
-    # Re-roll the logo on every visit instead of caching a single icon.
-    response["Cache-Control"] = "no-store, max-age=0"
+    """Return the fixed app tab icon (yellow invoice on gradient)."""
+    response = HttpResponse(_FAVICON_SVG, content_type="image/svg+xml")
+    response["Cache-Control"] = "public, max-age=86400"
     return response
 
 INVOICE_SORT_FIELDS = {
@@ -390,6 +378,7 @@ def dashboard(request):
         ui_lang=ui_lang,
     )
     budget_variance_chart = budget_variance_chart_data(budget_variance_rows)
+    budget_variance_totals = budget_variance_row_totals(budget_variance_rows)
     budget_total = decimal_sum(budget_lines, "planned_amount")
     budget_deviation = total_spend - budget_total
     scoped_teams = visible_team_queryset(request)
@@ -441,6 +430,7 @@ def dashboard(request):
         "contracts_expired": contracts_expired,
         "monthly_rows": monthly_rows,
         "budget_variance_rows": budget_variance_rows,
+        "budget_variance_totals": budget_variance_totals,
         "team_budget_rows": team_budget_rows,
         "team_total_rows": team_total_rows,
         "vendor_rows": vendor_rows,
@@ -815,6 +805,7 @@ def team_dashboard(request, pk: int):
         ui_lang=ui_lang,
     )
     budget_variance_chart = budget_variance_chart_data(budget_variance_rows)
+    budget_variance_totals = budget_variance_row_totals(budget_variance_rows)
     budget_total = decimal_sum(budget_lines, "planned_amount")
     budget_deviation = total_spend - budget_total
     monthly_rows = monthly_spend_window_rows(
@@ -848,6 +839,7 @@ def team_dashboard(request, pk: int):
         "invoice_count": invoice_count,
         "monthly_rows": monthly_rows,
         "budget_variance_rows": budget_variance_rows,
+        "budget_variance_totals": budget_variance_totals,
         "monthly_chart": monthly_chart,
         "monthly_chart_has_data": any(value for value in monthly_chart["values"]),
         "budget_variance_chart": budget_variance_chart,

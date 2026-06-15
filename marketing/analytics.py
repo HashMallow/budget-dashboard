@@ -135,6 +135,17 @@ def budget_variance_chart_data(variance_rows: list[dict]) -> dict[str, list]:
     }
 
 
+def budget_variance_row_totals(variance_rows: list[dict]) -> dict[str, Decimal]:
+    """Sum planned, actual, and deviation for the rows shown in the monthly table/chart."""
+    planned = sum((row["planned"] for row in variance_rows), ZERO)
+    actual = sum((row["actual"] for row in variance_rows), ZERO)
+    return {
+        "planned": planned,
+        "actual": actual,
+        "deviation": actual - planned,
+    }
+
+
 def team_budget_variance_rows(
     budget_lines: QuerySet,
     invoices: QuerySet[Invoice],

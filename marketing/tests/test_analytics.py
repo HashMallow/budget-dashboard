@@ -9,6 +9,7 @@ from django.utils import timezone
 from marketing.analytics import (
     attention_invoices,
     budget_actual_variance_window_rows,
+    budget_variance_row_totals,
     monthly_spend_rows,
     monthly_spend_window_rows,
     team_budget_variance_rows,
@@ -184,6 +185,17 @@ def test_budget_variance_window_matches_planned_actual_and_deviation():
     assert rows[1]["planned"] == Decimal("150")
     assert rows[1]["actual"] == Decimal("100")
     assert rows[1]["deviation"] == Decimal("-50")
+
+
+def test_budget_variance_row_totals_sum_visible_rows():
+    rows = [
+        {"planned": Decimal("100"), "actual": Decimal("120"), "deviation": Decimal("20")},
+        {"planned": Decimal("50"), "actual": Decimal("40"), "deviation": Decimal("-10")},
+    ]
+    totals = budget_variance_row_totals(rows)
+    assert totals["planned"] == Decimal("150")
+    assert totals["actual"] == Decimal("160")
+    assert totals["deviation"] == Decimal("10")
 
 
 def test_team_budget_variance_rows_include_rollup_bucket_spend():

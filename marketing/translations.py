@@ -30,7 +30,7 @@ FA: dict[str, str] = {
     "Full amounts": "مبالغ کامل",
     "Compact amounts": "مبالغ فشرده",
     "Show exact IRR amounts with commas": "نمایش مبلغ دقیق ریال با جداکننده هزارگان",
-    "Show shortened amounts (K/M/B/T)": "نمایش مبالغ کوتاه‌شده (هزار/میلیون/میلیارد/تریلیون)",
+    "Show shortened amounts (K/M/B/T)": "نمایش مبالغ کوتاه‌شده (هزار/میلیون/میلیارد/تریلیون؛ همت = هزار میلیارد تومان)",
     # --- Settings menu ---
     "Settings": "تنظیمات",
     "Language": "زبان",

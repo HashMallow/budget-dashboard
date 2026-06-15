@@ -44,11 +44,39 @@ def test_format_money_compact_persian_billions():
     assert format_money(Decimal("84276543010"), COMPACT, "fa") == "84.3 میلیارد"
 
 
+def test_format_money_compact_persian_trillions_use_hemmat_in_toman():
+    # 13 trillion Rial -> 1.3 trillion Toman at the trillion tier.
+    assert format_money(Decimal("13000000000000"), COMPACT, "fa", TOMAN) == "1.3 همت"
+
+
+def test_format_money_compact_persian_trillions_use_trillion_label_in_rial():
+    assert format_money(Decimal("2500000000000"), COMPACT, "fa", RIAL) == "2.5 تریلیون"
+
+
+def test_format_money_full_rial_unchanged_for_large_values():
+    assert format_money(Decimal("2500000000000"), FULL, "fa", RIAL) == "2,500,000,000,000"
+
+
+def test_money_display_title_explains_hemmat_as_hezar_milliard_toman():
+    from marketing.money_format import money_display_title
+
+    title = money_display_title(
+        Decimal("13000000000000"),
+        unit=TOMAN,
+        lang="fa",
+        compact_formatted="1.3 همت",
+    )
+    assert "تومان" in title
+    assert "هزار میلیارد" in title
+
+
 def test_split_fa_compact_amount():
     from marketing.money_format import split_fa_compact_amount
 
     assert split_fa_compact_amount("25 میلیون") == ("25", "میلیون")
     assert split_fa_compact_amount("84.3 میلیارد") == ("84.3", "میلیارد")
+    assert split_fa_compact_amount("2.5 همت") == ("2.5", "همت")
+    assert split_fa_compact_amount("2.5 تریلیون") == ("2.5", "تریلیون")
     assert split_fa_compact_amount("1,000,000") is None
 
 
