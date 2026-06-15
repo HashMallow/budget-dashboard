@@ -97,14 +97,89 @@ def discover_workbook(explicit_path: str | Path | None = None, base_dir: Path | 
     return candidates[0]
 
 
-def load_mapping(mapping_path: str | Path = "docs/discovery/column_mapping.yml") -> dict[str, Any]:
+DEFAULT_MAPPING_PATH = Path("docs/discovery/column_mapping.yml")
+LOCAL_MAPPING_PATH = Path("docs/discovery/column_mapping.local.yml")
+
+
+def _read_mapping_yaml(path: Path) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_mapping(mapping_path: str | Path = DEFAULT_MAPPING_PATH) -> dict[str, Any]:
     path = Path(mapping_path)
     if not path.exists():
         raise FileNotFoundError(
             f"Mapping file not found: {path}. Run discovery first or provide --mapping with a valid mapping YAML."
         )
-    with path.open(encoding="utf-8") as handle:
-        return yaml.safe_load(handle) or {}
+    mapping = _read_mapping_yaml(path)
+    if path.resolve() == DEFAULT_MAPPING_PATH.resolve() and LOCAL_MAPPING_PATH.exists():
+        mapping = _deep_merge(mapping, _read_mapping_yaml(LOCAL_MAPPING_PATH))
+    return mapping
+
+
+def _required_header_labels(sheet_mapping: dict[str, Any], *, invoice: bool) -> list[str]:
+    if invoice:
+        columns = sheet_mapping.get("columns", {})
+        labels = [columns.get("invoice_number"), columns.get("vendor_name"), columns.get("amount")]
+    else:
+        context = sheet_mapping.get("row_context_columns", {})
+        labels = [context.get("team"), context.get("category_or_title")]
+    return [label for label in labels if label]
+
+
+def _sheet_matches_headers(sheet, sheet_mapping: dict[str, Any], *, invoice: bool) -> bool:
+    header_row = int(sheet_mapping.get("header_row", 1))
+    required = _required_header_labels(sheet_mapping, invoice=invoice)
+    if not required:
+        return False
+    headers = set(header_map_for_sheet(sheet, header_row).keys())
+    return all(label in headers for label in required)
+
+
+def resolve_sheet_name(workbook, sheet_mapping: dict[str, Any], *, invoice: bool) -> str:
+    """Pick the workbook tab for a mapped sheet (name, alias, or header auto-detect)."""
+    candidates: list[str] = []
+    primary = sheet_mapping.get("actual_sheet_name")
+    if primary:
+        candidates.append(str(primary))
+    candidates.extend(str(name) for name in sheet_mapping.get("sheet_aliases", []) if name)
+
+    for name in candidates:
+        if name in workbook.sheetnames:
+            return name
+
+    matches = [
+        name
+        for name in workbook.sheetnames
+        if _sheet_matches_headers(workbook[name], sheet_mapping, invoice=invoice)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+
+    kind = "Invoice" if invoice else "Budget"
+    available = ", ".join(workbook.sheetnames) or "(none)"
+    tried = ", ".join(candidates) or "(none)"
+    hint = (
+        f" Copy docs/discovery/column_mapping.local.yml.example to column_mapping.local.yml "
+        f"and set sheets.{kind.lower()}.actual_sheet_name to your workbook tab name."
+    )
+    if len(matches) > 1:
+        raise ValueError(
+            f"{kind} sheet ambiguous: multiple tabs match required headers ({', '.join(matches)}). "
+            f"Set actual_sheet_name in column_mapping.local.yml."
+        )
+    raise ValueError(f"{kind} sheet not found: tried {tried}. Available sheets: {available}.{hint}")
 
 
 def cell_to_text(value: Any) -> str:
@@ -579,9 +654,7 @@ def update_or_create_invoice(
 
 def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry_run: bool) -> None:
     invoice_mapping = mapping["sheets"]["invoices"]
-    sheet_name = invoice_mapping["actual_sheet_name"]
-    if sheet_name not in workbook.sheetnames:
-        raise ValueError(f"Invoice sheet not found: {sheet_name}")
+    sheet_name = resolve_sheet_name(workbook, invoice_mapping, invoice=True)
 
     sheet = workbook[sheet_name]
     headers = header_map_for_sheet(sheet, invoice_mapping["header_row"])
@@ -743,9 +816,7 @@ def update_or_create_budget_line(
 
 def import_budget_lines(workbook, mapping: dict[str, Any], result: ImportResult, dry_run: bool) -> None:
     budget_mapping = mapping["sheets"]["budget"]
-    sheet_name = budget_mapping["actual_sheet_name"]
-    if sheet_name not in workbook.sheetnames:
-        raise ValueError(f"Budget sheet not found: {sheet_name}")
+    sheet_name = resolve_sheet_name(workbook, budget_mapping, invoice=False)
 
     sheet = workbook[sheet_name]
     header_row = budget_mapping["header_row"]

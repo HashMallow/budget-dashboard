@@ -38,6 +38,7 @@ docs/discovery/faster-whisper-models/
 docs/discovery/audio_*.md
 docs/discovery/workbook_*.md
 docs/discovery/import_risks.md
+docs/discovery/column_mapping.local.yml
 marketing_dashboard_codex_instructions_updated.zip
 
 # Accidental local DB copies / verification DBs

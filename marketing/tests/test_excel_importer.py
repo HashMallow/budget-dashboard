@@ -6,10 +6,44 @@ import pytest
 import yaml
 from openpyxl import Workbook
 
-from marketing.importers.excel import import_marketing_workbook, parse_excel_date
+from marketing.importers.excel import import_marketing_workbook, parse_excel_date, resolve_sheet_name
 from marketing.models import BudgetLine, Campaign, CostBucket, Invoice, PaymentStage, Team, TeamAlias, Vendor
 
 pytestmark = pytest.mark.django_db
+
+
+def test_resolve_sheet_name_auto_detects_by_headers_when_tab_name_differs():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Real Customer Tab Name"
+    sheet.append(
+        [
+            "Year",
+            "MKT Team",
+            "Budget Line",
+            "Campaign Name",
+            "Vendor Name",
+            "Description",
+            "invoice date in gregorian",
+            "invoice date in Jalali",
+            "Invoice Number",
+            "Invoice Amount (IRR)",
+            "payment state",
+            "MKT to Finance sent date in gregorian",
+            "MKT to Finance sent date",
+            "blank_AC",
+        ]
+    )
+    invoice_mapping = {
+        "actual_sheet_name": "Marketing Spend Input",
+        "header_row": 1,
+        "columns": {
+            "invoice_number": "Invoice Number",
+            "vendor_name": "Vendor Name",
+            "amount": "Invoice Amount (IRR)",
+        },
+    }
+    assert resolve_sheet_name(workbook, invoice_mapping, invoice=True) == "Real Customer Tab Name"
 
 
 def test_jalali_text_dates_are_parsed_as_shamsi_before_gregorian():

@@ -1,0 +1,13 @@
+# Local overrides for your real workbook (copy to column_mapping.local.yml).
+# This file is gitignored — safe to put customer-specific sheet names here.
+
+workbook: "marketing_spend_workbook.xlsx"
+
+sheets:
+  invoices:
+    # Canonical name in the public template is "Marketing Spend Input".
+    # Your workbook may still use the original tab name:
+    actual_sheet_name: "Marketing Spend Input"
+    # Optional extra names to try before header auto-detection:
+    # sheet_aliases:
+    #   - "Marketing Spend Input"
