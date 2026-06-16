@@ -17,14 +17,19 @@ from ..analytics import (
     monthly_chart_data,
     monthly_spend_window_rows,
     overall_spend_pie,
+    queue_invoices,
+    recently_paid_invoices,
     team_budget_variance_rows,
     team_chart_data,
     team_spend_rows,
     vendor_grouped_rows,
 )
 from .core import (
+    distinct_business_sections,
     distinct_jalali_years,
+    filter_by_jalali_month,
     filter_by_jalali_year,
+    get_months,
     get_ui_lang,
     monthly_trend_window,
     visible_invoice_queryset,
@@ -153,13 +158,20 @@ def dashboard(request):
     base_queryset = visible_invoice_queryset(request)
     years = distinct_jalali_years(base_queryset)
     selected_year = request.GET.get("year", "").strip()
+    selected_month = request.GET.get("month", "").strip()
     selected_team = request.GET.get("team", "").strip()
+    selected_business_section = request.GET.get("business_section", "").strip()
 
     invoices = base_queryset
     if selected_year.isdigit():
-        invoices = filter_by_jalali_year(invoices, selected_year)
+        if selected_month.isdigit():
+            invoices = filter_by_jalali_month(invoices, selected_year, selected_month)
+        else:
+            invoices = filter_by_jalali_year(invoices, selected_year)
     if selected_team.isdigit():
         invoices = invoices.filter(team_id=int(selected_team))
+    if selected_business_section:
+        invoices = invoices.filter(business_section=selected_business_section)
 
     total_spend = decimal_sum(invoices)
     paid_spend = decimal_sum(invoices.filter(payment_stage=PaymentStage.PAID))
@@ -234,6 +246,9 @@ def dashboard(request):
     )
 
     attention = attention_invoices(invoices)
+    marketing_queue = queue_invoices(invoices, PaymentStage.SUBMITTED)
+    finance_queue = queue_invoices(invoices, PaymentStage.FINANCE_REVIEW)
+    recently_paid = recently_paid_invoices(invoices)
 
     spend_pie = overall_spend_pie(team_total_rows, referral_total, sms_total, ui_lang)
     # Hide multi-team breakdown charts when the dashboard is filtered to one team.
@@ -246,8 +261,12 @@ def dashboard(request):
     context = {
         "scope": get_user_scope(request.user),
         "years": years,
+        "months": get_months(request),
         "selected_year": selected_year,
+        "selected_month": selected_month,
         "selected_team": selected_team,
+        "selected_business_section": selected_business_section,
+        "business_sections": distinct_business_sections(base_queryset),
         "is_team_filtered": is_team_filtered,
         "filtered_team": filtered_team,
         "show_team_budget_table": len(team_budget_rows) > 1,
@@ -270,6 +289,9 @@ def dashboard(request):
         "campaign_rows": campaign_rows,
         "stage_rows": stage_rows,
         "attention_invoices": attention,
+        "marketing_queue": marketing_queue,
+        "finance_queue": finance_queue,
+        "recently_paid_invoices": recently_paid,
         "spend_pie": spend_pie,
         "show_spend_pie": show_spend_pie,
         "spend_pie_has_data": show_spend_pie and bool(spend_pie["values"]),
@@ -283,6 +305,7 @@ def dashboard(request):
         "team_chart_has_data": show_spend_pie and bool(team_chart["values"]),
         "can_create_invoice": user_can_create_invoice(request.user),
         "can_export_data": can_export(request.user),
+        "payment_stages": PaymentStage.choices,
     }
     return render(request, "marketing/dashboard.html", context)
 

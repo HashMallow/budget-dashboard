@@ -62,6 +62,11 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 
 | Doc | Purpose | Status |
 |---|---|---|
+| [`voice-feedback/PROCESSING_LOG.en.md`](voice-feedback/PROCESSING_LOG.en.md) | Voice batch verification, requests, fixes, backlog | 🟢 Living |
+| [`voice-feedback/USER_REQUESTS.en.md`](voice-feedback/USER_REQUESTS.en.md) | Main topics from product-owner audio | 🟢 Living |
+| [`voice-feedback/README.md`](voice-feedback/README.md) | Voice-feedback doc index | 🟢 Living |
+| [`requirements_audit.md`](requirements_audit.md) | Full gap analysis: transcripts vs codebase | 🟢 Living |
+| [`cursor_prompts.md`](cursor_prompts.md) | 9 copy-paste prompts for backlog features | 🟢 Living |
 | [`discovery/column_mapping.yml`](discovery/column_mapping.yml) | Anonymized import template (columns/rows/rules); merged with optional gitignored `column_mapping.local.yml` | 🗂️ Reference |
 | [`discovery/column_mapping.local.yml.example`](discovery/column_mapping.local.yml.example) | Example local override (copy → `column_mapping.local.yml`) | 🗂️ Reference |
 | [`discovery/README.md`](discovery/README.md) | How mapping, auto-detect, and local overrides work | 🟢 Living |
@@ -92,6 +97,9 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 - **Understand roles/permissions** → [`operations/ACCESS_BY_ROLE.md`](operations/ACCESS_BY_ROLE.md) + [`operations/PERMISSIONS_MATRIX.md`](operations/PERMISSIONS_MATRIX.md)
 - **Change admin password / onboard users** → [`operations/PASSWORDS_AND_USERS.md`](operations/PASSWORDS_AND_USERS.md)
 - **Explain the panel to a colleague** → [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) or in-app **Help** (`/help/`)
+- **Voice feedback / what was fixed from audio** → [`voice-feedback/PROCESSING_LOG.en.md`](voice-feedback/PROCESSING_LOG.en.md)
+- **Gap analysis (transcripts vs code)** → [`requirements_audit.md`](requirements_audit.md)
+- **Copy-paste fixes for backlog** → [`cursor_prompts.md`](cursor_prompts.md)
 - **Change the import / column mapping** → [`specs/EXCEL_IMPORT_SPEC.md`](specs/EXCEL_IMPORT_SPEC.md) + [`discovery/README.md`](discovery/README.md) + [`discovery/column_mapping.yml`](discovery/column_mapping.yml)
 - **Add a model field** → [`architecture/DATA_MODEL.md`](architecture/DATA_MODEL.md) + [`architecture/PROJECT_FILE_REFERENCE.md`](architecture/PROJECT_FILE_REFERENCE.md)
 - **See what's next** → [`project/PHASE_2.md`](project/PHASE_2.md)

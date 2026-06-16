@@ -9,18 +9,21 @@ Use this skill before implementing database models, Excel importers, dashboards,
 
 ## Required Steps
 
-1. Search for audio files: `*.ogg`, `*.oga`, `*.mp3`, `*.m4a`, `*.wav` in the repository root, `data/`, and `imports/`.
+1. Search for audio: `.artifacts/audio/`, `.artifacts/voice-feedback/audio/`, then repo root, `data/`, `imports/`.
 2. Search for Excel files: `*.xlsx` in the repository root, `data/`, and `imports/`.
-3. Create `docs/discovery/` if it does not exist.
-4. Transcribe the audio:
-   - Prefer OpenAI speech-to-text if `OPENAI_API_KEY` exists.
+3. Create `docs/discovery/` if it does not exist; create `.artifacts/voice-feedback/transcripts/` if needed.
+4. Transcribe the audio (see `.agents/skills/audio-transcription/SKILL.md` backend priority):
+   - **1.** OpenAI `whisper-1` if `OPENAI_API_KEY` exists.
+   - **2.** mlx-whisper `large-v3` on macOS.
+   - **3.** faster-whisper `large-v3` on CUDA (this project: conda **`ml-env`**).
+   - **4.** faster-whisper on CPU (`small`) only if nothing else works.
    - Convert `.ogg` to `.wav` with `ffmpeg` first when needed.
-   - Fallback to local Whisper if installed.
    - Mark unclear sections as `[unclear]`.
-5. Save:
-   - `docs/discovery/audio_transcript.fa.md`
-   - `docs/discovery/audio_summary.en.md`
-   - `docs/discovery/audio_requirements.en.md`
+   - Batch: `python tools/batch_transcribe_artifacts.py`
+5. Save **English product-owner topics** (git-tracked under `docs/voice-feedback/`):
+   - `docs/voice-feedback/USER_REQUESTS.en.md` — **main topics** for agents
+   - `docs/voice-feedback/PROCESSING_LOG.en.md` — verification, fixes, backlog (**update each batch**)
+   - Per-file Persian (local): `.artifacts/voice-feedback/transcripts/{stem}_transcript.fa.md`
 6. Inspect the workbook without modifying it:
    - sheet names
    - dimensions
@@ -43,7 +46,9 @@ Use this skill before implementing database models, Excel importers, dashboards,
 - Do not guess exact Excel columns before inspecting the workbook.
 - Do not silently drop rows.
 - Do not commit API keys.
-- Preserve the original Persian transcript; provide English summary and requirements separately.
+- Preserve the original Persian transcript in `.artifacts/`; English summary in **`docs/voice-feedback/`** (git-tracked).
+- Read **`docs/voice-feedback/USER_REQUESTS.en.md`** before implementing invoice, dashboard, or reference-data changes.
+- Append **`docs/voice-feedback/PROCESSING_LOG.en.md`** after each transcription batch or fix pass.
 - Treat Excel as initial import/export format, not the runtime database.
 - The database becomes the source of truth after import.
 - If transcription is unavailable, document the limitation and proceed using written requirements.

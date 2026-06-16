@@ -5,23 +5,28 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
 from ..analytics import (
+    decimal_sum,
     percent,
     vendor_grouped_rows,
 )
 from .core import (
     distinct_jalali_years,
     filter_invoice_queryset,
+    forbidden,
     get_months,
+    visible_contract_queryset,
     visible_invoice_queryset,
     visible_team_queryset,
 )
 from ..jalali import gregorian_to_jalali
 from ..models import (
+    Contract,
     CostBucket,
     PaymentStage,
+    Vendor,
 )
 from ..permissions import (
     can_export,
@@ -155,6 +160,31 @@ def vendor_report(request):
         "table_sort_defaults": VENDOR_SORT_DEFAULTS,
     }
     return render(request, "marketing/vendors/report.html", context)
+
+
+def vendor_detail(request, pk: int):
+    vendor = get_object_or_404(Vendor, pk=pk)
+    invoices = visible_invoice_queryset(request).filter(vendor=vendor).order_by("-created_at")
+    if not invoices.exists():
+        return forbidden("You are not allowed to view this vendor.")
+
+    contracts = visible_contract_queryset(request).filter(vendor=vendor).order_by("-end_date")
+    total_spend = decimal_sum(invoices)
+    total_action = decimal_sum(invoices, "action_cost_amount")
+    total_tax = decimal_sum(invoices, "tax_amount")
+    total_paid = decimal_sum(invoices, "paid_amount")
+
+    context = {
+        "vendor": vendor,
+        "invoices": invoices[:50],
+        "invoice_count": invoices.count(),
+        "contracts": contracts,
+        "total_spend": total_spend,
+        "total_action": total_action,
+        "total_tax": total_tax,
+        "total_paid": total_paid,
+    }
+    return render(request, "marketing/vendors/detail.html", context)
 
 
 def campaign_report(request):

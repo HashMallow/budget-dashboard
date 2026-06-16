@@ -4,7 +4,7 @@
 
 ## Source Material and Discovery
 
-The original request came from Persian text plus an `.ogg` audio note. Before implementation, Codex must transcribe the audio and compare it with these written requirements. Any additional requirements found in audio must be added to `docs/discovery/audio_requirements.en.md` and reflected in implementation tasks.
+The original request came from Persian text plus an `.ogg` audio note. Before implementation, Codex must transcribe the audio and compare it with these written requirements. Any additional requirements found in audio must be added to **`docs/voice-feedback/USER_REQUESTS.en.md`** and **`docs/voice-feedback/PROCESSING_LOG.en.md`**, then reflected in implementation tasks.
 
 The `.xlsx` workbook structure must also be inspected before finalizing imports or database mappings. The actual workbook mapping belongs in `docs/discovery/column_mapping.yml`.
 

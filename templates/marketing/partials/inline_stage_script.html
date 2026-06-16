@@ -1,0 +1,45 @@
+<script>
+  (function () {
+    function csrfToken() {
+      var match = document.cookie.match(/csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    }
+    document.querySelectorAll(".inline-stage-select").forEach(function (select) {
+      select.addEventListener("change", function () {
+        var url = select.getAttribute("data-url");
+        if (!url) { return; }
+        var body = new URLSearchParams();
+        body.set("payment_stage", select.value);
+        body.set("csrfmiddlewaretoken", csrfToken());
+        select.disabled = true;
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken()
+          },
+          body: body.toString()
+        }).then(function (response) {
+          return response.json().then(function (data) {
+            if (!response.ok || !data.ok) { throw new Error("stage update failed"); }
+            var row = select.closest("tr");
+            if (row) {
+              if (data.new_stage === "PAID") {
+                row.classList.remove("invoice-row--pending");
+                row.classList.add("invoice-row--paid");
+              } else {
+                row.classList.remove("invoice-row--paid");
+                row.classList.add("invoice-row--pending");
+              }
+            }
+          });
+        }).catch(function () {
+          window.location.href = url.replace("/stage/", "/");
+        }).finally(function () {
+          select.disabled = false;
+        });
+      });
+    });
+  })();
+</script>

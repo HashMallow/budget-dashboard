@@ -58,6 +58,7 @@
             <div class="actions">
               <label class="badge">{{ form.can_view_referral_sms }} {% t "Referral & SMS" %}</label>
               <label class="badge">{{ form.can_export }} {% t "Export" %}</label>
+              <label class="badge">{{ form.can_import_excel }} {% t "Import Excel" %}</label>
               <label class="badge">{{ form.can_upload_invoice_files }} {% t "Upload invoice" %}</label>
               <label class="badge">{{ form.can_upload_payment_proofs }} {% t "Upload receipt" %}</label>
             </div>
@@ -126,6 +127,7 @@
           <div class="actions">
             <label class="badge">{{ access_form.can_view_referral_sms }} {% t "Referral & SMS" %}</label>
             <label class="badge">{{ access_form.can_export }} {% t "Export" %}</label>
+            <label class="badge">{{ access_form.can_import_excel }} {% t "Import Excel" %}</label>
             <label class="badge">{{ access_form.can_upload_invoice_files }} {% t "Upload invoice" %}</label>
             <label class="badge">{{ access_form.can_upload_payment_proofs }} {% t "Upload receipt" %}</label>
           </div>
@@ -178,6 +180,7 @@
                         {% t access.get_role_display %} /
                         {% if access.is_global %}{% t "All teams" %}{% else %}{{ access.team.name }}{% endif %}
                         {% if access.can_export %} · {% t "Export" %}{% endif %}
+                        {% if access.can_import_excel %} · {% t "Import Excel" %}{% endif %}
                         {% if access.can_view_referral_sms %} · {% t "Referral & SMS" %}{% endif %}
                         {% if access.can_upload_invoice_files %} · {% t "Upload invoice" %}{% endif %}
                         {% if access.can_upload_payment_proofs %} · {% t "Upload receipt" %}{% endif %}

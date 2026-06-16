@@ -19,7 +19,7 @@ from ..forms import (
 )
 from ..permissions import (
     can_export,
-    user_has_admin_access,
+    can_import,
 )
 from ..reference_data import load_workbook_data, workbook_load_summary
 
@@ -124,7 +124,7 @@ CONTRACT_SORT_DEFAULTS = {
 
 
 def import_workbook(request):
-    if not user_has_admin_access(request.user):
+    if not can_import(request.user):
         return forbidden()
 
     form = ExcelImportUploadForm(ui_lang=get_ui_lang(request))

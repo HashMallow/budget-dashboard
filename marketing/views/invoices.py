@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..business_section import distinct_business_sections
@@ -53,6 +54,7 @@ INVOICE_SORT_FIELDS = {
     "team": "team__name",
     "category": "category",
     "date": "invoice_date",
+    "entered": "created_at",
     "amount": "amount",
     "stage": "payment_stage",
     "days": "stage_changed_at",
@@ -63,6 +65,7 @@ INVOICE_SORT_DEFAULTS = {
     "team": "asc",
     "category": "asc",
     "date": "desc",
+    "entered": "desc",
     "amount": "desc",
     "stage": "asc",
     "days": "desc",
@@ -137,7 +140,7 @@ def invoice_list(request):
     sort = parse_sort(
         request,
         allowed=INVOICE_SORT_FIELDS,
-        default_field="date",
+        default_field="entered",
         default_dir="desc",
         default_dirs=INVOICE_SORT_DEFAULTS,
     )
@@ -145,7 +148,7 @@ def invoice_list(request):
         queryset,
         sort,
         fields=INVOICE_SORT_FIELDS,
-        default_field="date",
+        default_field="entered",
         inverted={"days"},
         tiebreaker="-id",
     )
@@ -215,6 +218,9 @@ def invoice_stage_update(request, pk: int):
     invoice = get_object_or_404(visible_invoice_queryset(request), pk=pk)
     if not can_edit_invoice(request.user, invoice):
         return forbidden()
+    wants_json = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get(
+        "Accept", ""
+    ).startswith("application/json")
     form = InvoiceStatusForm(request.POST, invoice=invoice, ui_lang=get_ui_lang(request))
     if form.is_valid():
         invoice.set_payment_stage(
@@ -222,8 +228,12 @@ def invoice_stage_update(request, pk: int):
             changed_by=request.user,
             note=form.cleaned_data.get("note", ""),
         )
+        if wants_json:
+            return JsonResponse({"ok": True, "new_stage": invoice.payment_stage})
         messages.success(request, "Payment stage updated.")
     else:
+        if wants_json:
+            return JsonResponse({"ok": False, "errors": form.errors}, status=400)
         messages.error(request, "Invalid payment stage.")
     return redirect("marketing:invoice_detail", pk=invoice.pk)
 

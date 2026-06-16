@@ -3,21 +3,26 @@ from __future__ import annotations
 from collections import defaultdict
 from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from .core import (
+    forbidden,
     get_months,
     get_ui_lang,
     visible_team_queryset,
 )
+from ..forms import BudgetLineForm
 from ..models import (
     BudgetLine,
 )
 from ..permissions import (
     filter_budget_lines_for_user,
+    user_has_admin_access,
 )
 from ..table_sort import SortState, apply_ordering, parse_sort, sort_rows
 from ..translations import translate
@@ -218,5 +223,49 @@ def budget_list(request):
         "budget_team_chart": budget_team_chart,
         "show_budget_team_chart": show_budget_team_chart,
         "budget_team_chart_has_data": show_budget_team_chart and bool(budget_team_chart["values"]),
+        "is_budget_admin": user_has_admin_access(request.user),
     }
     return render(request, "marketing/budgets/list.html", context)
+
+
+def budget_create(request):
+    if not user_has_admin_access(request.user):
+        return forbidden()
+    if request.method == "POST":
+        form = BudgetLineForm(request.POST, ui_lang=get_ui_lang(request))
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Budget line saved.")
+            return redirect("marketing:budget_list")
+    else:
+        form = BudgetLineForm(ui_lang=get_ui_lang(request))
+    return render(request, "marketing/budgets/form.html", {"form": form, "mode": "create"})
+
+
+def budget_edit(request, pk: int):
+    if not user_has_admin_access(request.user):
+        return forbidden()
+    budget_line = get_object_or_404(BudgetLine, pk=pk)
+    if request.method == "POST":
+        form = BudgetLineForm(request.POST, instance=budget_line, ui_lang=get_ui_lang(request))
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Budget line updated.")
+            return redirect("marketing:budget_list")
+    else:
+        form = BudgetLineForm(instance=budget_line, ui_lang=get_ui_lang(request))
+    return render(
+        request,
+        "marketing/budgets/form.html",
+        {"form": form, "mode": "edit", "budget_line": budget_line},
+    )
+
+
+@require_POST
+def budget_delete(request, pk: int):
+    if not user_has_admin_access(request.user):
+        return forbidden()
+    budget_line = get_object_or_404(BudgetLine, pk=pk)
+    budget_line.delete()
+    messages.success(request, "Budget line deleted.")
+    return redirect("marketing:budget_list")

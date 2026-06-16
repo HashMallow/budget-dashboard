@@ -48,19 +48,36 @@
           {% form_errors form.invoice_number.errors %}
         </div>
         <div class="field wide amount-entry-field">
+          <label for="{{ form.action_cost_amount.id_for_label }}">{% t form.action_cost_amount.label %}</label>
+          {{ form.action_cost_amount }}
+          {% form_errors form.action_cost_amount.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.tax_amount.id_for_label }}">{% t form.tax_amount.label %}</label>
+          {{ form.tax_amount }}
+          <p class="field-hint">{% t "Leave blank for automatic 10% VAT on action cost." %}</p>
+          {% form_errors form.tax_amount.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.insurance_rate_percent.id_for_label }}">{% t form.insurance_rate_percent.label %}</label>
+          {{ form.insurance_rate_percent }}
+          {% form_errors form.insurance_rate_percent.errors %}
+        </div>
+        <div class="field wide amount-entry-field">
           <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
           <div class="amount-entry-row">
             {{ form.amount }}
             {{ form.currency }}
           </div>
-          {% if currency_unit == "toman" %}
-            <p class="field-hint">{% t "Enter the invoice total in Iranian Rial (IRR). Amounts are always stored in Rial. Example: 10,000,000 Toman = 100,000,000 Rial." %}</p>
-          {% else %}
-            <p class="field-hint">{% t "Enter the full invoice total in Iranian Rial (IRR). This is the number stored in the database and used in reports." %}</p>
-          {% endif %}
-          <div id="amount-preview" class="amount-preview" aria-live="polite"></div>
+          <p class="field-hint">{% t "Calculated from action cost + tax." %}</p>
           {% form_errors form.amount.errors %}
           {% form_errors form.currency.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.paid_amount.id_for_label }}">{% t form.paid_amount.label %}</label>
+          {{ form.paid_amount }}
+          <p class="field-hint">{% t "Amount finance pays after insurance withholding." %}</p>
+          {% form_errors form.paid_amount.errors %}
         </div>
         <div class="field">
           <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
@@ -92,6 +109,16 @@
           <label for="{{ form.category.id_for_label }}">{% t form.category.label %}</label>
           {{ form.category }}
           {% form_errors form.category.errors %}
+        </div>
+        <div class="field wide" id="budget-variance-panel-wrap" style="display:none;">
+          <label>{% t "Budget variance" %}</label>
+          <div id="budget-variance-panel" class="budget-variance-panel">
+            <div><div class="metric-label">{% t "Planned" %}</div><div class="metric-value" id="bv-planned">—</div></div>
+            <div><div class="metric-label">{% t "Actual" %}</div><div class="metric-value" id="bv-actual">—</div></div>
+            <div><div class="metric-label">{% t "Remaining" %}</div><div class="metric-value" id="bv-remaining">—</div></div>
+            <div><div class="metric-label">{% t "% Consumed" %}</div><div class="metric-value" id="bv-consumed">—</div></div>
+          </div>
+          <p class="field-hint" id="bv-empty" style="display:none;">{% t "No budget data for this combination." %}</p>
         </div>
         <div class="field">
           <label for="{{ form.cost_bucket.id_for_label }}">{% t form.cost_bucket.label %}</label>
@@ -130,42 +157,156 @@
 {% block extra_scripts %}
   <script>
     (function () {
-      var amountInput = document.getElementById("{{ form.amount.id_for_label }}");
-      var preview = document.getElementById("amount-preview");
-      if (!amountInput || !preview) { return; }
-
-      var cfg = window.MARKETING_MONEY || { lang: "en", unit: "rial" };
-      var rialLabel = cfg.lang === "fa" ? "ریال" : "Rial";
-      var tomanLabel = cfg.lang === "fa" ? "تومان" : "Toman";
+      var actionInput = document.getElementById("{{ form.action_cost_amount.id_for_label }}");
+      var taxInput = document.getElementById("{{ form.tax_amount.id_for_label }}");
+      var rateInput = document.getElementById("{{ form.insurance_rate_percent.id_for_label }}");
+      var totalInput = document.getElementById("{{ form.amount.id_for_label }}");
+      var paidInput = document.getElementById("{{ form.paid_amount.id_for_label }}");
+      if (!actionInput || !totalInput || !paidInput) { return; }
 
       function parseAmount(text) {
-        if (!text) { return NaN; }
-        var normalized = text.replace(/[,\u066C\u060C\s]/g, "").replace(/[۰-۹]/g, function (d) {
+        if (!text) { return 0; }
+        var normalized = String(text).replace(/[,\u066C\u060C\s]/g, "").replace(/[۰-۹]/g, function (d) {
           return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d));
         });
-        return Number(normalized);
+        var value = Number(normalized);
+        return isFinite(value) ? value : 0;
       }
 
-      function formatNumber(value) {
-        try {
-          return Math.round(value).toLocaleString(cfg.lang === "fa" ? "fa-IR" : "en-US");
-        } catch (e) {
-          return String(Math.round(value));
-        }
+      function roundMoney(value) {
+        return Math.round(value);
       }
 
-      function updatePreview() {
-        var rial = parseAmount(amountInput.value);
-        if (!isFinite(rial) || rial <= 0) {
-          preview.textContent = "";
+      function recalc() {
+        var action = parseAmount(actionInput.value);
+        if (action <= 0) {
+          totalInput.value = "";
+          paidInput.value = "";
           return;
         }
-        preview.textContent = "≈ " + formatNumber(rial) + " " + rialLabel + "  ·  " + formatNumber(rial / 10) + " " + tomanLabel;
+        var tax = parseAmount(taxInput && taxInput.value);
+        if (!taxInput || !taxInput.value.trim()) {
+          tax = roundMoney(action * 0.1);
+          if (taxInput) { taxInput.placeholder = tax; }
+        }
+        var total = roundMoney(action + tax);
+        var rate = rateInput ? parseAmount(rateInput.value) : 0;
+        var insurance = rate > 0 ? roundMoney(action * rate / 100) : 0;
+        var paid = roundMoney(action - insurance + tax);
+        totalInput.value = total;
+        paidInput.value = paid;
       }
 
-      amountInput.addEventListener("input", updatePreview);
-      amountInput.addEventListener("change", updatePreview);
-      updatePreview();
+      [actionInput, taxInput, rateInput].forEach(function (el) {
+        if (!el) { return; }
+        el.addEventListener("input", recalc);
+        el.addEventListener("change", recalc);
+      });
+      recalc();
+    })();
+
+    (function () {
+      var teamSelect = document.getElementById("{{ form.team.id_for_label }}");
+      var categorySelect = document.getElementById("{{ form.category.id_for_label }}");
+      var campaignSelect = document.getElementById("{{ form.campaign.id_for_label }}");
+      var dateInput = document.getElementById("{{ form.invoice_date.id_for_label }}");
+      var panelWrap = document.getElementById("budget-variance-panel-wrap");
+      var emptyHint = document.getElementById("bv-empty");
+      if (!teamSelect || !categorySelect || !dateInput || !panelWrap) { return; }
+
+      var allCategoryOptions = Array.from(categorySelect.options).map(function (opt) {
+        return { value: opt.value, text: opt.text, selected: opt.selected };
+      });
+      var allCampaignOptions = campaignSelect ? Array.from(campaignSelect.options).map(function (opt) {
+        return { value: opt.value, text: opt.text, selected: opt.selected };
+      }) : [];
+
+      function setConsumedClass(el, pct) {
+        el.classList.remove("consumed-under", "consumed-warn", "consumed-over");
+        if (pct == null) { return; }
+        if (pct < 80) { el.classList.add("consumed-under"); }
+        else if (pct <= 100) { el.classList.add("consumed-warn"); }
+        else { el.classList.add("consumed-over"); }
+      }
+
+      function refreshCategories() {
+        var teamId = teamSelect.value;
+        if (!teamId) {
+          categorySelect.innerHTML = "";
+          allCategoryOptions.forEach(function (opt) {
+            categorySelect.add(new Option(opt.text, opt.value, false, opt.selected));
+          });
+          if (campaignSelect) {
+            campaignSelect.innerHTML = "";
+            allCampaignOptions.forEach(function (opt) {
+              campaignSelect.add(new Option(opt.text, opt.value, false, opt.selected));
+            });
+          }
+          return;
+        }
+        fetch("{% url 'marketing:categories_for_team_api' %}?team_id=" + encodeURIComponent(teamId))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var allowed = new Set(data.categories || []);
+            var current = categorySelect.value;
+            categorySelect.innerHTML = "";
+            allCategoryOptions.forEach(function (opt) {
+              if (!opt.value || allowed.has(opt.value)) {
+                categorySelect.add(new Option(opt.text, opt.value, false, opt.value === current));
+              }
+            });
+            if (campaignSelect && data.campaigns) {
+              var campaignCurrent = campaignSelect.value;
+              campaignSelect.innerHTML = "";
+              campaignSelect.add(new Option("---------", "", false, !campaignCurrent));
+              data.campaigns.forEach(function (item) {
+                var label = item.name + " (" + item.year + ")";
+                campaignSelect.add(new Option(label, String(item.id), false, String(item.id) === campaignCurrent));
+              });
+            }
+          });
+      }
+
+      function refreshVariance() {
+        var teamId = teamSelect.value;
+        var category = categorySelect.value;
+        var dateValue = dateInput.value;
+        if (!teamId || !category || !dateValue) {
+          panelWrap.style.display = "none";
+          return;
+        }
+        var url = "{% url 'marketing:budget_variance_api' %}?team_id=" + encodeURIComponent(teamId)
+          + "&category=" + encodeURIComponent(category)
+          + "&invoice_date=" + encodeURIComponent(dateValue);
+        fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+          panelWrap.style.display = "block";
+          if (!data.has_budget && Number(data.actual) === 0) {
+            document.getElementById("budget-variance-panel").style.display = "none";
+            emptyHint.style.display = "block";
+            return;
+          }
+          document.getElementById("budget-variance-panel").style.display = "grid";
+          emptyHint.style.display = "none";
+          document.getElementById("bv-planned").textContent = data.planned;
+          document.getElementById("bv-actual").textContent = data.actual;
+          document.getElementById("bv-remaining").textContent = data.remaining;
+          var consumedEl = document.getElementById("bv-consumed");
+          consumedEl.textContent = data.percent_consumed == null ? "—" : (data.percent_consumed + "%");
+          setConsumedClass(consumedEl, data.percent_consumed);
+        }).catch(function () {
+          panelWrap.style.display = "none";
+        });
+      }
+
+      teamSelect.addEventListener("change", function () {
+        refreshCategories();
+        refreshVariance();
+      });
+      categorySelect.addEventListener("change", refreshVariance);
+      dateInput.addEventListener("change", refreshVariance);
+      dateInput.addEventListener("input", refreshVariance);
+      refreshCategories();
+      refreshVariance();
     })();
   </script>
 {% endblock %}

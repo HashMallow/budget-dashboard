@@ -4,10 +4,12 @@ from django.contrib import admin
 
 from .models import (
     BudgetLine,
+    BusinessLine,
     Campaign,
     Contract,
     ContractAttachment,
     ContractStatusHistory,
+    InsuranceRateOption,
     Invoice,
     InvoiceAttachment,
     InvoiceStatusHistory,
@@ -51,6 +53,21 @@ class SpendCategoryAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "normalized_name")
     readonly_fields = ("normalized_name",)
+
+
+@admin.register(BusinessLine)
+class BusinessLineAdmin(admin.ModelAdmin):
+    list_display = ("name", "normalized_name", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "normalized_name")
+    readonly_fields = ("normalized_name",)
+
+
+@admin.register(InsuranceRateOption)
+class InsuranceRateOptionAdmin(admin.ModelAdmin):
+    list_display = ("label", "percent", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("label",)
 
 
 @admin.register(SubTeam)

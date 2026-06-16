@@ -1,4 +1,0 @@
-interface:
-  display_name: "Audio Transcription"
-  short_description: "Transcribe audio notes and extract summary/requirements."
-  default_prompt: "Transcribe the provided audio file, save the transcript, and summarize requirements."

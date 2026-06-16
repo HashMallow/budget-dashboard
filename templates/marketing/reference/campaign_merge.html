@@ -1,0 +1,73 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Merge campaigns" %}{% endblock %}
+{% block page_title %}{% t "Merge campaigns" %}{% endblock %}
+{% block page_subtitle %}{% t "Combine duplicate campaign records" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:campaign_reference_list' %}">{% t "Back to campaigns" %}</a>
+{% endblock %}
+
+{% block content %}
+  {% if preview %}
+    <section class="section panel">
+      <h2 class="section-title">{% t "Confirm merge" %}</h2>
+      <p>{% t "The following campaigns will be merged. Pick the canonical campaign to keep." %}</p>
+      <form method="post">
+        {% csrf_token %}
+        {% for pk in preview.source_ids %}
+          <input type="hidden" name="campaign_ids" value="{{ pk }}">
+        {% endfor %}
+        <input type="hidden" name="confirm" value="1">
+        <div class="field" style="margin-top:14px;">
+          <label for="target_id">{% t "Keep this campaign" %}</label>
+          <select id="target_id" name="target_id" required>
+            {% for campaign in preview.sources %}
+              <option value="{{ campaign.pk }}">{{ campaign.name }} ({{ campaign.year }}) — {{ campaign.invoice_count }} {% t "invoices" %}, {{ campaign.budget_count }} {% t "budget lines" %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p style="margin-top:12px;">{% t "Total impact" %}: {{ preview.invoice_total }} {% t "invoices" %}, {{ preview.budget_total }} {% t "budget lines" %}.</p>
+        <div class="actions" style="margin-top:18px;">
+          <button class="btn primary" type="submit">{% t "Merge campaigns" %}</button>
+          <a class="btn" href="{% url 'marketing:campaign_merge' %}">{% t "Cancel" %}</a>
+        </div>
+      </form>
+    </section>
+  {% else %}
+    <section class="section panel">
+      <form method="post">
+        {% csrf_token %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>{% t "Campaign" %}</th>
+                <th>{% t "Team" %}</th>
+                <th class="col-num">{% t "Year" %}</th>
+                <th class="col-num">{% t "Invoices" %}</th>
+                <th class="col-num">{% t "Budget lines" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for campaign in campaigns %}
+                <tr>
+                  <td><input type="checkbox" name="campaign_ids" value="{{ campaign.pk }}"></td>
+                  <td>{{ campaign.name }}</td>
+                  <td>{{ campaign.team.name|default:"-" }}</td>
+                  <td class="col-num">{{ campaign.year }}</td>
+                  <td class="col-num">{{ campaign.invoice_count }}</td>
+                  <td class="col-num">{{ campaign.budget_count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="actions" style="margin-top:18px;">
+          <button class="btn primary" type="submit">{% t "Preview merge" %}</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

@@ -3,7 +3,12 @@
 
 {% block title %}{% t "Budget" %}{% endblock %}
 {% block page_title %}{% t "Budget" %}{% endblock %}
-{% block page_subtitle %}{% t "Budget lines imported from the Budget sheet" %}{% endblock %}
+{% block page_subtitle %}{% t "Budget lines by team, category and month" %}{% endblock %}
+{% block page_actions %}
+  {% if is_budget_admin %}
+    <a class="btn primary" href="{% url 'marketing:budget_create' %}">＋ {% t "New budget line" %}</a>
+  {% endif %}
+{% endblock %}
 
 {% block content %}
   <section class="section">
@@ -117,9 +122,10 @@
             <th class="col-num">{% sortable_th "Year" "year" %}</th>
             <th class="col-num">{% sortable_th "Month" "month" %}</th>
             <th>{% sortable_th "Team" "team" %}</th>
-            <th>{% sortable_th "Campaign" "campaign" %}</th>
             <th>{% sortable_th "Category" "category" %}</th>
+            <th>{% sortable_th "Campaign" "campaign" %}</th>
             <th class="col-num">{% sortable_th "Budget" "amount" %}</th>
+            {% if is_budget_admin %}<th></th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -128,12 +134,21 @@
               <td class="col-num">{{ line.year }}</td>
               <td class="col-num">{{ line.month }}</td>
               <td title="{{ line.team.name|default:'-' }}">{{ line.team.name|default:"-" }}</td>
-              <td title="{{ line.campaign.name|default:'-' }}">{{ line.campaign.name|default:"-" }}</td>
               <td title="{{ line.category }}">{{ line.category }}</td>
+              <td title="{{ line.campaign.name|default:'-' }}">{{ line.campaign.name|default:"-" }}</td>
               <td class="col-num money-cell">{{ line.planned_amount|money }}</td>
+              {% if is_budget_admin %}
+                <td class="actions">
+                  <a class="btn" href="{% url 'marketing:budget_edit' line.pk %}">{% t "Edit" %}</a>
+                  <form method="post" action="{% url 'marketing:budget_delete' line.pk %}" style="display:inline;" onsubmit="return confirm('{% t "Delete this budget line?" %}');">
+                    {% csrf_token %}
+                    <button class="btn danger" type="submit">{% t "Delete" %}</button>
+                  </form>
+                </td>
+              {% endif %}
             </tr>
           {% empty %}
-            <tr><td colspan="6" class="empty">{% t "No rows to display." %}</td></tr>
+            <tr><td colspan="{% if is_budget_admin %}7{% else %}6{% endif %}" class="empty">{% t "No rows to display." %}</td></tr>
           {% endfor %}
         </tbody>
       </table>

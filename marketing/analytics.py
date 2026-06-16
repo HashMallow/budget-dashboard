@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Count, QuerySet, Sum
@@ -25,6 +26,13 @@ def percent(value: Decimal, maximum: Decimal) -> int:
         return 0
     ratio = (float(value) / float(maximum)) * 100
     return min(max(int(round(ratio)), 2), 100)
+
+
+def percent_consumed(planned: Decimal, actual: Decimal) -> int | None:
+    """Share of planned budget already spent (actual / planned × 100)."""
+    if not planned or planned <= 0:
+        return None
+    return int(round(float(actual) / float(planned) * 100))
 
 
 def monthly_spend_rows(invoices: QuerySet[Invoice], months: list[tuple[int, str]]) -> list[dict]:
@@ -116,6 +124,7 @@ def budget_actual_variance_window_rows(
                 "actual": actual,
                 "deviation": deviation,
                 "percent": percent(max(planned, actual), max_magnitude),
+                "percent_consumed": percent_consumed(planned, actual),
             }
         )
     return rows
@@ -138,6 +147,7 @@ def budget_variance_row_totals(variance_rows: list[dict]) -> dict[str, Decimal]:
         "planned": planned,
         "actual": actual,
         "deviation": actual - planned,
+        "percent_consumed": percent_consumed(planned, actual),
     }
 
 
@@ -167,6 +177,7 @@ def team_budget_variance_rows(
                 "planned": planned,
                 "actual": actual,
                 "deviation": deviation,
+                "percent_consumed": percent_consumed(planned, actual),
             }
         )
     rows.sort(key=lambda item: item["actual"], reverse=True)
@@ -319,3 +330,22 @@ def attention_invoices(invoices: QuerySet[Invoice], *, limit: int = 20) -> list[
         key=lambda item: item.days_in_current_stage,
         reverse=True,
     )[:limit]
+
+
+def queue_invoices(invoices: QuerySet[Invoice], stage: str, *, limit: int = 15) -> list[Invoice]:
+    return sorted(
+        invoices.filter(payment_stage=stage),
+        key=lambda item: item.days_in_current_stage,
+        reverse=True,
+    )[:limit]
+
+
+def recently_paid_invoices(invoices: QuerySet[Invoice], *, days: int = 7, limit: int = 10) -> list[Invoice]:
+    from django.utils import timezone
+
+    cutoff = timezone.now() - timedelta(days=days)
+    return list(
+        invoices.filter(payment_stage=PaymentStage.PAID, paid_at__gte=cutoff)
+        .select_related("vendor", "team")
+        .order_by("-paid_at")[:limit]
+    )

@@ -18,6 +18,7 @@ class UserScope:
     can_export: bool
     can_upload_invoice_files: bool
     can_upload_payment_proofs: bool
+    can_import_excel: bool
 
 
 def user_has_admin_access(user) -> bool:
@@ -45,6 +46,7 @@ def get_user_scope(user) -> UserScope:
             can_export=True,
             can_upload_invoice_files=True,
             can_upload_payment_proofs=True,
+            can_import_excel=True,
         )
 
     accesses = list(
@@ -56,6 +58,7 @@ def get_user_scope(user) -> UserScope:
             "can_export",
             "can_upload_invoice_files",
             "can_upload_payment_proofs",
+            "can_import_excel",
         )
     )
     return UserScope(
@@ -67,6 +70,7 @@ def get_user_scope(user) -> UserScope:
         can_export=any(access["can_export"] for access in accesses),
         can_upload_invoice_files=any(access["can_upload_invoice_files"] for access in accesses),
         can_upload_payment_proofs=any(access["can_upload_payment_proofs"] for access in accesses),
+        can_import_excel=any(access["can_import_excel"] for access in accesses),
     )
 
 
@@ -181,6 +185,12 @@ def can_export(user, scope=None) -> bool:
     if user_has_admin_access(user):
         return True
     return active_access_for_user(user).filter(can_export=True).exists()
+
+
+def can_import(user) -> bool:
+    if user_has_admin_access(user):
+        return True
+    return active_access_for_user(user).filter(can_import_excel=True).exists()
 
 
 def filter_contracts_for_user(queryset: QuerySet[Contract], user) -> QuerySet[Contract]:

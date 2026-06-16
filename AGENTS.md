@@ -10,16 +10,34 @@ The instructions in this repository are in English. The end-user interface may l
 
 Before building the Django app, importer, database models, or dashboards, run a discovery phase using the real files in the project directory:
 
-1. Transcribe the provided audio file (`.ogg` or similar) into Persian.
-2. Summarize the transcript and extract English requirements.
+1. Transcribe audio under `.artifacts/audio/` and `.artifacts/voice-feedback/audio/` into Persian (see `.agents/skills/audio-transcription/SKILL.md`; use conda `ml-env`, `large-v3` on CUDA).
+2. Summarize transcripts and extract English requirements into **`.artifacts/voice-feedback/USER_REQUESTS.en.md`** (main topics) and `transcripts/audio_requirements.en.md`.
 3. Inspect the provided `.xlsx` workbook structure without modifying it.
 4. Identify the input/data-entry sheet and budget sheet.
 5. Map real workbook columns to the app concepts and models.
-6. Save the discovery outputs under `docs/discovery/`.
+6. Save workbook discovery under `docs/discovery/`; save voice-derived English requirements under **`docs/voice-feedback/`** (git-tracked).
 
 Use `docs/specs/AUDIO_TRANSCRIPTION_AND_XLSX_DISCOVERY.md` as the detailed specification. If using Codex skills, use `.agents/skills/audio-xlsx-discovery/SKILL.md`.
 
 Do not guess sheet names or column names. Do not implement the final importer until `docs/discovery/column_mapping.yml` exists or the missing mappings are clearly documented.
+
+## Product owner voice feedback (English, tracked in `docs/voice-feedback/`)
+
+After transcribing voice notes, read **`docs/voice-feedback/USER_REQUESTS.en.md`** before changing invoices, dashboards, or reference data.  
+Update **`docs/voice-feedback/PROCESSING_LOG.en.md`** after each transcription batch or fix pass (verification checklist, requests, fixes, backlog).
+
+Main topics from audio:
+
+1. **Invoice amounts** — action cost, 10% VAT, insurance withholding (16.67% / 7.78%), paid amount.
+2. **Dropdown data entry** — business line, budget line, admin-managed reference lists.
+3. **Dashboard ops** — filters (business line, month), marketing/finance queues, recently paid, vendor drill-down.
+4. **Budget vs actual** — monthly variance, remaining budget %, manual budget entry (backlog).
+5. **Roles** — Manager reports, Editor import, Observer read-only.
+6. **Export** — Excel round-trip; PDF picker (backlog).
+7. **Contracts** — final signed uploads; vendor page with contracts + invoices.
+
+Persian transcripts: `.artifacts/voice-feedback/transcripts/*_transcript.fa.md` (local, gitignored).  
+Tracked log + requests: **`docs/voice-feedback/PROCESSING_LOG.en.md`** · **`docs/voice-feedback/USER_REQUESTS.en.md`**.
 
 ## Recommended Stack
 Use a pragmatic, batteries-included stack:

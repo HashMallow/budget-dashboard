@@ -90,16 +90,28 @@
         </thead>
         <tbody>
           {% for invoice in page_obj %}
-            <tr>
+            <tr class="{% if invoice.payment_stage == 'PAID' %}invoice-row--paid{% else %}invoice-row--pending{% endif %}">
               <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
-              <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
+              <td title="{{ invoice.vendor.name }}"><a href="{% url 'marketing:vendor_detail' invoice.vendor.pk %}">{{ invoice.vendor.name }}</a></td>
               <td title="{{ invoice.team.name|default:'-' }}">{{ invoice.team.name|default:"-" }}</td>
               <td title="{{ invoice.business_section|default:'-' }}">{{ invoice.business_section|default:"-" }}</td>
               <td title="{{ invoice.category }}">{{ invoice.category }}</td>
               <td class="col-num col-date"><span class="date-cell number">{% display_date invoice.invoice_date %}</span></td>
               <td class="col-num money-cell">{{ invoice.amount|money }}</td>
-              <td><span class="badge">{% t invoice.payment_stage|stage_label %}</span></td>
-              <td class="col-num">{{ invoice.days_in_current_stage }}</td>
+              {% user_can_edit_invoice request.user invoice as can_edit_row %}
+              <td>
+                {% if can_edit_row %}
+                  <select class="inline-stage-select form-control" data-url="{% url 'marketing:invoice_stage_update' invoice.pk %}">
+                    {% for value, label in payment_stages %}
+                      <option value="{{ value }}" {% if invoice.payment_stage == value %}selected{% endif %}>{% t label %}</option>
+                    {% endfor %}
+                  </select>
+                  <noscript><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{% t "Edit" %}</a></noscript>
+                {% else %}
+                  <span class="badge">{% t invoice.payment_stage|stage_label %}</span>
+                {% endif %}
+              </td>
+              <td class="col-num">{% if invoice.show_days_in_current_stage %}{{ invoice.days_in_current_stage }}{% else %}—{% endif %}</td>
             </tr>
           {% empty %}
             <tr><td colspan="9" class="empty">{% t "No invoices to display." %}</td></tr>
@@ -119,4 +131,8 @@
       </div>
     {% endif %}
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% include "marketing/partials/inline_stage_script.html" %}
 {% endblock %}

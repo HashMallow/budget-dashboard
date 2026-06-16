@@ -9,7 +9,7 @@ from django.http import HttpResponseForbidden
 from django.utils import timezone
 
 from ..cost_buckets import exclude_pseudo_teams
-from ..jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_year_bounds, today_jalali
+from ..jalali import JALALI_MONTHS, gregorian_to_jalali, jalali_month_bounds, jalali_year_bounds, today_jalali
 from ..models import (
     Contract,
     Invoice,
@@ -161,6 +161,16 @@ def filter_by_jalali_year(queryset, year: str):
     return queryset
 
 
+def filter_by_jalali_month(queryset, year: str, month: str):
+    """Filter invoices by Jalali year + month (1–12)."""
+    if year.isdigit() and month.isdigit():
+        month_int = int(month)
+        if 1 <= month_int <= 12:
+            start, end = jalali_month_bounds(int(year), month_int)
+            return queryset.filter(invoice_date__range=(start, end))
+    return queryset
+
+
 def distinct_jalali_years(queryset) -> list[int]:
     # Small datasets: convert each invoice date. Revisit with a stored Jalali year
     # column if invoice volume grows large.
@@ -170,6 +180,12 @@ def distinct_jalali_years(queryset) -> list[int]:
         if value
     }
     return sorted(years, reverse=True)
+
+
+def distinct_business_sections(queryset) -> list[str]:
+    from ..business_section import distinct_business_sections as _distinct
+
+    return _distinct(queryset)
 
 
 def forbidden(message: str = "You are not allowed to perform this action.") -> HttpResponseForbidden:

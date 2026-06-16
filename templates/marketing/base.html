@@ -319,6 +319,27 @@
     }
     .deviation-over { color: var(--danger); font-weight: 600; }
     .deviation-under { color: var(--success); font-weight: 600; }
+    .consumed-under { color: var(--success); font-weight: 600; }
+    .consumed-warn { color: #d97706; font-weight: 600; }
+    .consumed-over { color: var(--danger); font-weight: 600; }
+    .inline-stage-select {
+      min-height: 32px;
+      padding: 4px 8px;
+      font-size: 12px;
+      max-width: 180px;
+    }
+    .budget-variance-panel {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+    .budget-variance-panel .metric-label { color: var(--muted); font-size: 12px; }
+    .budget-variance-panel .metric-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
     .money-value[title] {
       cursor: help;
       border-bottom: 1px dotted #94a3b8;
@@ -457,6 +478,8 @@
     .invoice-table .col-amount { width: 10.5rem; min-width: 10.5rem; }
     .invoice-table .col-stage { width: 7.5rem; min-width: 7.5rem; }
     .invoice-table .col-days { width: 4.5rem; min-width: 4.5rem; }
+    tr.invoice-row--paid td { background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent); }
+    tr.invoice-row--pending td { background: color-mix(in srgb, var(--warning, #ca8a04) 6%, transparent); }
     .teams-table { min-width: 680px; }
     .teams-table .col-team { width: auto; min-width: 140px; }
     .teams-table .col-count { width: 96px; min-width: 96px; }
@@ -684,19 +707,23 @@
               </div>
             </div>
 
-            {% if user|is_panel_admin %}
+            {% if user|is_panel_admin or user|can_import_workbook %}
               <div class="nav-section">
                 <p class="nav-section-label">{% t "Administration" %}</p>
                 <div class="nav-section-links">
+                  {% if user|is_panel_admin or user|can_import_workbook %}
                   <a href="{% url 'marketing:import_workbook' %}" class="{% if current == 'import_workbook' %}active{% endif %}">
                     <span class="nav-icon">⇧</span><span>{% t "Excel Import" %}</span>
                   </a>
+                  {% endif %}
+                  {% if user|is_panel_admin %}
                   <a href="{% url 'marketing:user_access' %}" class="{% if current == 'user_access' %}active{% endif %}">
                     <span class="nav-icon">◎</span><span>{% t "Users" %}</span>
                   </a>
                   <a href="{% url 'marketing:reference_data_home' %}" class="{% if current == 'reference_data_home' or current == 'vendor_reference_list' or current == 'vendor_reference_create' or current == 'vendor_reference_edit' or current == 'category_reference_list' or current == 'category_reference_create' or current == 'category_reference_edit' or current == 'subteam_reference_list' or current == 'subteam_reference_create' or current == 'subteam_reference_edit' or current == 'requester_reference_list' or current == 'requester_reference_create' or current == 'requester_reference_edit' or current == 'campaign_reference_list' or current == 'campaign_reference_create' or current == 'campaign_reference_edit' %}active{% endif %}">
                     <span class="nav-icon">≡</span><span>{% t "Reference data" %}</span>
                   </a>
+                  {% endif %}
                 </div>
               </div>
             {% endif %}
@@ -747,14 +774,14 @@
         <div class="actions">
           {% if page_exports|length == 1 %}
             {% with export=page_exports.0 %}
-              <a class="btn" href="{% url export.url %}?{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
+              <a class="btn" href="{% url export.url %}{% if export.query %}?{{ export.query }}{% if export_query or request.GET %}&{% endif %}{% elif export_query or request.GET %}?{% endif %}{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
             {% endwith %}
           {% elif page_exports|length > 1 %}
             <details class="settings-menu">
               <summary class="btn" aria-haspopup="true">⇩ {% t "Exports" %}</summary>
               <div class="settings-panel menu-links">
                 {% for export in page_exports %}
-                  <a class="menu-item" href="{% url export.url %}?{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
+                  <a class="menu-item" href="{% url export.url %}{% if export.query %}?{{ export.query }}{% if export_query or request.GET %}&{% endif %}{% elif export_query or request.GET %}?{% endif %}{{ export_query|default:request.GET.urlencode }}"{% if export.title %} title="{% t export.title %}"{% endif %}>{{ export.icon }} {% t export.label %}</a>
                 {% endfor %}
                 <span class="menu-note">{% t "Exports respect your current filters and access scope" %}</span>
               </div>

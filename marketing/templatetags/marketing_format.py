@@ -160,6 +160,36 @@ def deviation_class(value) -> str:
 
 
 @register.filter
+def consumed_class(value) -> str:
+    """CSS helper for budget consumption percentage."""
+    if value in (None, ""):
+        return ""
+    try:
+        pct = int(value)
+    except (TypeError, ValueError):
+        return ""
+    if pct < 80:
+        return "consumed-under"
+    if pct <= 100:
+        return "consumed-warn"
+    return "consumed-over"
+
+
+@register.filter
+def can_import_workbook(user) -> bool:
+    from marketing.permissions import can_import
+
+    return can_import(user)
+
+
+@register.simple_tag
+def user_can_edit_invoice(user, invoice) -> bool:
+    from marketing.permissions import can_edit_invoice
+
+    return can_edit_invoice(user, invoice)
+
+
+@register.filter
 def is_panel_admin(user) -> bool:
     return user_has_admin_access(user)
 

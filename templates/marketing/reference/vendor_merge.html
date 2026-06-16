@@ -1,0 +1,71 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Merge vendors" %}{% endblock %}
+{% block page_title %}{% t "Merge vendors" %}{% endblock %}
+{% block page_subtitle %}{% t "Combine duplicate vendor records" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:vendor_reference_list' %}">{% t "Back to vendors" %}</a>
+{% endblock %}
+
+{% block content %}
+  {% if preview %}
+    <section class="section panel">
+      <h2 class="section-title">{% t "Confirm merge" %}</h2>
+      <p>{% t "The following vendors will be merged. Pick the canonical vendor to keep." %}</p>
+      <form method="post">
+        {% csrf_token %}
+        {% for pk in preview.source_ids %}
+          <input type="hidden" name="vendor_ids" value="{{ pk }}">
+        {% endfor %}
+        <input type="hidden" name="confirm" value="1">
+        <div class="field" style="margin-top:14px;">
+          <label for="target_id">{% t "Keep this vendor" %}</label>
+          <select id="target_id" name="target_id" required>
+            {% for vendor in preview.sources %}
+              <option value="{{ vendor.pk }}">{{ vendor.name }} ({{ vendor.invoice_count }} {% t "invoices" %}, {{ vendor.contract_count }} {% t "contracts" %})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p style="margin-top:12px;">{% t "Total impact" %}: {{ preview.invoice_total }} {% t "invoices" %}, {{ preview.contract_total }} {% t "contracts" %}.</p>
+        <div class="actions" style="margin-top:18px;">
+          <button class="btn primary" type="submit">{% t "Merge vendors" %}</button>
+          <a class="btn" href="{% url 'marketing:vendor_merge' %}">{% t "Cancel" %}</a>
+        </div>
+      </form>
+    </section>
+  {% else %}
+    <section class="section panel">
+      <form method="post">
+        {% csrf_token %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>{% t "Vendor" %}</th>
+                <th>{% t "Normalized name" %}</th>
+                <th class="col-num">{% t "Invoices" %}</th>
+                <th class="col-num">{% t "Contracts" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for vendor in vendors %}
+                <tr>
+                  <td><input type="checkbox" name="vendor_ids" value="{{ vendor.pk }}"></td>
+                  <td>{{ vendor.name }}</td>
+                  <td class="ltr">{{ vendor.normalized_name }}</td>
+                  <td class="col-num">{{ vendor.invoice_count }}</td>
+                  <td class="col-num">{{ vendor.contract_count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="actions" style="margin-top:18px;">
+          <button class="btn primary" type="submit">{% t "Preview merge" %}</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

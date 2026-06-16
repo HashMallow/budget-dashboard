@@ -1,0 +1,40 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Insurance rates" %}{% endblock %}
+{% block page_title %}{% t "Insurance rates" %}{% endblock %}
+{% block page_subtitle %}{% t "Vendor withholding rates for invoice paid-amount calculation" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn primary" href="{% url 'marketing:insurancerate_reference_create' %}">＋ {% t "New rate" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Label" %}</th>
+            <th class="col-num">{% t "Percent" %}</th>
+            <th>{% t "Status" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj %}
+            <tr>
+              <td>{{ row.label|default:"-" }}</td>
+              <td class="col-num">{{ row.percent }}%</td>
+              <td>{% if row.is_active %}{% t "Active" %}{% else %}{% t "Inactive" %}{% endif %}</td>
+              <td><a class="btn" href="{% url 'marketing:insurancerate_reference_edit' row.pk %}">{% t "Edit" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="empty">{% t "No rates to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "marketing/reference/_pagination.html" %}
+  </section>
+{% endblock %}

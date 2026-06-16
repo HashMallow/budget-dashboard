@@ -1,0 +1,61 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% if mode == "edit" %}{% t "Edit budget line" %}{% else %}{% t "New budget line" %}{% endif %}{% endblock %}
+{% block page_title %}{% if mode == "edit" %}{% t "Edit budget line" %}{% else %}{% t "New budget line" %}{% endif %}{% endblock %}
+{% block page_subtitle %}{% t "Manual monthly budget entry" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:budget_list' %}">{% t "Back" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="message">{% form_errors form.non_field_errors %}</div>
+      {% endif %}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.year.id_for_label }}">{% t form.year.label %}</label>
+          {{ form.year }}
+          {% form_errors form.year.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.month.id_for_label }}">{% t form.month.label %}</label>
+          {{ form.month }}
+          {% form_errors form.month.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
+          {{ form.team }}
+          {% form_errors form.team.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.campaign.id_for_label }}">{% t form.campaign.label %}</label>
+          {{ form.campaign }}
+          {% form_errors form.campaign.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.category.id_for_label }}">{% t form.category.label %}</label>
+          {{ form.category }}
+          {% form_errors form.category.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.planned_amount.id_for_label }}">{% t form.planned_amount.label %}</label>
+          {{ form.planned_amount }}
+          {% form_errors form.planned_amount.errors %}
+        </div>
+        <div class="field">
+          <label for="{{ form.currency.id_for_label }}">{% t form.currency.label %}</label>
+          {{ form.currency }}
+          {% form_errors form.currency.errors %}
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 18px;">
+        <button class="btn primary" type="submit">{% t "Save" %}</button>
+        <a class="btn" href="{% url 'marketing:budget_list' %}">{% t "Cancel" %}</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -13,6 +13,16 @@
       <div class="card-note"><a class="btn" href="{% url 'marketing:vendor_reference_list' %}">{% t "Manage" %}</a></div>
     </div>
     <div class="card">
+      <div class="card-label">{% t "Business lines" %}</div>
+      <div class="card-value number">{{ counts.business_lines }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:businessline_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
+      <div class="card-label">{% t "Insurance rates" %}</div>
+      <div class="card-value number">{{ counts.insurance_rates }}</div>
+      <div class="card-note"><a class="btn" href="{% url 'marketing:insurancerate_reference_list' %}">{% t "Manage" %}</a></div>
+    </div>
+    <div class="card">
       <div class="card-label">{% t "Spend categories" %}</div>
       <div class="card-value number">{{ counts.categories }}</div>
       <div class="card-note"><a class="btn" href="{% url 'marketing:category_reference_list' %}">{% t "Manage" %}</a></div>

@@ -188,6 +188,43 @@ class SpendCategory(TimestampedModel):
         return self.name
 
 
+class BusinessLine(TimestampedModel):
+    """Business segment (e.g. Retail, Junior, Business) — admin-managed dropdown values."""
+
+    name = models.CharField(max_length=120)
+    normalized_name = models.CharField(max_length=120, unique=True, db_index=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "business line"
+        verbose_name_plural = "business lines"
+
+    def save(self, *args, **kwargs):
+        if not self.normalized_name:
+            self.normalized_name = normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class InsuranceRateOption(TimestampedModel):
+    """Withholding rate applied to vendor action cost (e.g. 16.67% or 7.78%)."""
+
+    label = models.CharField(max_length=80, blank=True)
+    percent = models.DecimalField(max_digits=6, decimal_places=2, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["percent"]
+
+    def __str__(self) -> str:
+        if self.label:
+            return f"{self.label} ({self.percent}%)"
+        return f"{self.percent}%"
+
+
 class SubTeam(TimestampedModel):
     """Sub-team label seeded from the workbook Data sheet."""
 
@@ -313,6 +350,23 @@ class Invoice(TimestampedModel):
     invoice_date = models.DateField()
     due_date = models.DateField(null=True, blank=True)
     amount = models.DecimalField(max_digits=24, decimal_places=2)
+    action_cost_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Base marketing action cost before VAT (X in voice notes).",
+    )
+    tax_amount = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
+    insurance_rate_percent = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    insurance_amount = models.DecimalField(max_digits=24, decimal_places=2, null=True, blank=True)
+    paid_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Amount finance pays after insurance withholding.",
+    )
     currency = models.CharField(max_length=16, default=settings.DEFAULT_CURRENCY)
     payment_stage = models.CharField(max_length=24, choices=PaymentStage.choices, default=PaymentStage.DRAFT)
     stage_changed_at = models.DateTimeField(default=timezone.now)
@@ -361,10 +415,16 @@ class Invoice(TimestampedModel):
 
     @property
     def days_in_current_stage(self) -> int:
+        if self.payment_stage == PaymentStage.PAID:
+            return 0
         changed_at = self.stage_changed_at or self.created_at
         if not changed_at:
             return 0
         return max((timezone.now().date() - changed_at.date()).days, 0)
+
+    @property
+    def show_days_in_current_stage(self) -> bool:
+        return self.payment_stage != PaymentStage.PAID
 
     @property
     def invoice_year(self) -> int:
@@ -452,6 +512,7 @@ class UserTeamAccess(TimestampedModel):
     can_upload_invoice_files = models.BooleanField(default=False)
     can_upload_payment_proofs = models.BooleanField(default=False)
     can_export = models.BooleanField(default=False)
+    can_import_excel = models.BooleanField(default=False)
     can_view_referral_sms = models.BooleanField(default=False)
     is_global = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

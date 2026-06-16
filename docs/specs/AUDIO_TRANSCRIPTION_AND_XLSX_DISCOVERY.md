@@ -31,48 +31,26 @@ If multiple audio or workbook files exist, list them and continue with the most 
 
 ## Required Discovery Outputs
 
-Create these files under `docs/discovery/`:
+### Voice (canonical: `docs/voice-feedback/`, git-tracked)
 
 ```text
-docs/discovery/audio_transcript.fa.md
-docs/discovery/audio_summary.en.md
-docs/discovery/audio_requirements.en.md
+docs/voice-feedback/PROCESSING_LOG.en.md
+docs/voice-feedback/USER_REQUESTS.en.md
+.artifacts/voice-feedback/transcripts/*_transcript.fa.md   local only
+```
+
+Read **`PROCESSING_LOG.en.md`** for verification steps and fix history.
+
+### Workbook (`docs/discovery/`)
+
+```text
 docs/discovery/workbook_structure.md
 docs/discovery/workbook_sample_rows.md
 docs/discovery/column_mapping.yml
 docs/discovery/import_risks.md
 ```
 
-### `audio_transcript.fa.md`
-
-A Persian/Farsi transcript of the audio.
-
-Rules:
-- Preserve the original Persian as much as possible.
-- Mark unclear audio as `[unclear]`.
-- Do not invent missing words.
-- Include timestamps if the transcription tool provides them.
-
-### `audio_summary.en.md`
-
-A concise English summary of the audio.
-
-### `audio_requirements.en.md`
-
-A structured English requirements list extracted from the audio. Group requirements into:
-
-- Users and access control
-- Dashboards and charts
-- Vendor/invoice reporting
-- Campaign reporting
-- Invoice data entry
-- Payment workflow tracking
-- File/image upload requirements
-- Excel import/export requirements
-- PDF export requirements
-- Open questions or unclear items
-
-### `workbook_structure.md`
+Legacy note: older projects used `docs/discovery/audio_*.en.md`; this repo keeps those as pointers to `.artifacts/`.
 
 A workbook inventory:
 

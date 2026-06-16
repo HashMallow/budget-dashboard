@@ -1,0 +1,47 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Business lines" %}{% endblock %}
+{% block page_title %}{% t "Business lines" %}{% endblock %}
+{% block page_subtitle %}{% t "Manage business segment dropdown values" %}{% endblock %}
+{% block page_actions %}
+  <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn primary" href="{% url 'marketing:businessline_reference_create' %}">＋ {% t "New business line" %}</a>
+{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <form class="filter-form" method="get">
+      <div class="field">
+        <label for="q">{% t "Search" %}</label>
+        <input id="q" name="q" value="{{ filters.q }}">
+      </div>
+      <button class="btn primary" type="submit">{% t "Filter" %}</button>
+    </form>
+  </section>
+  <section class="section panel">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>{% t "Business line" %}</th>
+            <th>{% t "Status" %}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in page_obj %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{% if row.is_active %}{% t "Active" %}{% else %}{% t "Inactive" %}{% endif %}</td>
+              <td><a class="btn" href="{% url 'marketing:businessline_reference_edit' row.pk %}">{% t "Edit" %}</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="empty">{% t "No business lines to display." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "marketing/reference/_pagination.html" %}
+  </section>
+{% endblock %}

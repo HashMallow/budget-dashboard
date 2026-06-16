@@ -97,6 +97,7 @@ sheets:
       updated_by: null
       invoice_attachment_files: null
       payment_proof_files: null
+    first_class_amount_fields_since: "0011_invoice_amounts_and_reference"
     idempotency_candidate:
       preferred_key:
         - "Invoice Number"

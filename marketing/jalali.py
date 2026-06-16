@@ -166,3 +166,17 @@ def jalali_year_bounds(j_year: int) -> tuple[date, date]:
     start = jalali_to_gregorian(j_year, 1, 1)
     end = jalali_to_gregorian(j_year + 1, 1, 1) - timedelta(days=1)
     return start, end
+
+
+def jalali_month_bounds(j_year: int, j_month: int) -> tuple[date, date]:
+    """Return [start, end] Gregorian dates for a single Jalali month."""
+    from datetime import timedelta
+
+    if not 1 <= j_month <= 12:
+        raise ValueError("Invalid Jalali month")
+    start = jalali_to_gregorian(j_year, j_month, 1)
+    if j_month == 12:
+        end = jalali_to_gregorian(j_year + 1, 1, 1) - timedelta(days=1)
+    else:
+        end = jalali_to_gregorian(j_year, j_month + 1, 1) - timedelta(days=1)
+    return start, end

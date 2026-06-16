@@ -21,7 +21,7 @@
     <div class="card">
       <div class="card-label">{% t "Payment stage" %}</div>
       <div class="card-value"><span class="badge warn">{% t invoice.payment_stage|stage_label %}</span></div>
-      <div class="card-note">{{ invoice.days_in_current_stage }} {% t "days in this stage" %}</div>
+      <div class="card-note">{% if invoice.show_days_in_current_stage %}{{ invoice.days_in_current_stage }} {% t "days in this stage" %}{% else %}—{% endif %}</div>
     </div>
     <div class="card">
       <div class="card-label">{% t "Team" %}</div>
@@ -46,7 +46,12 @@
       <div class="table-wrap">
         <table>
           <tbody>
-            <tr><th>{% t "Vendor" %}</th><td>{{ invoice.vendor.name }}</td></tr>
+            <tr><th>{% t "Vendor" %}</th><td><a href="{% url 'marketing:vendor_detail' invoice.vendor.pk %}">{{ invoice.vendor.name }}</a></td></tr>
+            <tr><th>{% t "Action cost" %}</th><td class="money-cell">{{ invoice.action_cost_amount|money }}</td></tr>
+            <tr><th>{% t "Tax" %}</th><td class="money-cell">{{ invoice.tax_amount|money }}</td></tr>
+            <tr><th>{% t "Invoice total" %}</th><td class="money-cell">{{ invoice.amount|money }}</td></tr>
+            <tr><th>{% t "Insurance withholding" %}</th><td>{% if invoice.insurance_rate_percent %}{{ invoice.insurance_rate_percent }}% ({{ invoice.insurance_amount|money }}){% else %}—{% endif %}</td></tr>
+            <tr><th>{% t "Paid amount" %}</th><td class="money-cell">{{ invoice.paid_amount|default:invoice.amount|money }}</td></tr>
             <tr><th>{% t "Business line" %}</th><td>{{ invoice.business_section|default:"-" }}</td></tr>
             <tr><th>{% t "Campaign" %}</th><td>{{ invoice.campaign.name|default:"-" }}</td></tr>
             <tr><th>{% t "Category" %}</th><td>{{ invoice.category }}</td></tr>

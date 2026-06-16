@@ -5,26 +5,33 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
+from urllib.parse import urlencode
 
 from ..analytics import (
     decimal_sum,
     vendor_grouped_rows,
 )
 from .core import (
+    distinct_business_sections,
+    distinct_jalali_years,
     filter_contract_queryset,
     filter_invoice_queryset,
     forbidden,
+    get_months,
     get_ui_lang,
     pdf_locale_for_request,
     visible_contract_queryset,
     visible_invoice_queryset,
+    visible_team_queryset,
 )
 from ..exports.workbook import build_workbook_style_export
 from ..models import (
     BudgetLine,
+    Vendor,
 )
 from ..permissions import (
     can_export,
@@ -401,3 +408,51 @@ def invoice_report_print(request):
         "stage_rows": queryset.values("payment_stage").annotate(invoice_count=Count("id")).order_by("payment_stage"),
     }
     return render(request, "marketing/print/invoice_report.html", context)
+
+
+_PDF_REPORT_ROUTES = {
+    "dashboard": "marketing:dashboard_report_pdf",
+    "vendors": "marketing:export_vendors_pdf",
+    "campaigns": "marketing:export_campaigns_pdf",
+    "invoices": "marketing:invoice_report_print",
+    "contracts": "marketing:export_contracts_pdf",
+}
+
+
+def pdf_export_wizard(request):
+    if not can_export(request.user):
+        return forbidden("You do not have permission to export.")
+    scope_invoices = visible_invoice_queryset(request)
+    if request.method == "POST":
+        report = request.POST.get("report_type", "dashboard")
+        params = {}
+        for key in ("year", "month", "team", "business_section", "vendor", "stage", "q", "bucket"):
+            value = request.POST.get(key, "").strip()
+            if value:
+                params[key] = value
+        route = _PDF_REPORT_ROUTES.get(report, "marketing:dashboard_report_pdf")
+        target = reverse(route)
+        if params:
+            target = f"{target}?{urlencode(params)}"
+        return redirect(target)
+
+    return render(
+        request,
+        "marketing/exports/pdf_wizard.html",
+        {
+            "report_types": [
+                ("dashboard", "Dashboard summary"),
+                ("vendors", "Vendor report"),
+                ("campaigns", "Campaign report"),
+                ("invoices", "Invoice list"),
+                ("contracts", "Contract report"),
+            ],
+            "selected_report": request.GET.get("report", "dashboard"),
+            "years": distinct_jalali_years(scope_invoices),
+            "months": get_months(request),
+            "teams": visible_team_queryset(request),
+            "business_sections": distinct_business_sections(scope_invoices),
+            "vendors": Vendor.objects.order_by("name"),
+            "filters": {key: request.GET.get(key, "") for key in ("year", "month", "team", "business_section", "vendor")},
+        },
+    )

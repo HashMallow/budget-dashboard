@@ -1,0 +1,73 @@
+{% extends "marketing/base.html" %}
+{% load marketing_format %}
+
+{% block title %}{% t "Export PDF" %}{% endblock %}
+{% block page_title %}{% t "Export PDF" %}{% endblock %}
+{% block page_subtitle %}{% t "Choose report type and filters before generating" %}{% endblock %}
+
+{% block content %}
+  <section class="section panel">
+    <form method="post" class="form-grid" style="display:block;">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field wide">
+          <label for="report_type">{% t "Report type" %}</label>
+          <select id="report_type" name="report_type" class="form-control">
+            {% for value, label in report_types %}
+              <option value="{{ value }}" {% if selected_report == value %}selected{% endif %}>{% t label %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="year">{% t "Year" %}</label>
+          <select id="year" name="year">
+            <option value="">{% t "All years" %}</option>
+            {% for year in years %}
+              <option value="{{ year }}" {% if filters.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="month">{% t "Month" %}</label>
+          <select id="month" name="month">
+            <option value="">{% t "All months" %}</option>
+            {% for month_num, month_label in months %}
+              <option value="{{ month_num }}" {% if filters.month == month_num|stringformat:"s" %}selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="team">{% t "Team" %}</label>
+          <select id="team" name="team">
+            <option value="">{% t "All teams" %}</option>
+            {% for team in teams %}
+              <option value="{{ team.id }}" {% if filters.team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="business_section">{% t "Business line" %}</label>
+          <select id="business_section" name="business_section">
+            <option value="">{% t "All business lines" %}</option>
+            {% for line in business_sections %}
+              <option value="{{ line }}" {% if filters.business_section == line %}selected{% endif %}>{{ line }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="vendor">{% t "Vendor" %}</label>
+          <select id="vendor" name="vendor">
+            <option value="">{% t "All vendors" %}</option>
+            {% for vendor in vendors %}
+              <option value="{{ vendor.id }}" {% if filters.vendor == vendor.id|stringformat:"s" %}selected{% endif %}>{{ vendor.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <p class="field-hint" style="margin-top:12px;color:var(--muted);">{% t "Only data within your access scope will be included in the export." %}</p>
+      <div class="actions" style="margin-top: 18px;">
+        <button class="btn primary" type="submit">{% t "Generate PDF" %}</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

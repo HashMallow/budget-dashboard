@@ -6,20 +6,20 @@ from marketing.permissions import can_export
 # Catalog of every export link, keyed by a short id. ``title`` is an optional tooltip string.
 _EXPORT_LINKS: dict[str, dict[str, str]] = {
     "invoices_excel": {"url": "marketing:export_invoices_excel", "label": "Invoices (Excel)", "icon": "⇩"},
-    "invoices_pdf": {"url": "marketing:invoice_report_print", "label": "PDF report", "icon": "⎙"},
+    "invoices_pdf": {"url": "marketing:pdf_export_wizard", "label": "PDF report", "icon": "⎙", "query": "report=invoices"},
     "vendors_excel": {"url": "marketing:export_vendors_excel", "label": "Vendors (Excel)", "icon": "⇩"},
-    "vendors_pdf": {"url": "marketing:export_vendors_pdf", "label": "Vendors (PDF)", "icon": "⎙"},
+    "vendors_pdf": {"url": "marketing:pdf_export_wizard", "label": "Vendors (PDF)", "icon": "⎙", "query": "report=vendors"},
     "campaigns_excel": {"url": "marketing:export_campaigns_excel", "label": "Campaigns (Excel)", "icon": "⇩"},
-    "campaigns_pdf": {"url": "marketing:export_campaigns_pdf", "label": "Campaigns (PDF)", "icon": "⎙"},
+    "campaigns_pdf": {"url": "marketing:pdf_export_wizard", "label": "Campaigns (PDF)", "icon": "⎙", "query": "report=campaigns"},
     "contracts_excel": {"url": "marketing:export_contracts_excel", "label": "Contracts (Excel)", "icon": "⇩"},
-    "contracts_pdf": {"url": "marketing:export_contracts_pdf", "label": "Contracts (PDF)", "icon": "⎙"},
+    "contracts_pdf": {"url": "marketing:pdf_export_wizard", "label": "Contracts (PDF)", "icon": "⎙", "query": "report=contracts"},
     "workbook_excel": {
         "url": "marketing:export_workbook_excel",
         "label": "Workbook (.xlsx)",
         "icon": "⇩",
         "title": "Excel shaped like the source workbook (all sheets)",
     },
-    "dashboard_pdf": {"url": "marketing:dashboard_report_pdf", "label": "PDF summary", "icon": "⎙"},
+    "dashboard_pdf": {"url": "marketing:pdf_export_wizard", "label": "PDF summary", "icon": "⎙", "query": "report=dashboard"},
 }
 
 # Only the exports relevant to each page are offered in the topbar (by resolved URL name).

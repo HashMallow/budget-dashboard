@@ -6,6 +6,7 @@
 {% block page_subtitle %}{% t "Manage campaign reference data. Campaigns appear on invoice forms and in campaign spend reports." %}{% endblock %}
 {% block page_actions %}
   <a class="btn" href="{% url 'marketing:reference_data_home' %}">{% t "Reference data" %}</a>
+  <a class="btn" href="{% url 'marketing:campaign_merge' %}">{% t "Merge campaigns" %}</a>
   <a class="btn primary" href="{% url 'marketing:campaign_reference_create' %}">＋ {% t "New campaign" %}</a>
 {% endblock %}
 

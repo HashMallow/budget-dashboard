@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from django import forms
@@ -10,14 +11,18 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
 from .cost_buckets import exclude_pseudo_teams
-from .jalali import format_jalali_date, normalize_digits, parse_jalali_date_text
+from .jalali import JALALI_MONTHS, format_jalali_date, normalize_digits, parse_jalali_date_text
+from .invoice_amounts import calculate_invoice_amounts, infer_action_cost_from_invoice_total
 from .models import (
     AttachmentType,
+    BudgetLine,
+    BusinessLine,
     Campaign,
     Contract,
     ContractAttachment,
     ContractStage,
     CostBucket,
+    InsuranceRateOption,
     Invoice,
     InvoiceAttachment,
     PaymentStage,
@@ -141,6 +146,33 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         choices=CURRENCY_CHOICES,
         initial=settings.DEFAULT_CURRENCY,
     )
+    action_cost_amount = forms.DecimalField(
+        label="Action cost (Rial)",
+        required=False,
+        max_digits=24,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={"inputmode": "decimal", "autocomplete": "off"}),
+    )
+    tax_amount = forms.DecimalField(
+        label="Tax (Rial)",
+        required=False,
+        max_digits=24,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={"inputmode": "decimal", "autocomplete": "off"}),
+        help_text="Leave blank for automatic 10% VAT on action cost.",
+    )
+    insurance_rate_percent = forms.ChoiceField(
+        label="Insurance withholding",
+        required=False,
+        choices=[],
+    )
+    paid_amount = forms.DecimalField(
+        label="Paid amount (Rial)",
+        required=False,
+        max_digits=24,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={"readonly": "readonly", "tabindex": "-1"}),
+    )
 
     class Meta:
         model = Invoice
@@ -156,20 +188,14 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "description",
             "invoice_date",
             "due_date",
+            "action_cost_amount",
+            "tax_amount",
+            "insurance_rate_percent",
             "amount",
+            "paid_amount",
             "currency",
             "payment_stage",
         ]
-        widgets = {
-            "description": forms.Textarea(attrs={"rows": 3}),
-            "amount": forms.TextInput(
-                attrs={
-                    "inputmode": "decimal",
-                    "autocomplete": "off",
-                    "placeholder": "100000000",
-                }
-            ),
-        }
         labels = {
             "invoice_number": "Invoice number",
             "vendor": "Vendor",
@@ -181,9 +207,22 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             "description": "Description",
             "invoice_date": "Invoice date",
             "due_date": "Due date",
-            "amount": "Amount (Rial)",
+            "amount": "Invoice total (Rial)",
             "currency": "Currency",
             "payment_stage": "Payment stage",
+        }
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+            "amount": forms.TextInput(
+                attrs={
+                    "inputmode": "decimal",
+                    "autocomplete": "off",
+                    "readonly": "readonly",
+                    "tabindex": "-1",
+                }
+            ),
+            "category": forms.Select(),
+            "business_section": forms.Select(),
         }
 
     def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
@@ -196,11 +235,34 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
         self.fields["team"].required = False
         self.fields["campaign"].queryset = filter_campaigns_for_user(Campaign.objects.select_related("team"), user)
         self.fields["campaign"].required = False
+        category_choices = [("", "---------")] + [
+            (name, name) for name in SpendCategory.objects.filter(is_active=True).values_list("name", flat=True)
+        ]
+        self.fields["category"].widget = forms.Select(choices=category_choices)
+        business_choices = [("", "---------")] + [
+            (name, name) for name in BusinessLine.objects.filter(is_active=True).values_list("name", flat=True)
+        ]
+        self.fields["business_section"].widget = forms.Select(choices=business_choices)
+        rate_choices = [("", "---------")] + [
+            (str(rate.percent), str(rate)) for rate in InsuranceRateOption.objects.filter(is_active=True)
+        ]
+        self.fields["insurance_rate_percent"].choices = rate_choices
+        if self.instance.pk and self.instance.insurance_rate_percent is not None:
+            self.fields["insurance_rate_percent"].initial = str(self.instance.insurance_rate_percent)
+        if self.instance.pk:
+            if self.instance.action_cost_amount is not None:
+                self.fields["action_cost_amount"].initial = self.instance.action_cost_amount
+            if self.instance.tax_amount is not None:
+                self.fields["tax_amount"].initial = self.instance.tax_amount
+            if self.instance.paid_amount is not None:
+                self.fields["paid_amount"].initial = self.instance.paid_amount
         if not self.instance.pk and not self.initial.get("currency"):
             self.fields["currency"].initial = settings.DEFAULT_CURRENCY
         if ui_lang == "fa":
-            self.fields["amount"].widget.attrs["placeholder"] = "۱۰۰۰۰۰۰۰۰"
+            self.fields["action_cost_amount"].widget.attrs["dir"] = "ltr"
+            self.fields["tax_amount"].widget.attrs["dir"] = "ltr"
             self.fields["amount"].widget.attrs["dir"] = "ltr"
+            self.fields["paid_amount"].widget.attrs["dir"] = "ltr"
         display_jalali = ui_lang == "fa"
         self.fields["invoice_date"].display_jalali = display_jalali
         self.fields["due_date"].display_jalali = display_jalali
@@ -228,10 +290,42 @@ class InvoiceForm(StyledFormMixin, forms.ModelForm):
             raise ValidationError("A team is required for team cost.")
         if not can_create_invoice_for_team(self.user, team, cost_bucket):
             raise ValidationError("You are not allowed to add or edit invoices for this team/cost type.")
+
+        action_cost = cleaned.get("action_cost_amount")
+        amount = cleaned.get("amount")
+        if action_cost is None and amount is not None:
+            action_cost = infer_action_cost_from_invoice_total(amount)
+            cleaned["action_cost_amount"] = action_cost
+        if action_cost is None:
+            raise ValidationError("Enter the action cost or invoice total.")
+
+        rate_raw = cleaned.get("insurance_rate_percent")
+        insurance_rate = Decimal(rate_raw) if rate_raw else None
+        tax_override = cleaned.get("tax_amount")
+        breakdown = calculate_invoice_amounts(
+            action_cost,
+            tax_amount=tax_override if tax_override is not None else None,
+            apply_tax=tax_override is None,
+            insurance_rate_percent=insurance_rate,
+        )
+        cleaned["amount"] = breakdown["amount"]
+        cleaned["tax_amount"] = breakdown["tax_amount"]
+        cleaned["insurance_amount"] = breakdown["insurance_amount"]
+        cleaned["paid_amount"] = breakdown["paid_amount"]
+        if insurance_rate is not None:
+            cleaned["insurance_rate_percent"] = insurance_rate
+        else:
+            cleaned["insurance_rate_percent"] = None
         return cleaned
 
     def save(self, commit=True):
         invoice = super().save(commit=False)
+        invoice.action_cost_amount = self.cleaned_data.get("action_cost_amount")
+        invoice.tax_amount = self.cleaned_data.get("tax_amount")
+        invoice.insurance_amount = self.cleaned_data.get("insurance_amount")
+        invoice.paid_amount = self.cleaned_data.get("paid_amount")
+        rate = self.cleaned_data.get("insurance_rate_percent")
+        invoice.insurance_rate_percent = rate
         new_vendor_name = (self.cleaned_data.get("new_vendor_name") or "").strip()
         if new_vendor_name:
             normalized = normalize_name(new_vendor_name)
@@ -458,6 +552,7 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
     can_export = forms.BooleanField(label="Export Excel/reports", required=False)
     can_upload_invoice_files = forms.BooleanField(label="Upload invoice files", required=False)
     can_upload_payment_proofs = forms.BooleanField(label="Upload payment receipts", required=False)
+    can_import_excel = forms.BooleanField(label="Import Excel workbooks", required=False)
 
     def __init__(self, *args, user, ui_lang: str = "en", **kwargs):
         self.user = user
@@ -514,6 +609,7 @@ class UserAccessCreateForm(StyledFormMixin, forms.Form):
             can_export=bool(data.get("can_export")),
             can_upload_invoice_files=bool(data.get("can_upload_invoice_files")),
             can_upload_payment_proofs=bool(data.get("can_upload_payment_proofs")),
+            can_import_excel=bool(data.get("can_import_excel")),
         )
         access.full_clean()
         access.save()
@@ -536,6 +632,7 @@ class TeamAccessForm(StyledFormMixin, forms.ModelForm):
             "is_global",
             "can_view_referral_sms",
             "can_export",
+            "can_import_excel",
             "can_upload_invoice_files",
             "can_upload_payment_proofs",
         ]
@@ -546,6 +643,7 @@ class TeamAccessForm(StyledFormMixin, forms.ModelForm):
             "is_global": "All-team access",
             "can_view_referral_sms": "View referral and SMS",
             "can_export": "Export Excel/reports",
+            "can_import_excel": "Import Excel workbooks",
             "can_upload_invoice_files": "Upload invoice files",
             "can_upload_payment_proofs": "Upload payment receipts",
         }
@@ -577,6 +675,53 @@ class TeamAccessForm(StyledFormMixin, forms.ModelForm):
         if commit:
             access.save()
         return access
+
+
+class BudgetLineForm(StyledFormMixin, forms.ModelForm):
+    month = forms.ChoiceField(
+        label="Month",
+        choices=[(number, persian) for number, persian, _latin in JALALI_MONTHS],
+    )
+
+    class Meta:
+        model = BudgetLine
+        fields = ["year", "month", "team", "campaign", "category", "planned_amount", "currency"]
+        labels = {
+            "year": "Year",
+            "month": "Month",
+            "team": "Team",
+            "campaign": "Campaign",
+            "category": "Category",
+            "planned_amount": "Planned amount",
+            "currency": "Currency",
+        }
+
+    def __init__(self, *args, ui_lang: str = "en", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["team"].queryset = exclude_pseudo_teams(Team.objects.filter(is_active=True)).order_by("name")
+        self.fields["campaign"].queryset = Campaign.objects.order_by("-year", "name")
+        self.fields["campaign"].required = False
+        category_choices = [("", "---------")] + [
+            (name, name) for name in SpendCategory.objects.filter(is_active=True).values_list("name", flat=True)
+        ]
+        self.fields["category"].widget = forms.Select(choices=category_choices)
+        if self.instance.pk and self.instance.month:
+            self.fields["month"].initial = str(self.instance.month)
+        self._style_fields()
+        apply_ui_language(self, ui_lang)
+
+    def clean_month(self):
+        value = self.cleaned_data["month"]
+        return int(value)
+
+    def save(self, commit=True):
+        budget_line = super().save(commit=False)
+        budget_line.source_sheet = ""
+        budget_line.source_row_number = None
+        if commit:
+            budget_line.save()
+            self.save_m2m()
+        return budget_line
 
 
 class VendorReferenceForm(forms.ModelForm):
@@ -616,6 +761,30 @@ class SpendCategoryForm(forms.ModelForm):
         if queryset.exists():
             raise ValidationError("A category with this name already exists.")
         return name
+
+
+class BusinessLineForm(forms.ModelForm):
+    class Meta:
+        model = BusinessLine
+        fields = ["name", "is_active"]
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise ValidationError("Enter a business line name.")
+        normalized = normalize_name(name)
+        queryset = BusinessLine.objects.filter(normalized_name=normalized)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError("A business line with this name already exists.")
+        return name
+
+
+class InsuranceRateOptionForm(forms.ModelForm):
+    class Meta:
+        model = InsuranceRateOption
+        fields = ["label", "percent", "is_active"]
 
 
 class SubTeamForm(forms.ModelForm):

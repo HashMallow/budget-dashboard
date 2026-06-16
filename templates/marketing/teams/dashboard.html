@@ -66,6 +66,7 @@
               <th class="col-num">{% t "Planned" %}</th>
               <th class="col-num">{% t "Actual" %}</th>
               <th class="col-num">{% t "Deviation" %}</th>
+              <th class="col-num">{% t "% Consumed" %}</th>
             </tr>
           </thead>
           <tbody>
@@ -75,9 +76,10 @@
                 <td class="col-num money-cell">{{ row.planned|money }}</td>
                 <td class="col-num money-cell">{{ row.actual|money }}</td>
                 <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+                <td class="col-num {{ row.percent_consumed|consumed_class }}">{% if row.percent_consumed is not None %}{{ row.percent_consumed }}%{% else %}—{% endif %}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4" class="empty">{% t "No budget to display." %}</td></tr>
+              <tr><td colspan="5" class="empty">{% t "No budget to display." %}</td></tr>
             {% endfor %}
             {% if budget_variance_rows %}
               <tr>
@@ -85,6 +87,7 @@
                 <th class="col-num money-cell">{{ budget_variance_totals.planned|money }}</th>
                 <th class="col-num money-cell">{{ budget_variance_totals.actual|money }}</th>
                 <th class="col-num money-cell {{ budget_variance_totals.deviation|deviation_class }}">{{ budget_variance_totals.deviation|money }}</th>
+                <th class="col-num {{ budget_variance_totals.percent_consumed|consumed_class }}">{% if budget_variance_totals.percent_consumed is not None %}{{ budget_variance_totals.percent_consumed }}%{% else %}—{% endif %}</th>
               </tr>
             {% endif %}
           </tbody>

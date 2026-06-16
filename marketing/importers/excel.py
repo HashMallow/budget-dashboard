@@ -601,6 +601,11 @@ def update_or_create_invoice(
     amount: Decimal,
     currency: str,
     payment_stage: str,
+    action_cost_amount: Decimal | None = None,
+    tax_amount: Decimal | None = None,
+    insurance_rate_percent: Decimal | None = None,
+    insurance_amount: Decimal | None = None,
+    paid_amount: Decimal | None = None,
     source_sheet: str,
     source_row: int,
     raw_data: dict[str, Any],
@@ -632,6 +637,11 @@ def update_or_create_invoice(
         "description": description,
         "invoice_date": invoice_date,
         "amount": amount,
+        "action_cost_amount": action_cost_amount,
+        "tax_amount": tax_amount,
+        "insurance_rate_percent": insurance_rate_percent,
+        "insurance_amount": insurance_amount,
+        "paid_amount": paid_amount,
         "currency": currency,
         "payment_stage": payment_stage,
         "source_sheet": source_sheet,
@@ -675,6 +685,14 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
         invoice_number = cell_to_text(mapped_value(raw, columns, "invoice_number"))
         vendor_name = cell_to_text(mapped_value(raw, columns, "vendor_name"))
         amount = parse_decimal(mapped_value(raw, columns, "amount"))
+        action_cost_amount = parse_decimal(mapped_value(raw, columns, "action_cost_amount"))
+        tax_amount = parse_decimal(mapped_value(raw, columns, "tax_amount"))
+        insurance_amount = parse_decimal(mapped_value(raw, columns, "insurance_amount"))
+        paid_amount = parse_decimal(mapped_value(raw, columns, "paid_amount"))
+        insurance_rate_raw = mapped_value(raw, columns, "insurance_rate")
+        insurance_rate_percent = parse_decimal(insurance_rate_raw)
+        if insurance_rate_percent is not None and insurance_rate_percent <= 1:
+            insurance_rate_percent = (insurance_rate_percent * Decimal("100")).quantize(Decimal("0.01"))
         invoice_date = parse_excel_date(
             mapped_value(raw, columns, "jalali_invoice_date_text_candidate"),
             workbook.epoch,
@@ -737,6 +755,11 @@ def import_invoices(workbook, mapping: dict[str, Any], result: ImportResult, dry
             description=description,
             invoice_date=invoice_date,
             amount=amount,
+            action_cost_amount=action_cost_amount,
+            tax_amount=tax_amount,
+            insurance_rate_percent=insurance_rate_percent,
+            insurance_amount=insurance_amount,
+            paid_amount=paid_amount,
             currency=currency,
             payment_stage=payment_stage,
             source_sheet=sheet_name,

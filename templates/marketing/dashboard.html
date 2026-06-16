@@ -19,7 +19,7 @@
 {% block content %}
   <div class="dashboard-layout{% if is_team_filtered %} dashboard-layout--team{% endif %}">
 
-    <div class="dashboard-toolbar panel">
+    <section class="section">
       <form class="filter-form" method="get">
         <div class="field">
           <label for="year">{% t "Year" %}</label>
@@ -39,9 +39,27 @@
             {% endfor %}
           </select>
         </div>
-        <button class="btn primary" type="submit">{% t "Apply filter" %}</button>
+        <div class="field">
+          <label for="business_section">{% t "Business line" %}</label>
+          <select id="business_section" name="business_section">
+            <option value="">{% t "All business lines" %}</option>
+            {% for line in business_sections %}
+              <option value="{{ line }}" {% if selected_business_section == line %}selected{% endif %}>{{ line }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="month">{% t "Month" %}</label>
+          <select id="month" name="month">
+            <option value="">{% t "All months" %}</option>
+            {% for month_num, month_label in months %}
+              <option value="{{ month_num }}" {% if selected_month == month_num|stringformat:"s" %}selected{% endif %}>{{ month_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn primary" type="submit">{% t "Filter" %}</button>
       </form>
-    </div>
+    </section>
 
     {% if is_team_filtered and filtered_team %}
       <div class="dashboard-scope">
@@ -127,6 +145,7 @@
                 <th class="col-num">{% t "Planned" %}</th>
                 <th class="col-num">{% t "Actual" %}</th>
                 <th class="col-num">{% t "Deviation" %}</th>
+                <th class="col-num">{% t "% Consumed" %}</th>
               </tr>
             </thead>
             <tbody>
@@ -136,9 +155,10 @@
                   <td class="col-num money-cell">{{ row.planned|money }}</td>
                   <td class="col-num money-cell">{{ row.actual|money }}</td>
                   <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+                  <td class="col-num {{ row.percent_consumed|consumed_class }}">{% if row.percent_consumed is not None %}{{ row.percent_consumed }}%{% else %}—{% endif %}</td>
                 </tr>
               {% empty %}
-                <tr><td colspan="4" class="empty">{% t "No budget to display." %}</td></tr>
+                <tr><td colspan="5" class="empty">{% t "No budget to display." %}</td></tr>
               {% endfor %}
               {% if budget_variance_rows %}
                 <tr>
@@ -146,6 +166,7 @@
                   <th class="col-num money-cell">{{ budget_variance_totals.planned|money }}</th>
                   <th class="col-num money-cell">{{ budget_variance_totals.actual|money }}</th>
                   <th class="col-num money-cell {{ budget_variance_totals.deviation|deviation_class }}">{{ budget_variance_totals.deviation|money }}</th>
+                  <th class="col-num {{ budget_variance_totals.percent_consumed|consumed_class }}">{% if budget_variance_totals.percent_consumed is not None %}{{ budget_variance_totals.percent_consumed }}%{% else %}—{% endif %}</th>
                 </tr>
               {% endif %}
             </tbody>
@@ -238,6 +259,7 @@
                 <th class="col-num">{% t "Planned" %}</th>
                 <th class="col-num">{% t "Actual" %}</th>
                 <th class="col-num">{% t "Deviation" %}</th>
+                <th class="col-num">{% t "% Consumed" %}</th>
               </tr>
             </thead>
             <tbody>
@@ -247,6 +269,7 @@
                   <td class="col-num money-cell">{{ row.planned|money }}</td>
                   <td class="col-num money-cell">{{ row.actual|money }}</td>
                   <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+                  <td class="col-num {{ row.percent_consumed|consumed_class }}">{% if row.percent_consumed is not None %}{{ row.percent_consumed }}%{% else %}—{% endif %}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -278,7 +301,7 @@
             <tbody>
               {% for row in vendor_rows %}
                 <tr>
-                  <td title="{{ row.vendor.name }}">{{ row.vendor.name }}</td>
+                  <td title="{{ row.vendor.name }}"><a href="{% url 'marketing:vendor_detail' row.vendor.pk %}">{{ row.vendor.name }}</a></td>
                   <td class="col-num">{{ row.invoice_count }}</td>
                   <td>
                     {{ row.visible_invoice_numbers|join:", " }}{% if row.remaining_invoice_count %} +{{ row.remaining_invoice_count }}{% endif %}
@@ -335,28 +358,41 @@
       <div class="panel">
         <div class="section-header">
           <div>
-            <h2 class="section-title">{% t "Payment status" %}</h2>
-            <p class="section-subtitle">{% t "Invoice count per stage" %}</p>
+            <h2 class="section-title">{% t "Marketing queue" %}</h2>
+            <p class="section-subtitle">{% t "Submitted invoices waiting for marketing" %}</p>
           </div>
         </div>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
+                <th>{% t "Invoice" %}</th>
+                <th>{% t "Vendor" %}</th>
+                <th class="col-num">{% t "Days waiting" %}</th>
                 <th>{% t "Stage" %}</th>
-                <th class="col-num">{% t "Count" %}</th>
-                <th class="col-num">{% t "Amount" %}</th>
               </tr>
             </thead>
             <tbody>
-              {% for row in stage_rows %}
-                <tr>
-                  <td><span class="badge">{% t row.payment_stage|stage_label %}</span></td>
-                  <td class="col-num">{{ row.invoice_count }}</td>
-                  <td class="col-num money-cell">{{ row.total|money }}</td>
+              {% for invoice in marketing_queue %}
+                <tr class="invoice-row--pending">
+                  <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
+                  <td><a href="{% url 'marketing:vendor_detail' invoice.vendor.pk %}">{{ invoice.vendor.name }}</a></td>
+                  <td class="col-num">{{ invoice.days_in_current_stage }}</td>
+                  <td>
+                    {% user_can_edit_invoice request.user invoice as can_edit_row %}
+                    {% if can_edit_row %}
+                      <select class="inline-stage-select form-control" data-url="{% url 'marketing:invoice_stage_update' invoice.pk %}">
+                        {% for value, label in payment_stages %}
+                          <option value="{{ value }}" {% if invoice.payment_stage == value %}selected{% endif %}>{% t label %}</option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <span class="badge">{% t invoice.payment_stage|stage_label %}</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% empty %}
-                <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
+                <tr><td colspan="4" class="empty">{% t "No invoices in marketing queue." %}</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -366,8 +402,8 @@
       <div class="panel">
         <div class="section-header">
           <div>
-            <h2 class="section-title">{% t "Invoices in finance review" %}</h2>
-            <p class="section-subtitle">{% t "Sorted by days waiting in stage" %}</p>
+            <h2 class="section-title">{% t "Finance queue" %}</h2>
+            <p class="section-subtitle">{% t "Invoices in finance review" %}</p>
           </div>
         </div>
         <div class="table-wrap">
@@ -376,22 +412,97 @@
               <tr>
                 <th>{% t "Invoice" %}</th>
                 <th>{% t "Vendor" %}</th>
-                <th class="col-num">{% t "Days in stage" %}</th>
+                <th class="col-num">{% t "Days waiting" %}</th>
+                <th>{% t "Stage" %}</th>
               </tr>
             </thead>
             <tbody>
-              {% for invoice in attention_invoices %}
-                <tr>
+              {% for invoice in finance_queue %}
+                <tr class="invoice-row--pending">
                   <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
-                  <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
+                  <td><a href="{% url 'marketing:vendor_detail' invoice.vendor.pk %}">{{ invoice.vendor.name }}</a></td>
                   <td class="col-num">{{ invoice.days_in_current_stage }}</td>
+                  <td>
+                    {% user_can_edit_invoice request.user invoice as can_edit_row %}
+                    {% if can_edit_row %}
+                      <select class="inline-stage-select form-control" data-url="{% url 'marketing:invoice_stage_update' invoice.pk %}">
+                        {% for value, label in payment_stages %}
+                          <option value="{{ value }}" {% if invoice.payment_stage == value %}selected{% endif %}>{% t label %}</option>
+                        {% endfor %}
+                      </select>
+                    {% else %}
+                      <span class="badge">{% t invoice.payment_stage|stage_label %}</span>
+                    {% endif %}
+                  </td>
                 </tr>
               {% empty %}
-                <tr><td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
+                <tr><td colspan="4" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <section class="panel dashboard-ops">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Recently paid" %}</h2>
+          <p class="section-subtitle">{% t "Paid in the last 7 days" %}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{% t "Invoice" %}</th>
+              <th>{% t "Vendor" %}</th>
+              <th class="col-num">{% t "Paid amount" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in recently_paid_invoices %}
+              <tr class="invoice-row--paid">
+                <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
+                <td><a href="{% url 'marketing:vendor_detail' invoice.vendor.pk %}">{{ invoice.vendor.name }}</a></td>
+                <td class="col-num money-cell">{{ invoice.paid_amount|default:invoice.amount|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">{% t "No recent payments." %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel dashboard-ops">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">{% t "Payment status" %}</h2>
+          <p class="section-subtitle">{% t "Invoice count per stage" %}</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{% t "Stage" %}</th>
+              <th class="col-num">{% t "Count" %}</th>
+              <th class="col-num">{% t "Amount" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in stage_rows %}
+              <tr>
+                <td><span class="badge">{% t row.payment_stage|stage_label %}</span></td>
+                <td class="col-num">{{ row.invoice_count }}</td>
+                <td class="col-num money-cell">{{ row.total|money }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="empty">{% t "No data to display." %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -520,4 +631,5 @@
       })();
     </script>
   {% endif %}
+  {% include "marketing/partials/inline_stage_script.html" %}
 {% endblock %}

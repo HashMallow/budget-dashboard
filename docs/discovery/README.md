@@ -41,6 +41,26 @@ committed.
 Never commit production workbooks, database dumps, or mappings that contain real vendor names,
 employee names, or client branding.
 
+## Voice feedback (June 2026)
+
+After transcribing `.artifacts/**/*.ogg` with `faster-whisper large-v3` (conda `ml-env`):
+
+**Canonical English instructions (git-tracked):**
+
+| File | Purpose |
+|------|---------|
+| [`docs/voice-feedback/PROCESSING_LOG.en.md`](../voice-feedback/PROCESSING_LOG.en.md) | **Transcription verification + fixes + backlog** |
+| [`docs/voice-feedback/USER_REQUESTS.en.md`](../voice-feedback/USER_REQUESTS.en.md) | **Main topics** from voice |
+| [`docs/voice-feedback/README.md`](../voice-feedback/README.md) | Index |
+
+Local only: `.artifacts/voice-feedback/transcripts/` (Persian transcripts)
+
+```bash
+PYTHONUNBUFFERED=1 /path/to/miniconda3/envs/ml-env/bin/python tools/batch_transcribe_artifacts.py
+```
+
+Then update **`docs/voice-feedback/PROCESSING_LOG.en.md`** with batch results.
+
 ## Re-import without duplicating data
 
 - **Invoices** upsert by source row + vendor + invoice number (safe to run `make import` again).
