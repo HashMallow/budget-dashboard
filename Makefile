@@ -17,14 +17,17 @@ TRANSCRIPT_MODEL ?= small
 TRANSCRIPT_DEVICE ?= auto
 TRANSCRIPT_COMPUTE ?= auto
 TRANSCRIPT_PACKAGES ?= --with faster-whisper
+# For Mac (Apple Silicon), mlx-whisper is highly optimized and runs fast on the GPU.
+# You can override this to: TRANSCRIPT_PACKAGES="--with mlx-whisper"
 # GPU run uses the system CUDA/cuDNN/cuBLAS libraries (e.g. /usr/local/cuda). If your machine
 # lacks them, append the runtime wheels: TRANSCRIPT_GPU_PACKAGES="--with faster-whisper \
 # --with nvidia-cublas-cu12 --with nvidia-cudnn-cu12" (a ~1.3 GB one-time download).
 TRANSCRIPT_GPU_PACKAGES ?= --with faster-whisper
 TRANSCRIPT_OUTPUT_NAME ?= $(notdir $(basename $(AUDIO)))_transcript.$(TRANSCRIPT_LANG).md
 TRANSCRIPT_WAV_FLAG = $(if $(TRANSCRIPT_WAV_DIR),--wav-dir "$(TRANSCRIPT_WAV_DIR)",)
+TRANSCRIPT_MAC_PACKAGES ?= --with mlx-whisper
 
-.PHONY: help check-uv setup migrate superuser dev-admin groups import-dry-run import seed-reference seed-reference-dry-run load-data-dry-run load-data transcribe-audio transcribe-audio-gpu transcribe-audio-high transcribe-voice run dev panel first-run check test lint django-check shell clean-artifacts clean-local-db prod-install collectstatic prod-run
+.PHONY: help check-uv setup migrate superuser dev-admin groups import-dry-run import seed-reference seed-reference-dry-run load-data-dry-run load-data transcribe-audio transcribe-audio-mac transcribe-audio-gpu transcribe-audio-high transcribe-voice run dev panel first-run check test lint django-check shell clean-artifacts clean-local-db prod-install collectstatic prod-run
 
 help:
 	@echo "Marketing Spend Dashboard — local commands"
@@ -54,6 +57,7 @@ help:
 	@echo ""
 	@echo "Voice notes (optional, not required for the panel):"
 	@echo "  make transcribe-audio AUDIO=path.ogg"
+	@echo "  make transcribe-audio-mac AUDIO=path.ogg (Uses Apple GPU/mlx-whisper)"
 	@echo "  make transcribe-audio-gpu AUDIO=path.ogg [TRANSCRIPT_MODEL=large-v3]"
 	@echo "  make transcribe-audio-high AUDIO=path.ogg"
 	@echo "  make transcribe-voice AUDIO=.artifacts/voice-feedback/audio/note.ogg"
@@ -135,6 +139,10 @@ transcribe-audio: check-uv
 transcribe-audio-gpu: check-uv
 	@test -n "$(AUDIO)" || (echo "Usage: make transcribe-audio-gpu AUDIO=path/to/audio.ogg [TRANSCRIPT_MODEL=large-v3]" && exit 2)
 	$(UV_RUN) run $(TRANSCRIPT_GPU_PACKAGES) python .agents/skills/audio-transcription/scripts/transcribe_audio.py "$(AUDIO)" --out-dir "$(TRANSCRIPT_OUT)" --language "$(TRANSCRIPT_LANG)" --model "$(TRANSCRIPT_MODEL)" --device cuda --compute-type float16 --output-name "$(TRANSCRIPT_OUTPUT_NAME)" $(TRANSCRIPT_WAV_FLAG)
+
+transcribe-audio-mac: check-uv
+	@test -n "$(AUDIO)" || (echo "Usage: make transcribe-audio-mac AUDIO=path/to/audio.ogg" && exit 2)
+	$(UV_RUN) run $(TRANSCRIPT_MAC_PACKAGES) python .agents/skills/audio-transcription/scripts/transcribe_audio.py "$(AUDIO)" --out-dir "$(TRANSCRIPT_OUT)" --language "$(TRANSCRIPT_LANG)" --model "$(TRANSCRIPT_MODEL)" --output-name "$(TRANSCRIPT_OUTPUT_NAME)" $(TRANSCRIPT_WAV_FLAG)
 
 # Highest-accuracy transcription: large-v3 on the GPU (needs a CUDA GPU; ~3 GB VRAM in float16).
 transcribe-audio-high:

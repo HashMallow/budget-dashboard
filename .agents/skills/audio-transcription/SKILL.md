@@ -67,9 +67,16 @@ Equivalent direct command:
 UV_CONFIG_FILE=uv.toml UV_CACHE_DIR=.uv-cache uv run --with faster-whisper python .agents/skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg --out-dir docs/discovery --language fa --model small
 ```
 
-### GPU and high-accuracy transcription
+### GPU, Mac (Apple Silicon), and high-accuracy transcription
 
-The script auto-detects CUDA: with `--device auto` (the default) it uses the GPU when a CUDA
+For Apple Silicon Macs, `mlx-whisper` provides hardware acceleration. Run the dedicated Mac target:
+
+```bash
+# Mac (Apple GPU via mlx-whisper)
+make transcribe-audio-mac AUDIO=path/to/audio.ogg [TRANSCRIPT_MODEL=large-v3]
+```
+
+On Linux/Windows with CUDA, the script auto-detects CUDA: with `--device auto` (the default) it uses the GPU when a CUDA
 device is present and falls back to CPU otherwise. `--compute-type auto` picks `float16` on GPU
 and `int8` on CPU. If GPU init fails (missing cuDNN/cuBLAS runtime), it logs and falls back to CPU.
 
@@ -82,13 +89,13 @@ TRANSCRIPT_GPU_PACKAGES="--with faster-whisper --with nvidia-cublas-cu12 --with 
 ```
 
 ```bash
-# Auto (GPU when available):
+# Auto (CUDA GPU when available):
 make transcribe-audio AUDIO=path/to/audio.ogg
 
-# Force GPU, optionally with a bigger model:
+# Force CUDA GPU, optionally with a bigger model:
 make transcribe-audio-gpu AUDIO=path/to/audio.ogg TRANSCRIPT_MODEL=medium
 
-# Highest accuracy: large-v3 on the GPU (~3 GB VRAM in float16):
+# Highest accuracy: large-v3 on the CUDA GPU (~3 GB VRAM in float16):
 make transcribe-audio-high AUDIO=path/to/audio.ogg
 ```
 

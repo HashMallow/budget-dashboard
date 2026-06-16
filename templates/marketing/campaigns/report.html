@@ -82,9 +82,9 @@
           <tbody>
             {% for row in campaign_rows %}
               <tr>
-                <td>{{ row.campaign__name }}</td>
+                <td title="{{ row.campaign__name }}">{{ row.campaign__name }}</td>
                 <td class="col-num">{{ row.campaign__year }}</td>
-                <td>{{ row.campaign__team__name|default:"-" }}</td>
+                <td title="{{ row.campaign__team__name|default:'-' }}">{{ row.campaign__team__name|default:"-" }}</td>
                 <td class="col-num">{{ row.invoice_count }}</td>
                 <td class="col-num money-cell">{{ row.total|money }}</td>
               </tr>
@@ -137,7 +137,7 @@
         <tbody>
           {% for campaign_name, month_map in monthly_campaigns.items %}
             <tr>
-              <td>{{ campaign_name }}</td>
+              <td title="{{ campaign_name }}">{{ campaign_name }}</td>
               {% for month, label in months %}
                 <td class="col-num">{{ month_map|get_item:month|money }}</td>
               {% endfor %}

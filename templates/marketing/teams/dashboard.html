@@ -138,7 +138,7 @@
           <tbody>
             {% for row in vendor_rows %}
               <tr>
-                <td>{{ row.vendor.name }}</td>
+                <td title="{{ row.vendor.name }}">{{ row.vendor.name }}</td>
                 <td class="col-num">{{ row.invoice_count }}</td>
                 <td class="col-badges">
                   <div class="badge-group">
@@ -190,7 +190,7 @@
           <tbody>
             {% for row in campaign_rows %}
               <tr>
-                <td>{{ row.campaign__name }}</td>
+                <td title="{{ row.campaign__name }}">{{ row.campaign__name }}</td>
                 <td class="col-num">{{ row.campaign__year }}</td>
                 <td class="col-num">{{ row.invoice_count }}</td>
                 <td class="col-num money-cell">{{ row.total|money }}</td>
@@ -224,7 +224,7 @@
           {% for invoice in attention_invoices %}
             <tr>
               <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
-              <td>{{ invoice.vendor.name }}</td>
+              <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
               <td class="col-num">{{ invoice.days_in_current_stage }}</td>
             </tr>
           {% empty %}

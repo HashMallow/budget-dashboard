@@ -151,6 +151,36 @@ def transcribe_faster_whisper(
     return lines, f"{resolved_device}/{resolved_compute}"
 
 
+def transcribe_mlx_whisper(
+    audio_path: Path,
+    language: str | None,
+    model: str,
+) -> tuple[list[str], str]:
+    import mlx_whisper
+
+    if not model.startswith("mlx-community/"):
+        model_repo = f"mlx-community/whisper-{model}-mlx"
+    else:
+        model_repo = model
+
+    kwargs = {}
+    if language:
+        kwargs["language"] = language
+
+    result = mlx_whisper.transcribe(str(audio_path), path_or_hf_repo=model_repo, **kwargs)
+
+    detected_lang = result.get("language", language or "auto")
+    lines = [f"Detected language: `{detected_lang}`", ""]
+    for segment in result.get("segments", []):
+        text = segment.get("text", "").strip()
+        if text:
+            start = segment.get("start", 0.0)
+            end = segment.get("end", 0.0)
+            lines.append(f"[{start:06.2f}-{end:06.2f}] {text}")
+
+    return lines, "mlx-whisper (Apple GPU)"
+
+
 def write_limitation(out_path: Path, source: Path, reason: str) -> None:
     out_path.write_text(
         "\n".join(
@@ -240,6 +270,22 @@ def main() -> int:
             return 0
         except Exception as exc:
             print(f"whisper CLI transcription failed, trying faster_whisper: {exc}", file=sys.stderr)
+
+    if sys.platform == "darwin":
+        try:
+            import mlx_whisper  # Test if available
+            body, runtime = transcribe_mlx_whisper(wav_path, args.language, args.model)
+            transcript_lines = markdown_header(
+                audio_path, converted, f"mlx-whisper {args.model} ({runtime})", args.language
+            )
+            transcript_lines.extend(body)
+            out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+            print(out_path)
+            return 0
+        except ImportError:
+            print("mlx-whisper not installed; falling back to faster_whisper.", file=sys.stderr)
+        except Exception as exc:
+            print(f"mlx-whisper transcription failed, trying faster_whisper: {exc}", file=sys.stderr)
 
     try:
         body, runtime = transcribe_faster_whisper(

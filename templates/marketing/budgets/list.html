@@ -88,8 +88,8 @@
         <tbody>
           {% for row in pivot_rows %}
             <tr>
-              <td>{{ row.team }}</td>
-              <td>{{ row.category }}</td>
+              <td title="{{ row.team }}">{{ row.team }}</td>
+              <td title="{{ row.category }}">{{ row.category }}</td>
               {% for month, label in months %}
                 <td class="col-num">{{ row.months|get_item:month|money }}</td>
               {% endfor %}
@@ -127,9 +127,9 @@
             <tr>
               <td class="col-num">{{ line.year }}</td>
               <td class="col-num">{{ line.month }}</td>
-              <td>{{ line.team.name|default:"-" }}</td>
-              <td>{{ line.campaign.name|default:"-" }}</td>
-              <td>{{ line.category }}</td>
+              <td title="{{ line.team.name|default:'-' }}">{{ line.team.name|default:"-" }}</td>
+              <td title="{{ line.campaign.name|default:'-' }}">{{ line.campaign.name|default:"-" }}</td>
+              <td title="{{ line.category }}">{{ line.category }}</td>
               <td class="col-num money-cell">{{ line.planned_amount|money }}</td>
             </tr>
           {% empty %}

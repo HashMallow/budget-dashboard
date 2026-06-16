@@ -82,9 +82,9 @@
         <tbody>
           {% for contract in page_obj %}
             <tr>
-              <td><a href="{% url 'marketing:contract_detail' contract.pk %}">{{ contract.title }}</a></td>
-              <td>{{ contract.vendor.name }}</td>
-              <td>{{ contract.team.name|default:"-" }}</td>
+              <td title="{{ contract.title }}"><a href="{% url 'marketing:contract_detail' contract.pk %}">{{ contract.title }}</a></td>
+              <td title="{{ contract.vendor.name }}">{{ contract.vendor.name }}</td>
+              <td title="{{ contract.team.name|default:'-' }}">{{ contract.team.name|default:"-" }}</td>
               <td><span class="badge">{% t contract.stage|contract_stage_label %}</span></td>
               <td class="col-num">
                 {% display_date contract.end_date %}

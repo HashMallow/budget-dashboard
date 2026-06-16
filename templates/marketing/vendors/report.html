@@ -70,7 +70,7 @@
         <tbody>
           {% for row in vendor_rows %}
             <tr>
-              <td>{{ row.vendor.name }}</td>
+              <td title="{{ row.vendor.name }}">{{ row.vendor.name }}</td>
               <td class="col-num">{{ row.invoice_count }}</td>
               <td class="col-badges">
                 <div class="badge-group">

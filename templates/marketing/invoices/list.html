@@ -92,10 +92,10 @@
           {% for invoice in page_obj %}
             <tr>
               <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
-              <td>{{ invoice.vendor.name }}</td>
-              <td>{{ invoice.team.name|default:"-" }}</td>
-              <td>{{ invoice.business_section|default:"-" }}</td>
-              <td>{{ invoice.category }}</td>
+              <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
+              <td title="{{ invoice.team.name|default:'-' }}">{{ invoice.team.name|default:"-" }}</td>
+              <td title="{{ invoice.business_section|default:'-' }}">{{ invoice.business_section|default:"-" }}</td>
+              <td title="{{ invoice.category }}">{{ invoice.category }}</td>
               <td class="col-num col-date"><span class="date-cell number">{% display_date invoice.invoice_date %}</span></td>
               <td class="col-num money-cell">{{ invoice.amount|money }}</td>
               <td><span class="badge">{% t invoice.payment_stage|stage_label %}</span></td>

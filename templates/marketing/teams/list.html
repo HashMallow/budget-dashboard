@@ -26,7 +26,7 @@
         <tbody>
           {% for row in team_summaries %}
             <tr>
-              <td>{% t row.team.name %}</td>
+              <td title="{% t row.team.name %}">{% t row.team.name %}</td>
               <td class="col-num">{{ row.invoice_count }}</td>
               <td class="col-num money-cell">{{ row.total_spend|money }}</td>
               <td class="col-actions"><a class="btn" href="{% url 'marketing:team_dashboard' row.team.pk %}">{% t "View team dashboard" %}</a></td>
