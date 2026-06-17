@@ -38,11 +38,11 @@ Year-end aggregate report separating marketing spend vs tax vs insurance deposit
 
 Charts:
 
-- Pie chart: overall spend by team/cost bucket
+- Pie chart: overall spend **by team**. Referral and SMS are cost buckets, not teams, so they are **not** shown as their own slice — Referral rolls into Growth and SMS into Retention so the pie stays equal to overall team spend (product voice `_13`).
 - Bar/line chart: monthly total spend
 - Pie or stacked chart: monthly spend by team
-- Separate chart/card for Referral spend
-- Separate chart/card for SMS spend
+- Separate **card** for Referral spend (shown separately, never a team slice)
+- Separate **card** for SMS spend (shown separately, never a team slice)
 - Invoice count by payment stage
 
 Tables:

@@ -46,6 +46,8 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 | Doc | Purpose | Status |
 |---|---|---|
 | [`operations/DEPLOYMENT_AWS.md`](operations/DEPLOYMENT_AWS.md) | Preferred path: EC2 + Caddy + gunicorn (copy-paste runbook) | 🟢 Living |
+| [`personal-templates/README.md`](personal-templates/README.md) | Personal deploy notes — copy to gitignored `docs/personal/` | 🗂️ Template |
+| [`personal-templates/ENV.md`](personal-templates/ENV.md) | All environment variables (local + production) | 🗂️ Template |
 | [`reference/AWS_EC2_Deployment_Path_Field_Guide.pdf`](reference/AWS_EC2_Deployment_Path_Field_Guide.pdf) | Gentle Console + CLI companion (checkpoints, diagrams) | 🗂️ Reference |
 
 ## Design specs (reference)
@@ -95,6 +97,7 @@ A guide to every doc in this repo, grouped by purpose so you can find the right 
 
 - **Run it locally** → [`../README.md`](../README.md) or [`guides/CURRENT_STATE_AND_RUN_GUIDE.md`](guides/CURRENT_STATE_AND_RUN_GUIDE.md)
 - **Deploy to AWS** → [`operations/DEPLOYMENT_AWS.md`](operations/DEPLOYMENT_AWS.md)
+- **Env vars & personal deploy notes** → copy [`personal-templates/`](personal-templates/) to `docs/personal/` (gitignored)
 - **Understand roles/permissions** → [`operations/ACCESS_BY_ROLE.md`](operations/ACCESS_BY_ROLE.md) + [`operations/PERMISSIONS_MATRIX.md`](operations/PERMISSIONS_MATRIX.md)
 - **Change admin password / onboard users** → [`operations/PASSWORDS_AND_USERS.md`](operations/PASSWORDS_AND_USERS.md)
 - **Explain the panel to a colleague** → [`guides/USER_SITEMAP.md`](guides/USER_SITEMAP.md) or in-app **Help** (`/help/`)

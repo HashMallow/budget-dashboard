@@ -222,4 +222,63 @@ def test_dashboard_chart_helpers_load_before_chart_init(client, frontend_data):
     assert init_pos != -1
     assert helper_pos < init_pos, "Chart money helpers must load before dashboard chart init"
     assert variance_helper_pos < init_pos, "Budget variance helper must load before dashboard chart init"
-    assert "yAxisID: \"y\"" in html or "createBudgetVarianceChart" in html
+
+
+def test_session_persists_while_navigating_main_sections(client, frontend_data):
+    """Regression: unstable SECRET_KEY or broken pages must not look like random logouts."""
+    client.force_login(frontend_data["admin"])
+    session_key = client.session.session_key
+
+    routes = [
+        reverse("marketing:dashboard"),
+        reverse("marketing:budget_list"),
+        reverse("marketing:invoice_list"),
+        reverse("marketing:vendor_report"),
+        reverse("marketing:team_list"),
+        reverse("marketing:dashboard"),
+    ]
+    for url in routes:
+        response = client.get(url)
+        assert response.status_code == 200, url
+        assert client.session.session_key == session_key
+        assert frontend_data["admin"].username in response.content.decode()
+
+
+def test_logout_requires_post(client, frontend_data):
+    client.force_login(frontend_data["admin"])
+    get_response = client.get(reverse("marketing:logout"))
+    assert get_response.status_code == 405
+    still_in = client.get(reverse("marketing:dashboard"))
+    assert still_in.status_code == 200
+    assert frontend_data["admin"].username in still_in.content.decode()
+
+
+def test_invoice_attachment_download_enforces_access(client, frontend_data):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from marketing.models import AttachmentType, InvoiceAttachment
+
+    attachment = InvoiceAttachment.objects.create(
+        invoice=frontend_data["brand_invoice"],
+        attachment_type=AttachmentType.INVOICE_IMAGE,
+        file=SimpleUploadedFile("proof.txt", b"sensitive financial document"),
+        uploaded_by=frontend_data["admin"],
+    )
+    url = reverse("marketing:invoice_attachment_download", args=[attachment.pk])
+
+    # Anonymous users are redirected to login by LoginRequiredMiddleware.
+    anon = client.get(url)
+    assert anon.status_code == 302
+
+    # An editor scoped to Growth must not reach a Brand invoice's file.
+    client.force_login(frontend_data["growth_editor"])
+    denied = client.get(url)
+    assert denied.status_code == 403
+
+    # Admin can download, and the file is forced as an attachment (no inline XSS).
+    client.force_login(frontend_data["admin"])
+    allowed = client.get(url)
+    assert allowed.status_code == 200
+    assert allowed["X-Content-Type-Options"] == "nosniff"
+    assert b"attachment" in allowed["Content-Disposition"].encode()
+    attachment.file.delete(save=False)

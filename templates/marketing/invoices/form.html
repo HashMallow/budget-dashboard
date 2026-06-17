@@ -5,308 +5,331 @@
 {% block page_title %}{% if mode == "edit" %}{% t "Edit invoice" %}{% else %}{% t "New invoice" %}{% endif %}{% endblock %}
 {% block page_subtitle %}{% t "The invoice is saved to the database" %}{% endblock %}
 {% block page_actions %}
-  <a class="btn" href="{% if invoice %}{% url 'marketing:invoice_detail' invoice.pk %}{% else %}{% url 'marketing:invoice_list' %}{% endif %}">{% t "Back" %}</a>
+<a class="btn"
+  href="{% if invoice %}{% url 'marketing:invoice_detail' invoice.pk %}{% else %}{% url 'marketing:invoice_list' %}{% endif %}">{% t "Back" %}</a>
 {% endblock %}
 
 {% block content %}
-  <style>
-    .amount-entry-row {
-      display: flex;
-      gap: 10px;
-      align-items: stretch;
-    }
-    .amount-entry-row .form-control { flex: 1 1 auto; min-width: 0; }
-    .amount-entry-row select.form-control {
-      flex: 0 0 170px;
-      max-width: 200px;
-    }
-    .field-hint {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
-    }
-    .amount-preview {
-      margin-top: 6px;
-      color: var(--primary);
-      font-size: 13px;
-      font-weight: 600;
-      min-height: 1.2em;
-    }
-    .amount-preview:empty { display: none; }
-  </style>
-  <section class="section panel">
-    <form method="post">
-      {% csrf_token %}
-      {% if form.non_field_errors %}
-        <div class="message">{% form_errors form.non_field_errors %}</div>
-      {% endif %}
-      <div class="form-grid">
-        <div class="field">
-          <label for="{{ form.invoice_number.id_for_label }}">{% t form.invoice_number.label %}</label>
-          {{ form.invoice_number }}
-          {% form_errors form.invoice_number.errors %}
-        </div>
-        <div class="field wide amount-entry-field">
-          <label for="{{ form.action_cost_amount.id_for_label }}">{% t form.action_cost_amount.label %}</label>
-          {{ form.action_cost_amount }}
-          {% form_errors form.action_cost_amount.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.tax_amount.id_for_label }}">{% t form.tax_amount.label %}</label>
-          {{ form.tax_amount }}
-          <p class="field-hint">{% t "Leave blank for automatic 10% VAT on action cost." %}</p>
-          {% form_errors form.tax_amount.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.insurance_rate_percent.id_for_label }}">{% t form.insurance_rate_percent.label %}</label>
-          {{ form.insurance_rate_percent }}
-          {% form_errors form.insurance_rate_percent.errors %}
-        </div>
-        <div class="field wide amount-entry-field">
-          <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
-          <div class="amount-entry-row">
-            {{ form.amount }}
-            {{ form.currency }}
-          </div>
-          <p class="field-hint">{% t "Calculated from action cost + tax." %}</p>
-          {% form_errors form.amount.errors %}
-          {% form_errors form.currency.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.paid_amount.id_for_label }}">{% t form.paid_amount.label %}</label>
-          {{ form.paid_amount }}
-          <p class="field-hint">{% t "Amount finance pays after insurance withholding." %}</p>
-          {% form_errors form.paid_amount.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
-          {{ form.vendor }}
-          {% form_errors form.vendor.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.new_vendor_name.id_for_label }}">{% t form.new_vendor_name.label %}</label>
-          {{ form.new_vendor_name }}
-          {% form_errors form.new_vendor_name.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
-          {{ form.team }}
-          {% form_errors form.team.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.business_section.id_for_label }}">{% t form.business_section.label %}</label>
-          {{ form.business_section }}
-          <p class="field-hint">{% t "Business segment from Excel Business Section (e.g. Consumer, Youth, or Enterprise)." %}</p>
-          {% form_errors form.business_section.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.campaign.id_for_label }}">{% t form.campaign.label %}</label>
-          {{ form.campaign }}
-          {% form_errors form.campaign.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.category.id_for_label }}">{% t form.category.label %}</label>
-          {{ form.category }}
-          {% form_errors form.category.errors %}
-        </div>
-        <div class="field wide" id="budget-variance-panel-wrap" style="display:none;">
-          <label>{% t "Budget variance" %}</label>
-          <div id="budget-variance-panel" class="budget-variance-panel">
-            <div><div class="metric-label">{% t "Planned budget (projection)" %}</div><div class="metric-value" id="bv-planned">—</div></div>
-            <div><div class="metric-label">{% t "Actual spend" %}</div><div class="metric-value" id="bv-actual">—</div></div>
-            <div><div class="metric-label">{% t "Remaining budget" %}</div><div class="metric-value" id="bv-remaining">—</div></div>
-            <div><div class="metric-label">{% t "% Consumed" %}</div><div class="metric-value" id="bv-consumed">—</div></div>
-          </div>
-          <p class="field-hint" id="bv-empty" style="display:none;">{% t "No budget data for this combination." %}</p>
-        </div>
-        <div class="field">
-          <label for="{{ form.cost_bucket.id_for_label }}">{% t form.cost_bucket.label %}</label>
-          {{ form.cost_bucket }}
-          {% form_errors form.cost_bucket.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.invoice_date.id_for_label }}">{% t form.invoice_date.label %}</label>
-          {{ form.invoice_date }}
-          {% form_errors form.invoice_date.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.due_date.id_for_label }}">{% t form.due_date.label %}</label>
-          {{ form.due_date }}
-          {% form_errors form.due_date.errors %}
-        </div>
-        <div class="field">
-          <label for="{{ form.payment_stage.id_for_label }}">{% t form.payment_stage.label %}</label>
-          {{ form.payment_stage }}
-          {% form_errors form.payment_stage.errors %}
-        </div>
-        <div class="field wide">
-          <label for="{{ form.description.id_for_label }}">{% t form.description.label %}</label>
-          {{ form.description }}
-          {% form_errors form.description.errors %}
-        </div>
+<style>
+  .amount-entry-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .amount-entry-row .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .amount-entry-row select.form-control {
+    flex: 0 0 170px;
+    max-width: 200px;
+  }
+
+  .field-hint {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .amount-preview {
+    margin-top: 6px;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 1.2em;
+  }
+
+  .amount-preview:empty {
+    display: none;
+  }
+</style>
+<section class="section panel">
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="message">{% form_errors form.non_field_errors %}</div>
+    {% endif %}
+    <div class="form-grid">
+      <div class="field">
+        <label for="{{ form.invoice_number.id_for_label }}">{% t form.invoice_number.label %}</label>
+        {{ form.invoice_number }}
+        {% form_errors form.invoice_number.errors %}
       </div>
-      <div class="actions" style="margin-top: 18px;">
-        <button class="btn primary" type="submit">{% t "Save" %}</button>
-        <a class="btn" href="{% url 'marketing:invoice_list' %}">{% t "Cancel" %}</a>
+      <div class="field wide amount-entry-field">
+        <label for="{{ form.action_cost_amount.id_for_label }}">{% t form.action_cost_amount.label %}</label>
+        {{ form.action_cost_amount }}
+        {% form_errors form.action_cost_amount.errors %}
       </div>
-    </form>
-  </section>
+      <div class="field">
+        <label for="{{ form.tax_amount.id_for_label }}">{% t form.tax_amount.label %}</label>
+        {{ form.tax_amount }}
+        <p class="field-hint">{% t "Leave blank for automatic 10% VAT on action cost." %}</p>
+        {% form_errors form.tax_amount.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.insurance_rate_percent.id_for_label }}">{% t form.insurance_rate_percent.label %}</label>
+        {{ form.insurance_rate_percent }}
+        {% form_errors form.insurance_rate_percent.errors %}
+      </div>
+      <div class="field wide amount-entry-field">
+        <label for="{{ form.amount.id_for_label }}">{% t form.amount.label %}</label>
+        <div class="amount-entry-row">
+          {{ form.amount }}
+          {{ form.currency }}
+        </div>
+        <p class="field-hint">{% t "Calculated from action cost + tax." %}</p>
+        {% form_errors form.amount.errors %}
+        {% form_errors form.currency.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.paid_amount.id_for_label }}">{% t form.paid_amount.label %}</label>
+        {{ form.paid_amount }}
+        <p class="field-hint">{% t "Amount finance pays after insurance withholding." %}</p>
+        {% form_errors form.paid_amount.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.vendor.id_for_label }}">{% t form.vendor.label %}</label>
+        {{ form.vendor }}
+        {% form_errors form.vendor.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.new_vendor_name.id_for_label }}">{% t form.new_vendor_name.label %}</label>
+        {{ form.new_vendor_name }}
+        {% form_errors form.new_vendor_name.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.team.id_for_label }}">{% t form.team.label %}</label>
+        {{ form.team }}
+        {% form_errors form.team.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.business_section.id_for_label }}">{% t form.business_section.label %}</label>
+        {{ form.business_section }}
+        <p class="field-hint">{% t "Business segment from Excel Business Section (e.g. Consumer, Youth, or Enterprise)." %}</p>
+        {% form_errors form.business_section.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.campaign.id_for_label }}">{% t form.campaign.label %}</label>
+        {{ form.campaign }}
+        {% form_errors form.campaign.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.category.id_for_label }}">{% t form.category.label %}</label>
+        {{ form.category }}
+        {% form_errors form.category.errors %}
+      </div>
+      <div class="field wide" id="budget-variance-panel-wrap" style="display:none;">
+        <label>{% t "Budget variance" %}</label>
+        <div id="budget-variance-panel" class="budget-variance-panel">
+          <div>
+            <div class="metric-label">{% t "Planned budget (projection)" %}</div>
+            <div class="metric-value" id="bv-planned">—</div>
+          </div>
+          <div>
+            <div class="metric-label">{% t "Actual spend" %}</div>
+            <div class="metric-value" id="bv-actual">—</div>
+          </div>
+          <div>
+            <div class="metric-label">{% t "Remaining budget" %}</div>
+            <div class="metric-value" id="bv-remaining">—</div>
+          </div>
+          <div>
+            <div class="metric-label">{% t "% Consumed" %}</div>
+            <div class="metric-value" id="bv-consumed">—</div>
+          </div>
+        </div>
+        <p class="field-hint" id="bv-empty" style="display:none;">{% t "No budget data for this combination." %}</p>
+      </div>
+      <div class="field">
+        <label for="{{ form.cost_bucket.id_for_label }}">{% t form.cost_bucket.label %}</label>
+        {{ form.cost_bucket }}
+        {% form_errors form.cost_bucket.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.invoice_date.id_for_label }}">{% t form.invoice_date.label %}</label>
+        {{ form.invoice_date }}
+        {% form_errors form.invoice_date.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.due_date.id_for_label }}">{% t form.due_date.label %}</label>
+        {{ form.due_date }}
+        {% form_errors form.due_date.errors %}
+      </div>
+      <div class="field">
+        <label for="{{ form.payment_stage.id_for_label }}">{% t form.payment_stage.label %}</label>
+        {{ form.payment_stage }}
+        {% form_errors form.payment_stage.errors %}
+      </div>
+      <div class="field wide">
+        <label for="{{ form.description.id_for_label }}">{% t form.description.label %}</label>
+        {{ form.description }}
+        {% form_errors form.description.errors %}
+      </div>
+    </div>
+    <div class="actions" style="margin-top: 18px;">
+      <button class="btn primary" type="submit">{% t "Save" %}</button>
+      <a class="btn" href="{% url 'marketing:invoice_list' %}">{% t "Cancel" %}</a>
+    </div>
+  </form>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
-  <script>
-    (function () {
-      var actionInput = document.getElementById("{{ form.action_cost_amount.id_for_label }}");
-      var taxInput = document.getElementById("{{ form.tax_amount.id_for_label }}");
-      var rateInput = document.getElementById("{{ form.insurance_rate_percent.id_for_label }}");
-      var totalInput = document.getElementById("{{ form.amount.id_for_label }}");
-      var paidInput = document.getElementById("{{ form.paid_amount.id_for_label }}");
-      if (!actionInput || !totalInput || !paidInput) { return; }
+<script>
+  (function () {
+    var actionInput = document.getElementById("{{ form.action_cost_amount.id_for_label }}");
+    var taxInput = document.getElementById("{{ form.tax_amount.id_for_label }}");
+    var rateInput = document.getElementById("{{ form.insurance_rate_percent.id_for_label }}");
+    var totalInput = document.getElementById("{{ form.amount.id_for_label }}");
+    var paidInput = document.getElementById("{{ form.paid_amount.id_for_label }}");
+    if (!actionInput || !totalInput || !paidInput) { return; }
 
-      function parseAmount(text) {
-        if (!text) { return 0; }
-        var normalized = String(text).replace(/[,\u066C\u060C\s]/g, "").replace(/[۰-۹]/g, function (d) {
-          return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+    function parseAmount(text) {
+      if (!text) { return 0; }
+      var normalized = String(text).replace(/[,\u066C\u060C\s]/g, "").replace(/[۰-۹]/g, function (d) {
+        return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+      });
+      var value = Number(normalized);
+      return isFinite(value) ? value : 0;
+    }
+
+    function roundMoney(value) {
+      return Math.round(value);
+    }
+
+    function recalc() {
+      var action = parseAmount(actionInput.value);
+      if (action <= 0) {
+        totalInput.value = "";
+        paidInput.value = "";
+        return;
+      }
+      var tax = parseAmount(taxInput && taxInput.value);
+      if (!taxInput || !taxInput.value.trim()) {
+        tax = roundMoney(action * 0.1);
+        if (taxInput) { taxInput.placeholder = tax; }
+      }
+      var total = roundMoney(action + tax);
+      var rate = rateInput ? parseAmount(rateInput.value) : 0;
+      var insurance = rate > 0 ? roundMoney(action * rate / 100) : 0;
+      var paid = roundMoney(action - insurance + tax);
+      totalInput.value = total;
+      paidInput.value = paid;
+    }
+
+    [actionInput, taxInput, rateInput].forEach(function (el) {
+      if (!el) { return; }
+      el.addEventListener("input", recalc);
+      el.addEventListener("change", recalc);
+    });
+    recalc();
+  })();
+
+  (function () {
+    var teamSelect = document.getElementById("{{ form.team.id_for_label }}");
+    var categorySelect = document.getElementById("{{ form.category.id_for_label }}");
+    var campaignSelect = document.getElementById("{{ form.campaign.id_for_label }}");
+    var dateInput = document.getElementById("{{ form.invoice_date.id_for_label }}");
+    var panelWrap = document.getElementById("budget-variance-panel-wrap");
+    var emptyHint = document.getElementById("bv-empty");
+    if (!teamSelect || !categorySelect || !dateInput || !panelWrap) { return; }
+
+    var allCategoryOptions = Array.from(categorySelect.options).map(function (opt) {
+      return { value: opt.value, text: opt.text, selected: opt.selected };
+    });
+    var allCampaignOptions = campaignSelect ? Array.from(campaignSelect.options).map(function (opt) {
+      return { value: opt.value, text: opt.text, selected: opt.selected };
+    }) : [];
+
+    function setConsumedClass(el, pct) {
+      el.classList.remove("consumed-under", "consumed-warn", "consumed-over");
+      if (pct == null) { return; }
+      if (pct < 80) { el.classList.add("consumed-under"); }
+      else if (pct <= 100) { el.classList.add("consumed-warn"); }
+      else { el.classList.add("consumed-over"); }
+    }
+
+    function refreshCategories() {
+      var teamId = teamSelect.value;
+      if (!teamId) {
+        categorySelect.innerHTML = "";
+        allCategoryOptions.forEach(function (opt) {
+          categorySelect.add(new Option(opt.text, opt.value, false, opt.selected));
         });
-        var value = Number(normalized);
-        return isFinite(value) ? value : 0;
-      }
-
-      function roundMoney(value) {
-        return Math.round(value);
-      }
-
-      function recalc() {
-        var action = parseAmount(actionInput.value);
-        if (action <= 0) {
-          totalInput.value = "";
-          paidInput.value = "";
-          return;
+        if (campaignSelect) {
+          campaignSelect.innerHTML = "";
+          allCampaignOptions.forEach(function (opt) {
+            campaignSelect.add(new Option(opt.text, opt.value, false, opt.selected));
+          });
         }
-        var tax = parseAmount(taxInput && taxInput.value);
-        if (!taxInput || !taxInput.value.trim()) {
-          tax = roundMoney(action * 0.1);
-          if (taxInput) { taxInput.placeholder = tax; }
-        }
-        var total = roundMoney(action + tax);
-        var rate = rateInput ? parseAmount(rateInput.value) : 0;
-        var insurance = rate > 0 ? roundMoney(action * rate / 100) : 0;
-        var paid = roundMoney(action - insurance + tax);
-        totalInput.value = total;
-        paidInput.value = paid;
+        return;
       }
-
-      [actionInput, taxInput, rateInput].forEach(function (el) {
-        if (!el) { return; }
-        el.addEventListener("input", recalc);
-        el.addEventListener("change", recalc);
-      });
-      recalc();
-    })();
-
-    (function () {
-      var teamSelect = document.getElementById("{{ form.team.id_for_label }}");
-      var categorySelect = document.getElementById("{{ form.category.id_for_label }}");
-      var campaignSelect = document.getElementById("{{ form.campaign.id_for_label }}");
-      var dateInput = document.getElementById("{{ form.invoice_date.id_for_label }}");
-      var panelWrap = document.getElementById("budget-variance-panel-wrap");
-      var emptyHint = document.getElementById("bv-empty");
-      if (!teamSelect || !categorySelect || !dateInput || !panelWrap) { return; }
-
-      var allCategoryOptions = Array.from(categorySelect.options).map(function (opt) {
-        return { value: opt.value, text: opt.text, selected: opt.selected };
-      });
-      var allCampaignOptions = campaignSelect ? Array.from(campaignSelect.options).map(function (opt) {
-        return { value: opt.value, text: opt.text, selected: opt.selected };
-      }) : [];
-
-      function setConsumedClass(el, pct) {
-        el.classList.remove("consumed-under", "consumed-warn", "consumed-over");
-        if (pct == null) { return; }
-        if (pct < 80) { el.classList.add("consumed-under"); }
-        else if (pct <= 100) { el.classList.add("consumed-warn"); }
-        else { el.classList.add("consumed-over"); }
-      }
-
-      function refreshCategories() {
-        var teamId = teamSelect.value;
-        if (!teamId) {
+      fetch("{% url 'marketing:categories_for_team_api' %}?team_id=" + encodeURIComponent(teamId))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var allowed = new Set(data.categories || []);
+          var current = categorySelect.value;
           categorySelect.innerHTML = "";
           allCategoryOptions.forEach(function (opt) {
-            categorySelect.add(new Option(opt.text, opt.value, false, opt.selected));
-          });
-          if (campaignSelect) {
-            campaignSelect.innerHTML = "";
-            allCampaignOptions.forEach(function (opt) {
-              campaignSelect.add(new Option(opt.text, opt.value, false, opt.selected));
-            });
-          }
-          return;
-        }
-        fetch("{% url 'marketing:categories_for_team_api' %}?team_id=" + encodeURIComponent(teamId))
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            var allowed = new Set(data.categories || []);
-            var current = categorySelect.value;
-            categorySelect.innerHTML = "";
-            allCategoryOptions.forEach(function (opt) {
-              if (!opt.value || allowed.has(opt.value)) {
-                categorySelect.add(new Option(opt.text, opt.value, false, opt.value === current));
-              }
-            });
-            if (campaignSelect && data.campaigns) {
-              var campaignCurrent = campaignSelect.value;
-              campaignSelect.innerHTML = "";
-              campaignSelect.add(new Option("---------", "", false, !campaignCurrent));
-              data.campaigns.forEach(function (item) {
-                var label = item.name + " (" + item.year + ")";
-                campaignSelect.add(new Option(label, String(item.id), false, String(item.id) === campaignCurrent));
-              });
+            if (!opt.value || allowed.has(opt.value)) {
+              categorySelect.add(new Option(opt.text, opt.value, false, opt.value === current));
             }
           });
-      }
+          if (campaignSelect && data.campaigns) {
+            var campaignCurrent = campaignSelect.value;
+            campaignSelect.innerHTML = "";
+            campaignSelect.add(new Option("---------", "", false, !campaignCurrent));
+            data.campaigns.forEach(function (item) {
+              var label = item.name + " (" + item.year + ")";
+              campaignSelect.add(new Option(label, String(item.id), false, String(item.id) === campaignCurrent));
+            });
+          }
+        });
+    }
 
-      function refreshVariance() {
-        var teamId = teamSelect.value;
-        var category = categorySelect.value;
-        var dateValue = dateInput.value;
-        if (!teamId || !category || !dateValue) {
-          panelWrap.style.display = "none";
+    function refreshVariance() {
+      var teamId = teamSelect.value;
+      var category = categorySelect.value;
+      var dateValue = dateInput.value;
+      if (!teamId || !category || !dateValue) {
+        panelWrap.style.display = "none";
+        return;
+      }
+      var url = "{% url 'marketing:budget_variance_api' %}?team_id=" + encodeURIComponent(teamId)
+        + "&category=" + encodeURIComponent(category)
+        + "&invoice_date=" + encodeURIComponent(dateValue);
+      fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+        panelWrap.style.display = "block";
+        if (!data.has_budget && Number(data.actual) === 0) {
+          document.getElementById("budget-variance-panel").style.display = "none";
+          emptyHint.style.display = "block";
           return;
         }
-        var url = "{% url 'marketing:budget_variance_api' %}?team_id=" + encodeURIComponent(teamId)
-          + "&category=" + encodeURIComponent(category)
-          + "&invoice_date=" + encodeURIComponent(dateValue);
-        fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-          panelWrap.style.display = "block";
-          if (!data.has_budget && Number(data.actual) === 0) {
-            document.getElementById("budget-variance-panel").style.display = "none";
-            emptyHint.style.display = "block";
-            return;
-          }
-          document.getElementById("budget-variance-panel").style.display = "grid";
-          emptyHint.style.display = "none";
-          document.getElementById("bv-planned").textContent = data.planned;
-          document.getElementById("bv-actual").textContent = data.actual;
-          document.getElementById("bv-remaining").textContent = data.remaining;
-          var consumedEl = document.getElementById("bv-consumed");
-          consumedEl.textContent = data.percent_consumed == null ? "—" : (data.percent_consumed + "%");
-          setConsumedClass(consumedEl, data.percent_consumed);
-        }).catch(function () {
-          panelWrap.style.display = "none";
-        });
-      }
-
-      teamSelect.addEventListener("change", function () {
-        refreshCategories();
-        refreshVariance();
+        document.getElementById("budget-variance-panel").style.display = "grid";
+        emptyHint.style.display = "none";
+        document.getElementById("bv-planned").textContent = data.planned;
+        document.getElementById("bv-actual").textContent = data.actual;
+        document.getElementById("bv-remaining").textContent = data.remaining;
+        var consumedEl = document.getElementById("bv-consumed");
+        consumedEl.textContent = data.percent_consumed == null ? "—" : (data.percent_consumed + "%");
+        setConsumedClass(consumedEl, data.percent_consumed);
+      }).catch(function () {
+        panelWrap.style.display = "none";
       });
-      categorySelect.addEventListener("change", refreshVariance);
-      dateInput.addEventListener("change", refreshVariance);
-      dateInput.addEventListener("input", refreshVariance);
+    }
+
+    teamSelect.addEventListener("change", function () {
       refreshCategories();
       refreshVariance();
-    })();
-  </script>
+    });
+    categorySelect.addEventListener("change", refreshVariance);
+    dateInput.addEventListener("change", refreshVariance);
+    dateInput.addEventListener("input", refreshVariance);
+    refreshCategories();
+    refreshVariance();
+  })();
+</script>
 {% endblock %}

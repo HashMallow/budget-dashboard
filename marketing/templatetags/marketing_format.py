@@ -22,6 +22,8 @@ from marketing.translations import translate
 
 register = template.Library()
 
+_PERSIAN_DIGITS = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
+
 
 def _ui_arrow_markup(lang: str) -> str:
     arrow = "←" if lang == "fa" else "→"
@@ -54,6 +56,15 @@ def ui_flow(context, *stages):
 def t(context, text):
     """Translate a UI string to the active language (English source is the key)."""
     return translate(text, context.get("ui_lang", "en"))
+
+
+@register.simple_tag(takes_context=True)
+def locale_digits(context, value):
+    """Render Western digits as Persian numerals when the UI language is Farsi."""
+    text = str(value)
+    if context.get("ui_lang", "en") == "fa" or context.get("number_locale", "en") == "fa":
+        return text.translate(_PERSIAN_DIGITS)
+    return text
 
 
 @register.simple_tag(takes_context=True)

@@ -9,6 +9,7 @@ app_name = "marketing"
 
 urlpatterns = [
     path("favicon.svg", views.favicon_svg, name="favicon_svg"),
+    path("assets/fonts/<str:filename>", views.brand_font, name="brand_font"),
     path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
     path("help/", views.help_sitemap, name="help_sitemap"),
     path("preferences/", views.set_display_preferences, name="set_display_preferences"),
@@ -20,12 +21,22 @@ urlpatterns = [
     path("invoices/<int:pk>/edit/", views.invoice_edit, name="invoice_edit"),
     path("invoices/<int:pk>/stage/", views.invoice_stage_update, name="invoice_stage_update"),
     path("invoices/<int:pk>/attachments/", views.invoice_attachment_upload, name="invoice_attachment_upload"),
+    path(
+        "invoices/attachments/<int:pk>/download/",
+        views.invoice_attachment_download,
+        name="invoice_attachment_download",
+    ),
     path("contracts/", views.contract_list, name="contract_list"),
     path("contracts/new/", views.contract_create, name="contract_create"),
     path("contracts/<int:pk>/", views.contract_detail, name="contract_detail"),
     path("contracts/<int:pk>/edit/", views.contract_edit, name="contract_edit"),
     path("contracts/<int:pk>/stage/", views.contract_stage_update, name="contract_stage_update"),
     path("contracts/<int:pk>/attachments/", views.contract_attachment_upload, name="contract_attachment_upload"),
+    path(
+        "contracts/attachments/<int:pk>/download/",
+        views.contract_attachment_download,
+        name="contract_attachment_download",
+    ),
     path("vendors/", views.vendor_report, name="vendor_report"),
     path("vendors/<int:pk>/", views.vendor_detail, name="vendor_detail"),
     path("campaigns/", views.campaign_report, name="campaign_report"),

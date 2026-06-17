@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from django.db.models import Count, QuerySet, Sum
 
-from marketing.cost_buckets import team_spend_cost_buckets
+from marketing.cost_buckets import parent_team_name_for_bucket, team_spend_cost_buckets
 from marketing.jalali import JALALI_MONTHS, gregorian_to_jalali
 from marketing.models import CostBucket, Invoice, PaymentStage, Team, Vendor
 from marketing.translations import translate
@@ -270,14 +270,38 @@ def team_chart_data(team_rows: list[dict], ui_lang: str) -> dict[str, list]:
 
 
 def overall_spend_pie(team_rows: list[dict], referral_total: Decimal, sms_total: Decimal, ui_lang: str) -> dict:
-    pie_segments = [(translate(row["team_name"], ui_lang), row["total"]) for row in team_rows if row["total"]]
-    if referral_total:
-        pie_segments.append((translate("Referral", ui_lang), referral_total))
-    if sms_total:
-        pie_segments.append((translate("SMS", ui_lang), sms_total))
+    """Team breakdown of overall marketing spend.
+
+    Referral and SMS are cost buckets, not teams (product voice notes): Referral
+    rolls up into Growth and SMS into Retention so they stay in the overall total
+    without ever appearing as their own team slice. They remain visible separately
+    via the dedicated Referral/SMS dashboard cards.
+    """
+    totals: dict[str, Decimal] = {}
+    order: list[str] = []
+    for row in team_rows:
+        name = row["team_name"]
+        if name not in totals:
+            order.append(name)
+            totals[name] = ZERO
+        totals[name] += row["total"] or ZERO
+
+    for bucket_total, bucket in ((referral_total, CostBucket.REFERRAL), (sms_total, CostBucket.SMS)):
+        if not bucket_total:
+            continue
+        parent = parent_team_name_for_bucket(bucket)
+        if not parent:
+            continue
+        if parent not in totals:
+            order.append(parent)
+            totals[parent] = ZERO
+        totals[parent] += bucket_total
+
+    segments = [(translate(name, ui_lang), totals[name]) for name in order if totals[name]]
+    segments.sort(key=lambda item: item[1], reverse=True)
     return {
-        "labels": [label for label, _ in pie_segments],
-        "values": [float(value) for _, value in pie_segments],
+        "labels": [label for label, _ in segments],
+        "values": [float(value) for _, value in segments],
     }
 
 

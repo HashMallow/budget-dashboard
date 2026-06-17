@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from decimal import Decimal
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from marketing.models import PaymentStage
-from marketing.money_format import TOMAN, format_money_full
+from marketing.models import CostBucket, PaymentStage
+from marketing.money_format import FULL, format_money
 from marketing.reports.pdf_fonts import (
     PdfLocale,
     pdf_font_names,
     pdf_styles,
     register_pdf_fonts,
-    shape_pdf_parts,
     shape_pdf_text,
 )
 from marketing.translations import translate
@@ -37,7 +37,9 @@ _PDF_STRINGS = {
     "total": ("Total", "جمع"),
     "campaign": ("Campaign", "کمپین"),
     "year": ("Year", "سال"),
+    "month": ("Month", "ماه"),
     "team": ("Team", "تیم"),
+    "business_line": ("Business line", "خط کسب‌وکار"),
     "title": ("Title", "عنوان"),
     "stage": ("Stage", "مرحله"),
     "end_date": ("End date", "تاریخ پایان"),
@@ -45,6 +47,8 @@ _PDF_STRINGS = {
     "top_vendors": ("Top vendors", "برترین وندورها"),
     "payment_stages": ("Payment stages", "مراحل پرداخت"),
     "count": ("Count", "تعداد"),
+    "search": ("Search", "جستجو"),
+    "cost_bucket": ("Cost type", "نوع هزینه"),
 }
 
 
@@ -55,17 +59,42 @@ def _label(key: str, locale: PdfLocale) -> str:
 
 def _money_raw(value: Decimal | float | int | None, locale: PdfLocale) -> str:
     amount = value or ZERO
-    if locale.unit == TOMAN:
-        return format_money_full(amount, TOMAN)
-    return format_money_full(amount)
+    return format_money(amount, FULL, locale.lang, locale.unit)
+
+
+def _pdf_markup(text: str) -> str:
+    return escape(text)
 
 
 def _filter_line(filters: dict | None, locale: PdfLocale) -> str:
-    bits = []
-    for key in ("year", "team", "stage", "bucket", "q"):
-        value = (filters or {}).get(key)
-        if value:
-            bits.append(f"{key}={value}")
+    if not filters:
+        return ""
+    bits: list[str] = []
+    spec = (
+        ("year", "year", None),
+        ("month", "month", "month_label"),
+        ("team", "team", "team_label"),
+        ("business_section", "business_line", None),
+        ("vendor", "vendor", "vendor_label"),
+        ("stage", "stage", None),
+        ("bucket", "cost_bucket", None),
+        ("q", "search", None),
+    )
+    for key, label_key, display_key in spec:
+        value = filters.get(key)
+        if not value:
+            continue
+        display = filters.get(display_key) if display_key else value
+        if key == "stage":
+            stage_labels = dict(PaymentStage.choices)
+            display = _localized_label(stage_labels.get(str(value), str(value)), locale)
+        elif key == "bucket":
+            bucket_labels = dict(CostBucket.choices)
+            display = _localized_label(bucket_labels.get(str(value), str(value)), locale)
+        elif not display:
+            display = value
+        label = _label(label_key, locale)
+        bits.append(f"{label}: {display}")
     return ", ".join(bits)
 
 
@@ -83,9 +112,8 @@ def _doc(buffer: BytesIO, locale: PdfLocale) -> SimpleDocTemplate:
     )
 
 
-def _paragraph(text: str, style_name: str, locale: PdfLocale, styles: dict, *, shaped: bool = False) -> Paragraph:
-    content = text if shaped else shape_pdf_text(text, locale)
-    return Paragraph(content, styles[style_name])
+def _paragraph(text: str, style_name: str, locale: PdfLocale, styles: dict) -> Paragraph:
+    return Paragraph(_pdf_markup(shape_pdf_text(text, locale)), styles[style_name])
 
 
 def _header_story(
@@ -96,33 +124,27 @@ def _header_story(
     filters: dict | None,
 ) -> list:
     generated_stamp = generated_at.strftime("%Y-%m-%d %H:%M")
-    if locale.rtl:
-        generated_line = shape_pdf_parts([_label("generated", locale), ": ", generated_stamp], locale)
-    else:
-        generated_line = f"{_label('generated', locale)}: {generated_stamp}"
+    generated_line = f"{_label('generated', locale)}: {generated_stamp}"
 
     story = [
         _paragraph(title, "title", locale, styles),
-        _paragraph(generated_line, "subtitle", locale, styles, shaped=locale.rtl),
+        _paragraph(generated_line, "subtitle", locale, styles),
     ]
     filter_line = _filter_line(filters, locale)
     if filter_line:
-        if locale.rtl:
-            filters_line = shape_pdf_parts([_label("filters", locale), ": ", filter_line], locale)
-        else:
-            filters_line = f"{_label('filters', locale)}: {filter_line}"
-        story.append(_paragraph(filters_line, "subtitle", locale, styles, shaped=locale.rtl))
+        filters_line = f"{_label('filters', locale)}: {filter_line}"
+        story.append(_paragraph(filters_line, "subtitle", locale, styles))
     return story
 
 
 def _build_header_row(
-    items: list[tuple[str, bool]],
+    items: list[str],
     locale: PdfLocale,
     styles: dict,
 ) -> list[Paragraph]:
     if locale.rtl:
         items = list(reversed(items))
-    return [_cell(text, locale, styles, shaped=shaped) for text, shaped in items]
+    return [_cell(text, locale, styles) for text in items]
 
 
 def _table_style(header_color: str, locale: PdfLocale, *, body_font: str, header_font: str) -> TableStyle:
@@ -154,26 +176,21 @@ def _styled_table(
     return table
 
 
-def _cell(text: str, locale: PdfLocale, styles: dict, *, shaped: bool = False) -> Paragraph:
-    content = text if shaped else shape_pdf_text(text, locale)
-    return Paragraph(content, styles["cell"])
+def _cell(text: str, locale: PdfLocale, styles: dict) -> Paragraph:
+    return Paragraph(_pdf_markup(shape_pdf_text(text, locale)), styles["cell"])
 
 
 def _total_currency_header(locale: PdfLocale) -> str:
-    if locale.rtl:
-        return shape_pdf_parts([_label("total", locale), " (", locale.currency_label, ")"], locale)
     return f"{_label('total', locale)} ({locale.currency_label})"
 
 
 def _total_spend_currency_header(locale: PdfLocale) -> str:
-    if locale.rtl:
-        return shape_pdf_parts([_label("total_spend", locale), " (", locale.currency_label, ")"], locale)
     return f"{_label('total_spend', locale)} ({locale.currency_label})"
 
 
 def _currency_header_cell(locale: PdfLocale, styles: dict, *, spend: bool = False) -> Paragraph:
     text = _total_spend_currency_header(locale) if spend else _total_currency_header(locale)
-    return _cell(text, locale, styles, shaped=locale.rtl)
+    return _cell(text, locale, styles)
 
 
 def _localized_label(label: str, locale: PdfLocale) -> str:
@@ -193,23 +210,6 @@ def _append_count_and_spend_meta(
     count: int,
     total_spend: Decimal,
 ) -> None:
-    if locale.rtl:
-        meta = shape_pdf_parts(
-            [
-                _label(count_label_key, locale),
-                ": ",
-                str(count),
-                "    ",
-                _label("total_spend", locale),
-                " (",
-                locale.currency_label,
-                "): ",
-                _money_raw(total_spend, locale),
-            ],
-            locale,
-        )
-        story.append(_paragraph(meta, "meta", locale, styles, shaped=True))
-        return
     meta = (
         f"{_label(count_label_key, locale)}: {count}"
         f"    {_label('total_spend', locale)} ({locale.currency_label}): {_money_raw(total_spend, locale)}"
@@ -244,11 +244,11 @@ def build_vendor_report_pdf(
     table_data = [
         _build_header_row(
             [
-                (_label("vendor", locale), False),
-                (_label("invoices", locale), False),
-                (_label("invoice_numbers", locale), False),
-                (_label("stages", locale), False),
-                (_total_currency_header(locale), True),
+                _label("vendor", locale),
+                _label("invoices", locale),
+                _label("invoice_numbers", locale),
+                _label("stages", locale),
+                _total_currency_header(locale),
             ],
             locale,
             styles,
@@ -305,11 +305,11 @@ def build_campaign_report_pdf(
     table_data = [
         _build_header_row(
             [
-                (_label("campaign", locale), False),
-                (_label("year", locale), False),
-                (_label("team", locale), False),
-                (_label("invoices", locale), False),
-                (_total_currency_header(locale), True),
+                _label("campaign", locale),
+                _label("year", locale),
+                _label("team", locale),
+                _label("invoices", locale),
+                _total_currency_header(locale),
             ],
             locale,
             styles,
@@ -350,24 +350,17 @@ def build_contract_report_pdf(
     story = _header_story(styles, locale, title, generated_at, filters)
 
     contracts = list(contracts)
-    if locale.rtl:
-        contracts_meta = shape_pdf_parts(
-            [_label("contracts", locale), ": ", str(len(contracts))],
-            locale,
-        )
-        story.append(_paragraph(contracts_meta, "meta", locale, styles, shaped=True))
-    else:
-        story.append(_paragraph(f"{_label('contracts', locale)}: {len(contracts)}", "meta", locale, styles))
+    story.append(_paragraph(f"{_label('contracts', locale)}: {len(contracts)}", "meta", locale, styles))
 
     table_data = [
         _build_header_row(
             [
-                (_label("title", locale), False),
-                (_label("vendor", locale), False),
-                (_label("team", locale), False),
-                (_label("stage", locale), False),
-                (_label("end_date", locale), False),
-                (_label("days_left", locale), False),
+                _label("title", locale),
+                _label("vendor", locale),
+                _label("team", locale),
+                _label("stage", locale),
+                _label("end_date", locale),
+                _label("days_left", locale),
             ],
             locale,
             styles,
@@ -447,9 +440,9 @@ def build_dashboard_summary_pdf(
         vendor_table_data = [
             _build_header_row(
                 [
-                    (_label("vendor", locale), False),
-                    (_label("invoices", locale), False),
-                    (_total_currency_header(locale), True),
+                    _label("vendor", locale),
+                    _label("invoices", locale),
+                    _total_currency_header(locale),
                 ],
                 locale,
                 styles,
@@ -474,8 +467,8 @@ def build_dashboard_summary_pdf(
         stage_table_data = [
             _build_header_row(
                 [
-                    (_label("stage", locale), False),
-                    (_label("count", locale), False),
+                    _label("stage", locale),
+                    _label("count", locale),
                 ],
                 locale,
                 styles,

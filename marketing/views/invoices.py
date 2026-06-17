@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..business_section import distinct_business_sections
@@ -25,11 +26,13 @@ from ..forms import (
 )
 from ..models import (
     CostBucket,
+    InvoiceAttachment,
     PaymentStage,
 )
 from ..permissions import (
     can_edit_invoice,
     can_export,
+    can_view_invoice,
 )
 from ..table_sort import apply_ordering, parse_sort
 
@@ -258,3 +261,23 @@ def invoice_attachment_upload(request, pk: int):
     else:
         messages.error(request, "Upload failed. Check the file type or your permissions.")
     return redirect("marketing:invoice_detail", pk=invoice.pk)
+
+
+def invoice_attachment_download(request, pk: int):
+    """Serve an invoice file only to users allowed to view its invoice.
+
+    Uploaded invoice images and payment proofs are sensitive financial documents,
+    so they must never be reachable through a guessable ``/media/`` URL. Files are
+    streamed through this permission-checked view and forced as downloads so an
+    uploaded HTML/SVG can never execute in another user's session.
+    """
+    attachment = get_object_or_404(InvoiceAttachment.objects.select_related("invoice"), pk=pk)
+    if not can_view_invoice(request.user, attachment.invoice):
+        return forbidden("You are not allowed to view this file.")
+    try:
+        file_handle = attachment.file.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("File not found.") from exc
+    response = FileResponse(file_handle, as_attachment=True, filename=Path(attachment.file.name).name)
+    response["X-Content-Type-Options"] = "nosniff"
+    return response

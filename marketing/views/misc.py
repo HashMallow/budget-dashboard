@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib.auth import get_user_model, logout
-from django.http import HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -108,6 +109,24 @@ CONTRACT_SORT_DEFAULTS = {
 
 
 from django.contrib.auth.decorators import login_not_required
+from django.views.decorators.http import require_POST
+
+_FONT_DIR = Path(__file__).resolve().parent.parent / "reports" / "fonts"
+_ALLOWED_FONT_FILES = frozenset({"Vazirmatn-Regular.ttf", "Vazirmatn-Bold.ttf"})
+
+
+@login_not_required
+def brand_font(request, filename: str):
+    """Serve embedded UI/PDF fonts locally so print and offline views render Persian text."""
+    if filename not in _ALLOWED_FONT_FILES:
+        raise Http404("Font not found.")
+    font_path = _FONT_DIR / filename
+    if not font_path.is_file():
+        raise Http404("Font not found.")
+    response = FileResponse(font_path.open("rb"), content_type="font/ttf")
+    response["Cache-Control"] = "public, max-age=604800"
+    return response
+
 
 @login_not_required
 def favicon_svg(request):
@@ -118,6 +137,7 @@ def favicon_svg(request):
 
 
 @login_not_required
+@require_POST
 def set_display_preferences(request):
     ui_lang = request.POST.get("ui_lang")
     number_locale = request.POST.get("number_locale")
@@ -147,6 +167,7 @@ def help_sitemap(request):
 
 
 @login_not_required
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect("marketing:login")

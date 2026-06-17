@@ -14,6 +14,7 @@ from ..models import (
     Contract,
     Invoice,
     Team,
+    Vendor,
 )
 from ..permissions import (
     filter_contracts_for_user,
@@ -211,7 +212,9 @@ def filter_invoice_queryset(request, queryset):
     filters = {
         "q": request.GET.get("q", "").strip(),
         "year": request.GET.get("year", "").strip(),
+        "month": request.GET.get("month", "").strip(),
         "team": request.GET.get("team", "").strip(),
+        "vendor": request.GET.get("vendor", "").strip(),
         "stage": request.GET.get("stage", "").strip(),
         "bucket": request.GET.get("bucket", "").strip(),
         "business_section": request.GET.get("business_section", "").strip(),
@@ -227,15 +230,33 @@ def filter_invoice_queryset(request, queryset):
             | Q(business_section__icontains=filters["q"])
         )
     if filters["year"].isdigit():
-        queryset = filter_by_jalali_year(queryset, filters["year"])
+        if filters["month"].isdigit():
+            queryset = filter_by_jalali_month(queryset, filters["year"], filters["month"])
+        else:
+            queryset = filter_by_jalali_year(queryset, filters["year"])
     if filters["team"].isdigit():
         queryset = queryset.filter(team_id=int(filters["team"]))
+    if filters["vendor"].isdigit():
+        queryset = queryset.filter(vendor_id=int(filters["vendor"]))
     if filters["stage"]:
         queryset = queryset.filter(payment_stage=filters["stage"])
     if filters["bucket"]:
         queryset = queryset.filter(cost_bucket=filters["bucket"])
     if filters["business_section"]:
         queryset = queryset.filter(business_section=filters["business_section"])
+
+    if filters["team"].isdigit():
+        team = Team.objects.filter(pk=int(filters["team"])).first()
+        filters["team_label"] = team.name if team else filters["team"]
+    if filters["vendor"].isdigit():
+        vendor = Vendor.objects.filter(pk=int(filters["vendor"])).first()
+        filters["vendor_label"] = vendor.name if vendor else filters["vendor"]
+    if filters["month"].isdigit():
+        month_int = int(filters["month"])
+        month_labels = {number: persian for number, persian, _latin in JALALI_MONTHS}
+        month_labels.update({number: latin for number, _persian, latin in JALALI_MONTHS})
+        filters["month_label"] = month_labels.get(month_int, filters["month"])
+
     return queryset, filters
 
 
@@ -243,6 +264,7 @@ def filter_contract_queryset(request, queryset):
     filters = {
         "q": request.GET.get("q", "").strip(),
         "team": request.GET.get("team", "").strip(),
+        "vendor": request.GET.get("vendor", "").strip(),
         "stage": request.GET.get("stage", "").strip(),
         "expiring": request.GET.get("expiring", "").strip(),
     }
@@ -256,6 +278,8 @@ def filter_contract_queryset(request, queryset):
         )
     if filters["team"].isdigit():
         queryset = queryset.filter(team_id=int(filters["team"]))
+    if filters["vendor"].isdigit():
+        queryset = queryset.filter(vendor_id=int(filters["vendor"]))
     if filters["stage"]:
         queryset = queryset.filter(stage=filters["stage"])
     if filters["expiring"] == "1":

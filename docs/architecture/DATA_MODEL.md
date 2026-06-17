@@ -17,8 +17,8 @@ Admin is represented by Django `is_superuser` or membership in an Admin group.
 Use these in `Invoice.cost_bucket`:
 
 - `TEAM`: normal team spend
-- `REFERRAL`: referral costs displayed separately
-- `SMS`: SMS costs displayed separately
+- `REFERRAL`: referral costs — shown on a dedicated card and rolled up into the **Growth** team for charts/totals (never a standalone team slice)
+- `SMS`: SMS costs — shown on a dedicated card and rolled up into the **Retention** team for charts/totals (never a standalone team slice)
 - `GENERAL`: general marketing costs not assigned to a team
 
 ### Payment Stage Values
@@ -130,7 +130,7 @@ Rules:
 - Use Decimal for amount fields.
 - Amount breakdown logic lives in `marketing/invoice_amounts.py` (10% VAT default, insurance withholding, paid amount).
 - `amount` is the invoice face total; use `action_cost_amount`, `tax_amount`, `insurance_amount`, and `paid_amount` for finance breakdowns.
-- If `cost_bucket` is `REFERRAL` or `SMS`, it may be shown separately from team totals.
+- `REFERRAL`/`SMS` are cost buckets, not teams: they appear on their own dashboard cards but never as a standalone team/pie slice. In team and overall charts they roll up into their parent team (Referral→Growth, SMS→Retention) per `marketing/cost_buckets.py`, so totals remain correct.
 - When `payment_stage` changes, update `stage_changed_at` and create `InvoiceStatusHistory`.
 - If stage becomes `PAID`, set `paid_at` if empty.
 - Provide a method/property for `days_in_current_stage`.

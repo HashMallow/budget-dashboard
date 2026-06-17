@@ -12,6 +12,7 @@ from marketing.analytics import (
     budget_variance_row_totals,
     monthly_spend_rows,
     monthly_spend_window_rows,
+    overall_spend_pie,
     team_budget_variance_rows,
     vendor_grouped_rows,
 )
@@ -227,6 +228,41 @@ def test_team_budget_variance_rows_include_rollup_bucket_spend():
     assert rows[0]["planned"] == Decimal("500")
     assert rows[0]["actual"] == Decimal("400")
     assert rows[0]["deviation"] == Decimal("-100")
+
+
+def test_overall_spend_pie_rolls_referral_and_sms_into_parent_teams():
+    # Referral and SMS are cost buckets, not teams: they must not appear as their
+    # own pie slice but must still be counted in the overall total via Growth/Retention.
+    team_rows = [
+        {"team_name": "Growth", "total": Decimal("100")},
+        {"team_name": "Retention", "total": Decimal("50")},
+    ]
+    pie = overall_spend_pie(
+        team_rows,
+        referral_total=Decimal("30"),
+        sms_total=Decimal("20"),
+        ui_lang="en",
+    )
+
+    assert "Referral" not in pie["labels"]
+    assert "SMS" not in pie["labels"]
+    assert set(pie["labels"]) == {"Growth", "Retention"}
+    assert sum(pie["values"]) == pytest.approx(200.0)
+    label_to_value = dict(zip(pie["labels"], pie["values"]))
+    assert label_to_value["Growth"] == pytest.approx(130.0)
+    assert label_to_value["Retention"] == pytest.approx(70.0)
+
+
+def test_overall_spend_pie_adds_parent_team_when_only_bucket_spend_exists():
+    pie = overall_spend_pie(
+        [],
+        referral_total=Decimal("40"),
+        sms_total=Decimal("0"),
+        ui_lang="en",
+    )
+
+    assert pie["labels"] == ["Growth"]
+    assert pie["values"] == [40.0]
 
 
 def test_vendor_grouped_rows_aggregates_by_vendor_descending_total():

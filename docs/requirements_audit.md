@@ -27,8 +27,8 @@
 | Days "—" when paid | `_15` | ✅ **Done** | `show_days_in_current_stage` returns `False` when PAID |
 | Budget vs actual chart + table | `_6` | ✅ **Done** | Monthly bar chart + table with planned/actual/deviation |
 | Budget variance by team table | `_6` | ✅ **Done** | Collapsible section on dashboard |
-| Referral/SMS shown separately | `22-13-57` | ✅ **Done** | Stat chips on dashboard + separate CostBucket |
-| Spend pie chart (team + referral + SMS) | AGENTS.md | ✅ **Done** | Doughnut chart with referral/SMS segments |
+| Referral/SMS shown separately (not as teams) | `22-13-57`, `_13` | ✅ **Done** | Dedicated stat chips + separate `CostBucket`; **never** their own pie/team slice |
+| Spend pie chart (team breakdown) | AGENTS.md, `_13` | ✅ **Done** | Doughnut by team; Referral rolls into Growth and SMS into Retention so totals stay correct without standalone slices |
 | Team spend chart | AGENTS.md | ✅ **Done** | Bar chart by team |
 | Vendor spend table (highest to lowest) | AGENTS.md | ✅ **Done** | Sorted by `total desc` |
 | Campaign spend table on dashboard | AGENTS.md | ✅ **Done** | Table with campaign, year, invoices, amount |
@@ -151,7 +151,7 @@
 5. **Vendor clickability** — every vendor name throughout the app links to vendor detail
 6. **Invoice list UX** — entry-date default sort, paid/pending row colors, days hidden when paid
 7. **Budget vs actual** — monthly variance chart + table with deviation
-8. **Referral/SMS separation** — separate stat chips and included in overall pie chart
+8. **Referral/SMS separation** — separate stat chips; they are cost buckets, not teams, so they never appear as their own pie/team slice (Referral rolls into Growth, SMS into Retention) while staying in overall totals
 9. **Contracts** — full lifecycle with legal stages, attachments, and vendor linkage
 
 ## Cursor prompts patch status

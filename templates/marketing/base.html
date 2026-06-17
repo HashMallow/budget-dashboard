@@ -6,6 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% t "Marketing Finance Panel" %}{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{% url 'marketing:favicon_svg' %}">
+  <style>
+    @font-face {
+      font-family: "Vazirmatn";
+      src: url("{% url 'marketing:brand_font' 'Vazirmatn-Regular.ttf' %}") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Vazirmatn";
+      src: url("{% url 'marketing:brand_font' 'Vazirmatn-Bold.ttf' %}") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
   <style>
@@ -24,6 +40,7 @@
       --rose: #be123c;
       --violet: #7c3aed;
       --amber: #d97706;
+      --gold: #facc15;
       --accent: #b45309;
       --danger: #b42318;
       --success: #067647;
@@ -77,6 +94,8 @@
     body {
       margin: 0;
       background:
+        radial-gradient(ellipse 120% 80% at 100% -20%, rgba(15, 118, 110, 0.09), transparent 50%),
+        radial-gradient(ellipse 80% 60% at 0% 0%, rgba(37, 99, 235, 0.06), transparent 45%),
         linear-gradient(180deg, #eef7f5 0, #f7f8fb 230px, #f6f8fb 100%);
       color: var(--text);
       font-size: 14px;
@@ -107,13 +126,6 @@
       text-transform: uppercase;
       color: #7b8f9a;
     }
-    .nav-section-hint {
-      margin: 0 0 4px;
-      padding: 0 10px;
-      color: #94a3b8;
-      font-size: 11px;
-      line-height: 1.45;
-    }
     .nav-section-links { display: grid; gap: 4px; }
     .nav a {
       display: flex;
@@ -142,12 +154,24 @@
       justify-content: space-between;
       gap: 16px;
       padding: 0 28px;
-      background: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.92);
       border-bottom: 1px solid var(--line);
       backdrop-filter: blur(10px);
       position: sticky;
       top: 0;
       z-index: 3;
+      box-shadow: 0 1px 0 rgba(15, 118, 110, 0.06);
+    }
+    .topbar::after {
+      content: "";
+      position: absolute;
+      inset-inline: 28px;
+      bottom: 0;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--blue), var(--gold));
+      opacity: 0.55;
+      pointer-events: none;
     }
     .topbar h1 { margin: 0; font-size: 20px; letter-spacing: 0; }
     .topbar p { margin: 0; color: var(--muted); font-size: 12px; }
@@ -190,6 +214,25 @@
     .cards .card { min-width: 0; }
     .card-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .panel { padding: 16px; border-top: 3px solid #e2e8f0; }
+    .panel-brand {
+      border-top: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .panel-brand::before {
+      content: "";
+      display: block;
+      height: 3px;
+      margin: -16px -16px 14px;
+      background: linear-gradient(90deg, var(--primary), var(--blue), var(--gold));
+    }
+    .brand-accent-bar {
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--blue), var(--gold));
+      margin-bottom: 18px;
+      opacity: 0.85;
+    }
     .toolbar {
       display: flex;
       align-items: center;
@@ -263,8 +306,8 @@
       font: inherit;
       white-space: nowrap;
     }
-    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .btn.primary:hover { background: var(--primary-dark); }
+    .btn.primary { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-color: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(15, 118, 110, 0.22); }
+    .btn.primary:hover { background: linear-gradient(135deg, var(--primary-dark) 0%, #0b5c55 100%); }
     .btn.danger { color: var(--danger); border-color: #fecaca; background: #fff7f7; }
     .btn.ghost { box-shadow: none; background: transparent; color: inherit; }
     .filter-form {
@@ -686,6 +729,9 @@
       .app-shell { display: block; }
       .content { padding: 0; max-width: none; }
       body { background: #fff; }
+      body, .panel, .card, table, th, td, h1, h2, h3, .section-title, .card-label, .card-value {
+        font-family: "Vazirmatn", "Segoe UI", "Noto Sans Arabic", sans-serif !important;
+      }
       .panel, .card { box-shadow: none; border-color: #ddd; }
       .print-only { display: block; }
     }
@@ -712,7 +758,6 @@
 
             <div class="nav-section">
               <p class="nav-section-label">{% t "Finance" %}</p>
-              <p class="nav-section-hint">{% t "Invoices, teams, budgets, vendors, campaigns and contracts" %}</p>
               <div class="nav-section-links">
                 <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' or current == 'invoice_create' or current == 'invoice_edit' %}active{% endif %}">
                   <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>

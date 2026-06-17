@@ -7,7 +7,22 @@ from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or get_random_secret_key()
+_SECRET_KEY_FILE = BASE_DIR / ".django_secret_key"
+
+
+def _load_secret_key() -> str:
+    """Use a stable key in dev so sessions survive runserver reloads and restarts."""
+    env_key = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+    if env_key:
+        return env_key
+    if _SECRET_KEY_FILE.is_file():
+        return _SECRET_KEY_FILE.read_text(encoding="utf-8").strip()
+    key = get_random_secret_key()
+    _SECRET_KEY_FILE.write_text(key, encoding="utf-8")
+    return key
+
+
+SECRET_KEY = _load_secret_key()
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")]
 CSRF_TRUSTED_ORIGINS = [
@@ -115,15 +130,32 @@ LOGIN_URL = "marketing:login"
 LOGIN_REDIRECT_URL = "marketing:dashboard"
 LOGOUT_REDIRECT_URL = "marketing:login"
 
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 2 weeks
+
+# Only send session/CSRF cookies over HTTPS when explicitly enabled (or in prod behind TLS).
+_use_secure_cookies = os.environ.get("DJANGO_SESSION_COOKIE_SECURE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
 # Production hardening: only enabled when DEBUG is off so local development stays simple.
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "true").lower() in {"1", "true", "yes", "on"}
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    if _use_secure_cookies or CSRF_TRUSTED_ORIGINS:
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "0"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = bool(SECURE_HSTS_SECONDS)
     SECURE_HSTS_PRELOAD = bool(SECURE_HSTS_SECONDS)
+elif _use_secure_cookies:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 LOGGING = {
     "version": 1,

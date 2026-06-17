@@ -13,7 +13,7 @@ def _seed_reference_and_backfill(apps, schema_editor):
     def norm(value: str) -> str:
         return (value or "").strip().casefold()
 
-    for name in ("Retail", "Junior", "Business", "Consumer", "Youth", "Enterprise"):
+    for name in ("Retail", "Junior", "Business"):
         BusinessLine.objects.get_or_create(
             normalized_name=norm(name),
             defaults={"name": name},

@@ -31,12 +31,87 @@ def test_shape_pdf_text_uses_bidi_for_rtl_and_skips_ascii():
     import arabic_reshaper
     from bidi.algorithm import get_display
 
-    from marketing.reports.pdf_fonts import PdfLocale, shape_pdf_text
+    from marketing.reports.pdf_fonts import PdfLocale, shape_pdf_parts, shape_pdf_text
 
-    locale = PdfLocale(lang="fa")
-    assert shape_pdf_text("ریال", locale) == get_display(arabic_reshaper.reshape("ریال"))
-    assert shape_pdf_text("123, 456", locale) == "123, 456"
+    expected = get_display(arabic_reshaper.reshape("ریال"))
+    assert shape_pdf_text("ریال", PdfLocale(lang="fa")) == expected
+    assert shape_pdf_text("ریال", PdfLocale(lang="en")) == expected
+    assert shape_pdf_text("123, 456", PdfLocale(lang="fa")) == "123, 456"
     assert shape_pdf_text("Vendor", PdfLocale(lang="en")) == "Vendor"
+
+
+def test_shape_pdf_parts_runs_single_bidi_pass_for_mixed_text():
+    from marketing.reports.pdf_fonts import PdfLocale, shape_pdf_parts, shape_pdf_text
+
+    logical = "فیلترها: خط کسب‌وکار: Business"
+    once = shape_pdf_parts(["فیلترها: ", "خط کسب‌وکار: ", "Business"], PdfLocale(lang="fa"))
+    assert once == shape_pdf_text(logical, PdfLocale(lang="fa"))
+    # Double shaping corrupts Persian — must never happen in headers.
+    assert shape_pdf_text(once, PdfLocale(lang="fa")) != once
+
+
+def test_persian_pdf_filter_header_mixed_english_value():
+    from datetime import datetime
+    from unittest.mock import MagicMock
+
+    from marketing.reports.pdf import build_vendor_report_pdf
+
+    vendor = MagicMock()
+    vendor.name = "وندور نمونه"
+    pdf_bytes = build_vendor_report_pdf(
+        title="گزارش هزینه وندورها",
+        generated_at=datetime(2026, 6, 17, 7, 54),
+        vendor_rows=[
+            {
+                "vendor": vendor,
+                "invoice_count": 1,
+                "invoice_numbers": ["100"],
+                "stages": ["Paid"],
+                "total": Decimal("88000000"),
+            }
+        ],
+        filters={"business_section": "Business"},
+        locale=PdfLocale(lang="fa", unit="toman"),
+    )
+    assert pdf_bytes.startswith(b"%PDF")
+    # Garbled double-bidi artifacts (isolated reversed letters) must not appear.
+    assert "راکوب".encode() not in pdf_bytes
+    assert "ط‌خ".encode() not in pdf_bytes
+
+
+def test_pdf_fonts_use_vazirmatn_for_all_locales():
+    from marketing.reports.pdf_fonts import PdfLocale, pdf_font_names, register_pdf_fonts
+
+    assert register_pdf_fonts()
+    assert pdf_font_names(PdfLocale(lang="en")) == ("Vazirmatn", "Vazirmatn-Bold")
+    assert pdf_font_names(PdfLocale(lang="fa")) == ("Vazirmatn", "Vazirmatn-Bold")
+
+
+def test_english_pdf_renders_persian_vendor_names():
+    from datetime import datetime
+    from unittest.mock import MagicMock
+
+    from marketing.reports.pdf import build_vendor_report_pdf
+
+    vendor = MagicMock()
+    vendor.name = "شرکت تبلیغات ایران"
+    pdf_bytes = build_vendor_report_pdf(
+        title="Vendor spend report",
+        generated_at=datetime(2026, 6, 16, 7, 2),
+        vendor_rows=[
+            {
+                "vendor": vendor,
+                "invoice_count": 1,
+                "invoice_numbers": ["INV-001"],
+                "stages": ["Paid"],
+                "total": Decimal("1000"),
+            }
+        ],
+        locale=PdfLocale(lang="en", unit="rial"),
+    )
+    assert pdf_bytes.startswith(b"%PDF")
+    assert b"Vazirmatn" in pdf_bytes
+    assert b"\xe2\x96\xa0" not in pdf_bytes  # ReportLab tofu when glyph missing
 
 
 def test_persian_vendor_pdf_keeps_rtl_words_in_logical_order():
@@ -144,6 +219,44 @@ def test_non_admin_cannot_open_reference_data(client):
     assert response.status_code == 403
 
 
+def test_fa_budget_page_uses_persian_ui_strings(client, frontend_data):
+    session = client.session
+    session["ui_lang"] = "fa"
+    session.save()
+    client.force_login(frontend_data["admin"])
+    response = client.get(reverse("marketing:budget_list"))
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "ردیف بودجه جدید" in html
+    assert "ردیف‌های بودجه به تفکیک تیم، دسته و ماه" in html
+    assert "New budget line" not in html
+    assert "Budget lines by team, category and month" not in html
+
+
+def test_translation_catalog_covers_template_and_export_strings():
+    import re
+    from pathlib import Path
+
+    from marketing.translations import FA
+
+    pattern = re.compile(r'\{%\s*t\s+"([^"]+)"')
+    pattern2 = re.compile(r"\{%\s*t\s+'([^']+)'")
+    missing: set[str] = set()
+    for path in Path("templates").rglob("*.html"):
+        text = path.read_text()
+        for matcher in (pattern, pattern2):
+            for match in matcher.finditer(text):
+                key = match.group(1)
+                if key not in FA:
+                    missing.add(key)
+    cp = Path("marketing/context_processors.py").read_text()
+    for match in re.finditer(r'"label":\s*"([^"]+)"|"title":\s*"([^"]+)"', cp):
+        key = match.group(1) or match.group(2)
+        if key and key not in FA:
+            missing.add(key)
+    assert not missing, f"Missing FA translations: {sorted(missing)[:20]}"
+
+
 def test_budget_hides_team_chart_when_team_filter_selected(client, frontend_data):
     from decimal import Decimal
 
@@ -169,6 +282,27 @@ def test_help_page_loads_with_get(client):
     response = client.get(reverse("marketing:help_sitemap"))
     assert response.status_code == 200
     assert b"help-menu" in response.content or b"Left menu" in response.content
+
+
+def test_login_page_shows_persian_year_when_fa(client):
+    session = client.session
+    session["ui_lang"] = "fa"
+    session.save()
+    response = client.get(reverse("marketing:login"))
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "۲۰۲۶" in html
+    assert 'class="ui-fa' in html or "ui-fa" in html
+
+
+def test_login_page_shows_latin_year_when_en(client):
+    session = client.session
+    session["ui_lang"] = "en"
+    session.save()
+    response = client.get(reverse("marketing:login"))
+    html = response.content.decode()
+    assert "2026" in html
+    assert "۲۰۲۶" not in html
 
 
 def test_fa_translations_flip_navigation_arrows():

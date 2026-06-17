@@ -7,292 +7,300 @@
 {% block page_actions %}{% endblock %}
 
 {% block content %}
-  <section class="section">
-    <form class="filter-form" method="get">
-      <div class="field">
-        <label for="year">{% t "Year" %}</label>
-        <select id="year" name="year">
-          <option value="">{% t "All years" %}</option>
-          {% for year in years %}
-            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button class="btn primary" type="submit">{% t "Apply filter" %}</button>
-    </form>
-  </section>
-
-  <section class="section">
-    <div class="grid cards">
-      <div class="card">
-        <div class="card-label">{% t "Total actual spend" %}</div>
-        <div class="card-value number">{{ total_spend|money }}</div>
-        <div class="card-note">{% t "Sum of invoice amounts in the selected range" %}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">{% t "Invoice count" %}</div>
-        <div class="card-value number">{{ invoice_count }}</div>
-        <div class="card-note">{% t "In selected range" %}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">{% t "Planned budget" %}</div>
-        <div class="card-value number">{{ budget_total|money }}</div>
-        <div class="card-note">{% t "From budget lines (projection), not actual spend" %}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">{% t "Budget deviation" %}</div>
-        <div class="card-value number {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</div>
-        <div class="card-note">{% t "Positive deviation means overspend vs plan" %}</div>
-      </div>
+<section class="section">
+  <form class="filter-form" method="get">
+    <div class="field">
+      <label for="year">{% t "Year" %}</label>
+      <select id="year" name="year">
+        <option value="">{% t "All years" %}</option>
+        {% for year in years %}
+        <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+      </select>
     </div>
-  </section>
+    <button class="btn primary" type="submit">{% t "Apply filter" %}</button>
+  </form>
+</section>
 
-  <section class="section">
-    <div class="panel">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">{% t "Budget vs actual" %}</h2>
-          <p class="section-subtitle">{% t "Monthly budget vs actual spend" %}</p>
-        </div>
-      </div>
-      {% if budget_variance_chart_has_data %}
-        <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-          <canvas id="teamBudgetVarianceChart"></canvas>
-        </div>
-      {% endif %}
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>{% t "Month" %}</th>
-              <th class="col-num">{% t "Planned budget (projection)" %}</th>
-              <th class="col-num">{% t "Actual spend" %}</th>
-              <th class="col-num">{% t "Deviation" %}</th>
-              <th class="col-num">{% t "% Consumed" %}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in budget_variance_rows %}
-              <tr>
-                <td>{{ row.label }}</td>
-                <td class="col-num money-cell">{{ row.planned|money }}</td>
-                <td class="col-num money-cell">{{ row.actual|money }}</td>
-                <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
-                <td class="col-num {{ row.percent_consumed|consumed_class }}">{% if row.percent_consumed is not None %}{{ row.percent_consumed }}%{% else %}—{% endif %}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="5" class="empty">{% t "No budget to display." %}</td></tr>
-            {% endfor %}
-            {% if budget_variance_rows %}
-              <tr>
-                <th>{% t "Total" %}</th>
-                <th class="col-num money-cell">{{ budget_variance_totals.planned|money }}</th>
-                <th class="col-num money-cell">{{ budget_variance_totals.actual|money }}</th>
-                <th class="col-num money-cell {{ budget_variance_totals.deviation|deviation_class }}">{{ budget_variance_totals.deviation|money }}</th>
-                <th class="col-num {{ budget_variance_totals.percent_consumed|consumed_class }}">{% if budget_variance_totals.percent_consumed is not None %}{{ budget_variance_totals.percent_consumed }}%{% else %}—{% endif %}</th>
-              </tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
+<section class="section">
+  <div class="grid cards">
+    <div class="card">
+      <div class="card-label">{% t "Total actual spend" %}</div>
+      <div class="card-value number">{{ total_spend|money }}</div>
+      <div class="card-note">{% t "Sum of invoice amounts in the selected range" %}</div>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="panel">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">{% t "Monthly actual spend" %}</h2>
-          <p class="section-subtitle">{% t "Invoice spend by Jalali month (not budget projection)" %}</p>
-        </div>
-      </div>
-      {% if monthly_chart_has_data %}
-        <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-          <canvas id="teamMonthlyChart"></canvas>
-        </div>
-      {% else %}
-        <div class="empty">{% t "No data to display." %}</div>
-      {% endif %}
+    <div class="card">
+      <div class="card-label">{% t "Invoice count" %}</div>
+      <div class="card-value number">{{ invoice_count }}</div>
+      <div class="card-note">{% t "In selected range" %}</div>
     </div>
-  </section>
-
-  <section class="section grid two">
-    <div class="panel">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">{% t "Top vendors" %}</h2>
-          <p class="section-subtitle">{% t "Sorted from highest to lowest spend" %}</p>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table vendor-table">
-          <colgroup>
-            <col class="col-vendor">
-            <col class="col-count">
-            <col class="col-invoices">
-            <col class="col-stages">
-            <col class="col-amount">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{% t "Vendor" %}</th>
-              <th class="col-num">{% t "Count" %}</th>
-              <th class="col-badges">{% t "Invoice numbers" %}</th>
-              <th class="col-badges">{% t "Stages" %}</th>
-              <th class="col-num">{% t "Amount" %}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in vendor_rows %}
-              <tr>
-                <td title="{{ row.vendor.name }}">{{ row.vendor.name }}</td>
-                <td class="col-num">{{ row.invoice_count }}</td>
-                <td class="col-badges">
-                  <div class="badge-group">
-                    {% for number in row.visible_invoice_numbers %}
-                      <span class="badge ltr">{{ number }}</span>
-                    {% endfor %}
-                  </div>
-                </td>
-                <td class="col-badges">
-                  <div class="badge-group">
-                    {% for stage in row.stages %}
-                      <span class="badge">{% t stage %}</span>
-                    {% endfor %}
-                  </div>
-                </td>
-                <td class="col-num money-cell">{{ row.total|money }}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="5" class="empty">{% t "No vendors in this range." %}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="card">
+      <div class="card-label">{% t "Planned budget" %}</div>
+      <div class="card-value number">{{ budget_total|money }}</div>
+      <div class="card-note">{% t "From budget lines (projection), not actual spend" %}</div>
     </div>
-
-    <div class="panel">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">{% t "Campaigns" %}</h2>
-          <p class="section-subtitle">{% t "Spend on campaigns recorded on invoices" %}</p>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table campaign-table">
-          <colgroup>
-            <col class="col-campaign">
-            <col class="col-year">
-            <col class="col-invoices">
-            <col class="col-amount">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{% t "Campaign" %}</th>
-              <th class="col-num">{% t "Year" %}</th>
-              <th class="col-num">{% t "Invoices" %}</th>
-              <th class="col-num">{% t "Amount" %}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in campaign_rows %}
-              <tr>
-                <td title="{{ row.campaign__name }}">{{ row.campaign__name }}</td>
-                <td class="col-num">{{ row.campaign__year }}</td>
-                <td class="col-num">{{ row.invoice_count }}</td>
-                <td class="col-num money-cell">{{ row.total|money }}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="4" class="empty">{% t "No campaigns recorded in this range." %}</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="card">
+      <div class="card-label">{% t "Budget deviation" %}</div>
+      <div class="card-value number {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</div>
+      <div class="card-note">{% t "Positive deviation means overspend vs plan" %}</div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section panel">
+<section class="section">
+  <div class="panel">
     <div class="section-header">
       <div>
-        <h2 class="section-title">{% t "Invoices in finance review" %}</h2>
-        <p class="section-subtitle">{% t "Sorted by days waiting in stage" %}</p>
+        <h2 class="section-title">{% t "Budget vs actual" %}</h2>
+        <p class="section-subtitle">{% t "Monthly budget vs actual spend" %}</p>
       </div>
     </div>
+    {% if budget_variance_chart_has_data %}
+    <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
+      <canvas id="teamBudgetVarianceChart"></canvas>
+    </div>
+    {% endif %}
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th>{% t "Invoice" %}</th>
-            <th>{% t "Vendor" %}</th>
-            <th class="col-num">{% t "Days in stage" %}</th>
+            <th>{% t "Month" %}</th>
+            <th class="col-num">{% t "Planned budget (projection)" %}</th>
+            <th class="col-num">{% t "Actual spend" %}</th>
+            <th class="col-num">{% t "Deviation" %}</th>
+            <th class="col-num">{% t "% Consumed" %}</th>
           </tr>
         </thead>
         <tbody>
-          {% for invoice in attention_invoices %}
-            <tr>
-              <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
-              <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
-              <td class="col-num">{{ invoice.days_in_current_stage }}</td>
-            </tr>
+          {% for row in budget_variance_rows %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td class="col-num money-cell">{{ row.planned|money }}</td>
+            <td class="col-num money-cell">{{ row.actual|money }}</td>
+            <td class="col-num money-cell {{ row.deviation|deviation_class }}">{{ row.deviation|money }}</td>
+            <td class="col-num {{ row.percent_consumed|consumed_class }}">{% if row.percent_consumed is not None %}{{ row.percent_consumed }}%{% else %}—{% endif %}</td>
+          </tr>
           {% empty %}
-            <tr><td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td></tr>
+          <tr>
+            <td colspan="5" class="empty">{% t "No budget to display." %}</td>
+          </tr>
+          {% endfor %}
+          {% if budget_variance_rows %}
+          <tr>
+            <th>{% t "Total" %}</th>
+            <th class="col-num money-cell">{{ budget_variance_totals.planned|money }}</th>
+            <th class="col-num money-cell">{{ budget_variance_totals.actual|money }}</th>
+            <th class="col-num money-cell {{ budget_variance_totals.deviation|deviation_class }}">{{ budget_variance_totals.deviation|money }}</th>
+            <th class="col-num {{ budget_variance_totals.percent_consumed|consumed_class }}">{% if budget_variance_totals.percent_consumed is not None %}{{ budget_variance_totals.percent_consumed }}%{% else %}—{% endif %}</th>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">{% t "Monthly actual spend" %}</h2>
+        <p class="section-subtitle">{% t "Invoice spend by Jalali month (not budget projection)" %}</p>
+      </div>
+    </div>
+    {% if monthly_chart_has_data %}
+    <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
+      <canvas id="teamMonthlyChart"></canvas>
+    </div>
+    {% else %}
+    <div class="empty">{% t "No data to display." %}</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section grid two">
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">{% t "Top vendors" %}</h2>
+        <p class="section-subtitle">{% t "Sorted from highest to lowest spend" %}</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table vendor-table">
+        <colgroup>
+          <col class="col-vendor">
+          <col class="col-count">
+          <col class="col-invoices">
+          <col class="col-stages">
+          <col class="col-amount">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>{% t "Vendor" %}</th>
+            <th class="col-num">{% t "Count" %}</th>
+            <th class="col-badges">{% t "Invoice numbers" %}</th>
+            <th class="col-badges">{% t "Stages" %}</th>
+            <th class="col-num">{% t "Amount" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in vendor_rows %}
+          <tr>
+            <td title="{{ row.vendor.name }}">{{ row.vendor.name }}</td>
+            <td class="col-num">{{ row.invoice_count }}</td>
+            <td class="col-badges">
+              <div class="badge-group">
+                {% for number in row.visible_invoice_numbers %}
+                <span class="badge ltr">{{ number }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="col-badges">
+              <div class="badge-group">
+                {% for stage in row.stages %}
+                <span class="badge">{% t stage %}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="col-num money-cell">{{ row.total|money }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="empty">{% t "No vendors in this range." %}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-  </section>
+  </div>
+
+  <div class="panel">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">{% t "Campaigns" %}</h2>
+        <p class="section-subtitle">{% t "Spend on campaigns recorded on invoices" %}</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table campaign-table">
+        <colgroup>
+          <col class="col-campaign">
+          <col class="col-year">
+          <col class="col-invoices">
+          <col class="col-amount">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>{% t "Campaign" %}</th>
+            <th class="col-num">{% t "Year" %}</th>
+            <th class="col-num">{% t "Invoices" %}</th>
+            <th class="col-num">{% t "Amount" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in campaign_rows %}
+          <tr>
+            <td title="{{ row.campaign__name }}">{{ row.campaign__name }}</td>
+            <td class="col-num">{{ row.campaign__year }}</td>
+            <td class="col-num">{{ row.invoice_count }}</td>
+            <td class="col-num money-cell">{{ row.total|money }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="empty">{% t "No campaigns recorded in this range." %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section panel">
+  <div class="section-header">
+    <div>
+      <h2 class="section-title">{% t "Invoices in finance review" %}</h2>
+      <p class="section-subtitle">{% t "Sorted by days waiting in stage" %}</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{% t "Invoice" %}</th>
+          <th>{% t "Vendor" %}</th>
+          <th class="col-num">{% t "Days in stage" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in attention_invoices %}
+        <tr>
+          <td><a href="{% url 'marketing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></td>
+          <td title="{{ invoice.vendor.name }}">{{ invoice.vendor.name }}</td>
+          <td class="col-num">{{ invoice.days_in_current_stage }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="empty">{% t "No invoices waiting in finance review." %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if monthly_chart_has_data or budget_variance_chart_has_data %}
-    {% if monthly_chart_has_data %}{{ monthly_chart|json_script:"team-monthly-chart-data" }}{% endif %}
-    {% if budget_variance_chart_has_data %}{{ budget_variance_chart|json_script:"team-budget-variance-chart-data" }}{% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script>
-      (function () {
-        if (typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
-        if (document.body.classList.contains("theme-dark")) {
-          Chart.defaults.color = "#cbd5e1";
-          Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
+{% if monthly_chart_has_data or budget_variance_chart_has_data %}
+{% if monthly_chart_has_data %}{{ monthly_chart|json_script:"team-monthly-chart-data" }}{% endif %}
+{% if budget_variance_chart_has_data %}{{ budget_variance_chart|json_script:"team-budget-variance-chart-data" }}{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    if (typeof Chart === "undefined" || typeof window.chartMoneyOptions !== "function") { return; }
+    if (document.body.classList.contains("theme-dark")) {
+      Chart.defaults.color = "#cbd5e1";
+      Chart.defaults.borderColor = "rgba(148, 163, 184, 0.18)";
+    }
+    var moneyOptions = window.chartMoneyOptions();
+    var el = document.getElementById("teamMonthlyChart");
+    var node = document.getElementById("team-monthly-chart-data");
+    if (el && node) {
+      var data = JSON.parse(node.textContent);
+      new Chart(el, {
+        type: "bar",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: "{% t 'Actual spend'|escapejs %}",
+            data: data.values,
+            backgroundColor: "#0f766e",
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: moneyOptions.plugins.tooltip
+          },
+          scales: moneyOptions.scales
         }
-        var moneyOptions = window.chartMoneyOptions();
-        var el = document.getElementById("teamMonthlyChart");
-        var node = document.getElementById("team-monthly-chart-data");
-        if (el && node) {
-          var data = JSON.parse(node.textContent);
-          new Chart(el, {
-            type: "bar",
-            data: {
-              labels: data.labels,
-              datasets: [{
-                label: "{% t 'Actual spend'|escapejs %}",
-                data: data.values,
-                backgroundColor: "#0f766e",
-                borderRadius: 4
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: moneyOptions.plugins.tooltip
-              },
-              scales: moneyOptions.scales
-            }
-          });
-        }
-        var budgetEl = document.getElementById("teamBudgetVarianceChart");
-        var budgetNode = document.getElementById("team-budget-variance-chart-data");
-        if (budgetEl && budgetNode && typeof window.createBudgetVarianceChart === "function") {
-          var budgetData = JSON.parse(budgetNode.textContent);
-          window.createBudgetVarianceChart(budgetEl, budgetData, {
-            planned: "{% t 'Planned budget (projection)'|escapejs %}",
-            actual: "{% t 'Actual spend'|escapejs %}",
-            deviation: "{% t 'Deviation'|escapejs %}"
-          });
-        }
-      })();
-    </script>
-  {% endif %}
+      });
+    }
+    var budgetEl = document.getElementById("teamBudgetVarianceChart");
+    var budgetNode = document.getElementById("team-budget-variance-chart-data");
+    if (budgetEl && budgetNode && typeof window.createBudgetVarianceChart === "function") {
+      var budgetData = JSON.parse(budgetNode.textContent);
+      window.createBudgetVarianceChart(budgetEl, budgetData, {
+        planned: "{% t 'Planned budget (projection)'|escapejs %}",
+        actual: "{% t 'Actual spend'|escapejs %}",
+        deviation: "{% t 'Deviation'|escapejs %}"
+      });
+    }
+  })();
+</script>
+{% endif %}
 {% endblock %}

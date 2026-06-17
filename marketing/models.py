@@ -343,7 +343,7 @@ class Invoice(TimestampedModel):
         max_length=120,
         blank=True,
         db_index=True,
-        help_text="Business segment from Excel Business Section (e.g. Consumer, Youth, Enterprise).",
+        help_text="Business segment from Excel Business Section (e.g. Retail, Junior, Business).",
     )
     cost_bucket = models.CharField(max_length=20, choices=CostBucket.choices, default=CostBucket.TEAM)
     description = models.TextField(blank=True)

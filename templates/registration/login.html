@@ -11,13 +11,16 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f4f7fb;
+      --bg: #f0f5fa;
       --surface: #ffffff;
       --text: #17212b;
       --muted: #667789;
       --line: #d9e1e8;
       --primary: #0f766e;
       --primary-dark: #115e59;
+      --blue: #2563eb;
+      --cyan: #06b6d4;
+      --violet: #8b5cf6;
       --gold: #facc15;
       --shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
       font-family: "Vazirmatn", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -56,9 +59,22 @@
       justify-content: space-between;
       color: #f8fafc;
       background:
-        radial-gradient(ellipse 80% 60% at 10% 0%, rgba(250, 204, 21, 0.22), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 100% 100%, rgba(37, 99, 235, 0.18), transparent 50%),
-        linear-gradient(155deg, #0b3b37 0%, #0f766e 42%, #134e4a 100%);
+        radial-gradient(ellipse 90% 70% at 12% -8%, rgba(250, 204, 21, 0.32), transparent 52%),
+        radial-gradient(ellipse 75% 60% at 98% 102%, rgba(56, 189, 248, 0.24), transparent 54%),
+        radial-gradient(ellipse 55% 45% at 82% 18%, rgba(139, 92, 246, 0.18), transparent 48%),
+        linear-gradient(155deg, #052e2c 0%, #0f766e 36%, #0c4a6e 68%, #134e4a 100%);
+    }
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      inset-inline-end: -80px;
+      top: 35%;
+      background: radial-gradient(circle, rgba(250, 204, 21, 0.14), transparent 68%);
+      pointer-events: none;
+      filter: blur(2px);
     }
     .login-hero::before {
       content: "";
@@ -100,14 +116,14 @@
       margin-top: 10px;
       padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(250, 204, 21, 0.16);
-      border: 1px solid rgba(250, 204, 21, 0.35);
+      background: rgba(250, 204, 21, 0.14);
+      border: 1px solid rgba(250, 204, 21, 0.38);
       color: #fde68a;
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
+    html[dir="rtl"] .login-version { letter-spacing: 0; }
     .login-features {
       margin: 0;
       padding: 0;
@@ -132,6 +148,9 @@
       border: 1px solid rgba(255,255,255,.14);
       font-size: 18px;
     }
+    .login-features li:nth-child(1) .login-feature-icon { background: rgba(125, 211, 252, 0.16); border-color: rgba(125, 211, 252, 0.28); }
+    .login-features li:nth-child(2) .login-feature-icon { background: rgba(250, 204, 21, 0.14); border-color: rgba(250, 204, 21, 0.28); }
+    .login-features li:nth-child(3) .login-feature-icon { background: rgba(167, 139, 250, 0.16); border-color: rgba(167, 139, 250, 0.28); }
     .login-features strong {
       display: block;
       font-size: 15px;
@@ -152,6 +171,10 @@
       justify-content: center;
       padding: 40px 48px;
       position: relative;
+      background:
+        radial-gradient(ellipse 90% 70% at 100% 0%, rgba(15, 118, 110, 0.07), transparent 55%),
+        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(37, 99, 235, 0.05), transparent 50%),
+        var(--bg);
     }
     .login-toolbar {
       position: absolute;
@@ -202,6 +225,7 @@
       border-radius: 18px;
       padding: 28px;
       box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
     }
     .login-card::before {
       content: "";
@@ -285,7 +309,7 @@
     }
   </style>
 </head>
-<body class="ui-{{ ui_lang|default:'en' }} theme-{{ theme|default:'light' }}">
+<body class="ui-{{ ui_lang|default:'en' }} digits-{{ number_locale|default:'en' }} theme-{{ theme|default:'light' }}">
   <div class="login-shell">
     <aside class="login-hero" aria-hidden="false">
       <div>
@@ -294,7 +318,7 @@
           <div>
             <h1>{% t "Marketing Finance Hub" %}</h1>
             <p>{% t "Budgets, invoices, and payment tracking in one place" %}</p>
-            <span class="login-version">{% t "Updated panel" %} · 2026</span>
+            <span class="login-version">{% t "Updated panel" %} · {% locale_digits "2026" %}</span>
           </div>
         </div>
       </div>

@@ -228,7 +228,8 @@ learning/control to fastest possible public URL.
 [x] uv-based command pipeline implemented
 [x] Data-sheet reference seeding implemented
 [x] Dedicated team dashboards implemented
-[x] Dashboard Chart.js pie/monthly/team charts implemented (pie hidden when main dashboard is team-filtered)
+[x] Dashboard Chart.js pie/monthly/team charts implemented (pie hidden when main dashboard is team-filtered; Referral→Growth and SMS→Retention roll-up so they are never standalone team slices)
+[x] Uploaded files (invoice images, payment proofs, contracts) served only through permission-checked download views, never a public `/media/` URL
 [x] Sectioned sidebar navigation and in-app Help at `/help/`
 [x] Invoice business line field and filters
 [x] Finance overview dashboard layout

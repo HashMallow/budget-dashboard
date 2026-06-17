@@ -123,7 +123,7 @@ Display preferences are session-scoped, not per-user profile fields.
 | **P0** | Exact Excel round-trip (4-sheet mirror) | Product owner needs Google Sheets sync with the source workbook layout |
 | **P0** | Deploy a small production instance | The app is useful only when non-technical users can reach it in a browser |
 | **P1** | Year-end tax/insurance breakdown report | Aggregate marketing spend vs VAT vs insurance deposits for finance close |
-| **P1** | SMS / Referral reporting polish | Product rule: show separately from team breakdowns while still in total spend |
+| ~~P1~~ ✅ | SMS / Referral reporting polish | **Done (2026-06-17):** Referral rolls into Growth and SMS into Retention in charts; never a standalone team/pie slice; dedicated cards remain |
 | **P1** | Upload hardening and S3 | Invoice/payment images are user-supplied and should survive server replacement |
 | **P1** | CI/CD running `make check` | Locks tests, lint, and Django checks before deployment |
 | **P2** | Budget alerts and aging dashboards | High value; surfaces invoices stuck in finance review |
@@ -136,7 +136,7 @@ Display preferences are session-scoped, not per-user profile fields.
 ```text
 1. Build exact 4-sheet Excel round-trip export mirroring the source workbook (Google Sheets sync).
 2. Add year-end financial breakdown export: marketing spend vs VAT vs insurance deposits.
-3. Polish SMS / Referral cards and filters so they never mix into team pie slices unless explicitly requested.
+3. ✅ Done — SMS/Referral never mix into team pie slices (roll into Growth/Retention; dedicated cards kept).
 4. Extend workbook export with variance columns and optional empty budget rows for budget managers.
 5. Harden uploads, then move production media to S3.
 6. Add CI/CD that runs `make check` and deploys after successful checks.

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -22,11 +24,13 @@ from ..forms import (
     ContractStageForm,
 )
 from ..models import (
+    ContractAttachment,
     ContractStage,
 )
 from ..permissions import (
     can_edit_contract,
     can_upload_contract_file,
+    can_view_contract,
     user_can_create_contract,
 )
 from ..table_sort import apply_ordering, parse_sort
@@ -258,3 +262,22 @@ def contract_attachment_upload(request, pk: int):
     else:
         messages.error(request, "Upload failed. Check the file or your permissions.")
     return redirect("marketing:contract_detail", pk=contract.pk)
+
+
+def contract_attachment_download(request, pk: int):
+    """Serve a contract document only to users allowed to view its contract.
+
+    Signed contracts are confidential, so they are streamed through this
+    permission-checked view and forced as downloads rather than exposed under a
+    guessable ``/media/`` URL.
+    """
+    attachment = get_object_or_404(ContractAttachment.objects.select_related("contract"), pk=pk)
+    if not can_view_contract(request.user, attachment.contract):
+        return forbidden("You are not allowed to view this file.")
+    try:
+        file_handle = attachment.file.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("File not found.") from exc
+    response = FileResponse(file_handle, as_attachment=True, filename=Path(attachment.file.name).name)
+    response["X-Content-Type-Options"] = "nosniff"
+    return response

@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+.django_secret_key
 
 # Python / tooling
 .venv/
@@ -39,6 +40,9 @@ docs/discovery/audio_*.md
 docs/discovery/workbook_*.md
 docs/discovery/import_risks.md
 docs/discovery/column_mapping.local.yml
+
+# Personal deployment notes (copy from docs/personal-templates/ — see that README)
+docs/personal/
 marketing_dashboard_codex_instructions_updated.zip
 
 # Accidental local DB copies / verification DBs

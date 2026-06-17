@@ -124,7 +124,7 @@
             <th>{% sortable_th "Team" "team" %}</th>
             <th>{% sortable_th "Category" "category" %}</th>
             <th>{% sortable_th "Campaign" "campaign" %}</th>
-            <th class="col-num">{% sortable_th "Budget" "amount" %}</th>
+            <th class="col-num">{% sortable_th "Planned amount" "amount" %}</th>
             {% if is_budget_admin %}<th></th>{% endif %}
           </tr>
         </thead>
@@ -190,7 +190,7 @@
             data: {
               labels: monthData.labels,
               datasets: [{
-                label: "Planned budget",
+                label: "{% t 'Planned budget'|escapejs %}",
                 data: monthData.values,
                 backgroundColor: "#2563eb",
                 borderRadius: 4

@@ -67,26 +67,29 @@ def shape_pdf_text(text: str | None, locale: PdfLocale) -> str:
     """Shape Persian/Arabic for ReportLab's LTR text engine.
 
     ReportLab places glyphs in storage order. ``arabic_reshaper`` joins letters and
-    ``get_display`` reorders runs for visual RTL. Pure ASCII/Latin strings (invoice
-    numbers, amounts) are left unchanged.
+    ``get_display`` reorders runs for visual RTL. Apply **once** to the full logical
+    string (including mixed English + Persian). Shaping an already-shaped string
+    again produces garbled headers (e.g. ``خط کسب‌وکار`` → isolated reversed letters).
+
+    Pure ASCII/Latin strings (invoice numbers, ISO dates) are left unchanged.
     """
     if text is None:
         return ""
     value = str(text)
-    if not locale.rtl or not contains_rtl_script(value):
+    if not contains_rtl_script(value):
         return value
     return get_display(arabic_reshaper.reshape(value))
 
 
 def shape_pdf_parts(parts: list[str], locale: PdfLocale) -> str:
-    """Join logical fragments, shaping only segments that contain RTL script."""
-    if not locale.rtl:
-        return "".join(parts)
-    return "".join(shape_pdf_text(part, locale) if contains_rtl_script(part) else part for part in parts)
+    """Join logical fragments, then run a single bidi pass (never shape per-part)."""
+    return shape_pdf_text("".join(str(part) for part in parts), locale)
 
 
 def pdf_font_names(locale: PdfLocale) -> tuple[str, str]:
-    if locale.rtl and register_pdf_fonts():
+    """Prefer Vazirmatn for all PDFs when available (covers Persian data in EN exports)."""
+    del locale
+    if register_pdf_fonts():
         return REGULAR_FONT, BOLD_FONT
     return "Helvetica", "Helvetica-Bold"
 

@@ -112,7 +112,7 @@
             {% for attachment in contract.attachments.all %}
               <tr>
                 <td>{% t attachment.get_attachment_type_display %}</td>
-                <td><a class="ltr" href="{{ attachment.file.url }}">{{ attachment.file.name }}</a></td>
+                <td><a class="ltr" href="{% url 'marketing:contract_attachment_download' attachment.pk %}">{{ attachment.file.name }}</a></td>
                 <td>{{ attachment.uploaded_by.username }}</td>
                 <td class="number">{{ attachment.uploaded_at }}</td>
               </tr>

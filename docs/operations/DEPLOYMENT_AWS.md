@@ -126,13 +126,15 @@ git clone <your-repo-url> /home/ubuntu/marketing
 cd /home/ubuntu/marketing
 ```
 
-Create production `.env` (never commit this file):
+Create production `.env` (never commit this file). Full variable reference:
+**[`docs/personal-templates/ENV.md`](../personal-templates/ENV.md)** (copy to gitignored `docs/personal/` for your notes).
 
 ```env
 DJANGO_DEBUG=false
-DJANGO_SECRET_KEY=<long stable random string — set once>
+DJANGO_SECRET_KEY=<long stable random string — generate once, store in password manager>
 DJANGO_ALLOWED_HOSTS=dashboard.example.com
 DJANGO_CSRF_TRUSTED_ORIGINS=https://dashboard.example.com
+DJANGO_SESSION_COOKIE_SECURE=true
 DJANGO_TIME_ZONE=Asia/Tehran
 DJANGO_DEFAULT_CURRENCY=IRR
 DJANGO_SECURE_SSL_REDIRECT=true
@@ -143,12 +145,26 @@ DJANGO_LOG_LEVEL=INFO
 # DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/marketing?sslmode=require
 ```
 
+Generate a secret locally:
+
+```bash
+uv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+When `DJANGO_DEBUG=false`, Django enables proxy SSL header trust (for Caddy), session hardening
+(`SameSite=Lax`, refresh on each request), and WhiteNoise compressed static storage.
+
+**Secure cookies:** set `DJANGO_SESSION_COOKIE_SECURE=true` only when users reach the site over
+**HTTPS**. If everyone is logged out on every navigation, the usual causes are (1) secure cookies
+on plain HTTP, or (2) a new random `SECRET_KEY` on each process restart — fix by setting a stable
+`DJANGO_SECRET_KEY` in `.env` (do not rely on auto-generated keys in production).
+
+**Personal checklists:** copy `docs/personal-templates/` → `docs/personal/` (gitignored) for your
+domain names, resource IDs, and deploy diary — see [`docs/personal-templates/README.md`](../personal-templates/README.md).
+
 ```bash
 make prod-install
 ```
-
-When `DJANGO_DEBUG=false`, Django enables secure cookies, proxy SSL header trust (for Caddy), and
-WhiteNoise compressed static storage.
 
 ---
 
@@ -215,14 +231,16 @@ sudo apt install -y caddy
 dashboard.example.com {
     encode zstd gzip
 
-    handle_path /media/* {
-        root * /home/ubuntu/marketing/media
-        file_server
-    }
-
     reverse_proxy 127.0.0.1:8000
 }
 ```
+
+> **Do not** add a `file_server` block for `/media/*`. Uploaded invoice images,
+> payment proofs, and signed contracts are sensitive and are served through
+> permission-checked Django views (`invoice_attachment_download` /
+> `contract_attachment_download`). Serving `/media/` directly from Caddy would let
+> anyone with a guessable URL bypass team-level access control. WhiteNoise already
+> serves `/static/` from within the app, so Caddy only needs the reverse proxy.
 
 ```bash
 sudo systemctl reload caddy
@@ -298,7 +316,9 @@ Use when uploads must survive instance replacement or you run multiple app serve
 
 1. Private bucket (Block Public Access **on**).
 2. **IAM role** on the EC2 instance (not access keys in `.env`).
-3. Add `django-storages` + `boto3`; point default file storage to S3; remove Caddy `file_server` for `/media/`.
+3. Add `django-storages` + `boto3`; point default file storage to S3. Keep the bucket
+   **private** — attachments are still streamed through the permission-checked Django
+   download views, so the bucket must never be public and Caddy must never serve `/media/`.
 
 ### CloudWatch + CI/CD
 
@@ -313,10 +333,13 @@ Skip ElastiCache, SQS workers, ECS, and EKS unless traffic or import volume forc
 
 - [ ] AWS Budget alert configured; resources tagged.
 - [ ] `DJANGO_DEBUG=false`, stable `DJANGO_SECRET_KEY`, correct `ALLOWED_HOSTS` + `CSRF_TRUSTED_ORIGINS`.
+- [ ] `DJANGO_SESSION_COOKIE_SECURE=true` when serving HTTPS (Caddy / ALB / PaaS TLS).
+- [ ] Login session persists across page navigation (no random logouts).
 - [ ] `make prod-install` and `collectstatic` completed; `/static/` loads over HTTPS.
 - [ ] Real superuser via `createsuperuser` (not dev bootstrap password).
 - [ ] Workbook imported; spot-check totals against source.
 - [ ] HTTPS works with no redirect loop; media uploads persist on disk (or S3).
+- [ ] `/media/` is **not** served by Caddy/S3 publicly; attachment links go through the app and a logged-out request to a `/media/...` path is refused.
 - [ ] `make check` passes before deploy.
 - [ ] You know how to stop/delete idle EC2/RDS to avoid surprise bills.
 

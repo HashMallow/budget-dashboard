@@ -170,4 +170,16 @@ Sources: transcript `_7` (wider charts), `_11` (consolidated nav), `22-05-26` (s
 
 ---
 
-*Last updated: 2026-06-16*
+## 2026-06-17 — Referral/SMS pie fix + security pass
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Referral/SMS not their own pie slice | done | `overall_spend_pie` now rolls Referral→Growth and SMS→Retention instead of appending standalone "Referral"/"SMS" slices; they stay in the overall total and keep their dedicated stat cards. Tests in `test_analytics.py`. |
+| Sensitive uploads exposed via `/media/` | done | Invoice images, payment proofs, and signed contracts were served without auth (Django DEBUG static + Caddy `file_server`). Added permission-checked `invoice_attachment_download` / `contract_attachment_download` views (force `attachment` + `nosniff`); templates link through them; `DEPLOYMENT_AWS.md` updated to stop serving `/media/`. Test in `test_frontend_views.py`. |
+| Deploy/security checks reviewed | done | `manage.py check --deploy` warnings (HSTS, secure cookies) are intentional, env-driven opt-ins documented in `ENV.md`/deploy guide. CSRF middleware on; mutations are POST-only; import path is a server UUID (no traversal); preferences redirect host-checked. |
+
+Sources: transcript `_13` / `22-13-57` (Referral under Growth, SMS under Retention — isolate so they don't skew team charts); user instruction to remove standalone Referral/SMS pie slices and audit vulnerabilities.
+
+---
+
+*Last updated: 2026-06-17*
