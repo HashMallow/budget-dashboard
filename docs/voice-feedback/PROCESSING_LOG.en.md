@@ -107,21 +107,16 @@ Full detail: [`USER_REQUESTS.en.md`](USER_REQUESTS.en.md)
 | Vendor detail | `/vendors/<id>/` with invoices, contracts, totals | Click vendor on dashboard/list |
 | Invoice list UX | Default sort `created_at`; paid/pending row CSS; days when paid | `/invoices/` |
 | Instructions | `docs/voice-feedback/*`, `AGENTS.md`, discovery skills | Read paths |
-| Tests | `test_invoice_amounts.py`; full suite 114 passed | `uv run pytest -q` |
+| Tests | `test_invoice_amounts.py`, `test_cursor_prompts.py`; full suite **123 passed** | `uv run pytest -q` |
 
-### Still requested — not done (backlog)
+### Previously backlog — now done (see sections below)
 
-- Manual budget CRUD (team → sub-team → line, monthly amounts)
-- Budget-line variance panel on invoice form
-- Remaining budget / % consumed on variance table
-- PDF export wizard
-- Vendor/campaign merge UI
-- Editor Excel import permission
-- Inline payment-stage change in list views
-- Chart layout polish; consolidated navigation hub
-- Team → budget line filtering on invoice form
+Manual budget CRUD, budget variance on invoice form, % consumed, PDF wizard, vendor/campaign merge, editor import permission, inline stage edit, team→category cascade, contract ceiling on vendor detail, dashboard UI polish — all shipped 2026-06-16.
 
----
+### Still open
+
+- Exact Excel round-trip export (4-sheet mirror for Google Sheets)
+- Year-end report: separate marketing spend vs VAT vs insurance deposits (per-invoice/vendor totals exist; no dedicated export)
 
 ## Changelog template (copy for next session)
 
@@ -158,6 +153,20 @@ Full detail: [`USER_REQUESTS.en.md`](USER_REQUESTS.en.md)
 | Editor Excel import permission | done | `UserTeamAccess.can_import_excel` migration `0012` |
 | Contract ceiling on vendor detail | done | Start date + amount columns |
 | Tests | done | `marketing/tests/test_cursor_prompts.py`; **123 passed** |
+
+---
+
+## 2026-06-16 — Dashboard UI polish (batch 2–22 backlog item)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Terminology: planned budget vs actual spend | done | KPI cards, variance tables, charts, invoice variance panel; Persian labels disambiguated |
+| Wider dashboard charts | done | Full-width stacked panels; `dashboard-panel-chart` min-height 320px |
+| Consolidated navigation | done | Single **Finance** sidebar section (invoices → contracts) |
+| Dark mode polish | done | Variance panel, deviation/consumed colors, card notes use theme tokens |
+| Excel round-trip (4-sheet mirror) | backlog | Next task per `audio_feedback_batch_2_to_22.en.md` |
+
+Sources: transcript `_7` (wider charts), `_11` (consolidated nav), `22-05-26` (spend vs budget/projection confusion).
 
 ---
 

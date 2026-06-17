@@ -41,19 +41,15 @@ The sidebar is organized in sections (not one long flat list). **Help** is alway
 |------|----------------|
 | **Dashboard** | Big-picture spend, charts, budget vs actual, payment status |
 
-### Spend & teams
+### Finance
 
 | Item | What it is for |
 |------|----------------|
-| **Invoices** | List, search, create, and edit marketing invoices |
+| **Dashboard** | Big-picture spend, charts, budget vs actual, payment queues |
+| **Invoices** | List, search, create, and edit marketing invoices (action cost, VAT, insurance, paid amount) |
 | **Teams** | Pick a team and open its focused dashboard |
-
-### Reports
-
-| Item | What it is for |
-|------|----------------|
-| **Budget** | Planned monthly budgets from the workbook |
-| **Vendors** | Which suppliers you paid, how much, and payment stages |
+| **Budget** | Planned monthly budgets; manual add/edit/delete for admins |
+| **Vendors** | Suppliers, totals (action / tax / paid), contracts, and payment stages |
 | **Campaigns** | Spend grouped by marketing campaign for the year |
 | **Contracts** | Vendor agreements, dates, stages, attachments |
 
@@ -71,7 +67,7 @@ The sidebar is organized in sections (not one long flat list). **Help** is alway
 |------|----------------|
 | **Help** | This guide, inside the app |
 
-**Who sees what:** Everyone sees Overview, Spend & teams, and Reports (within their team access). Only admins see Administration. Help is available to everyone, including before sign-in at `/help/`.
+**Who sees what:** Everyone sees Overview and Finance (within their team access). Only admins see Administration. Help is available to everyone, including before sign-in at `/help/`.
 
 ---
 

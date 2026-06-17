@@ -76,14 +76,14 @@
 
     <section class="grid cards dashboard-kpis">
       <div class="card">
-        <div class="card-label">{% t "Total spend" %}</div>
+        <div class="card-label">{% t "Total actual spend" %}</div>
         <div class="card-value number">{{ total_spend|money }}</div>
-        <div class="card-note">{{ currency_label }}</div>
+        <div class="card-note">{% t "Sum of invoice amounts in the selected range" %}</div>
       </div>
       <div class="card">
         <div class="card-label">{% t "Planned budget" %}</div>
         <div class="card-value number">{{ budget_total|money }}</div>
-        <div class="card-note">{% t "Budget lines imported from the Budget sheet" %}</div>
+        <div class="card-note">{% t "From budget lines (projection), not actual spend" %}</div>
       </div>
       <div class="card">
         <div class="card-label">{% t "Budget deviation" %}</div>
@@ -124,7 +124,7 @@
       </div>
     </section>
 
-    <section class="grid {% if is_team_filtered %}two dashboard-trends{% else %}two dashboard-trends{% endif %}">
+    <section class="dashboard-trends">
       <div class="panel">
         <div class="section-header">
           <div>
@@ -134,7 +134,7 @@
         </div>
         {% if budget_variance_chart_has_data %}
           <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-            <canvas id="budgetVarianceChart" height="{% if is_team_filtered %}240{% else %}280{% endif %}"></canvas>
+            <canvas id="budgetVarianceChart"></canvas>
           </div>
         {% endif %}
         <div class="table-wrap{% if is_team_filtered %} dashboard-table-scroll{% endif %}">
@@ -142,8 +142,8 @@
             <thead>
               <tr>
                 <th>{% t "Month" %}</th>
-                <th class="col-num">{% t "Planned" %}</th>
-                <th class="col-num">{% t "Actual" %}</th>
+                <th class="col-num">{% t "Planned budget (projection)" %}</th>
+                <th class="col-num">{% t "Actual spend" %}</th>
                 <th class="col-num">{% t "Deviation" %}</th>
                 <th class="col-num">{% t "% Consumed" %}</th>
               </tr>
@@ -177,13 +177,13 @@
       <div class="panel">
         <div class="section-header">
           <div>
-            <h2 class="section-title">{% t "Monthly trend" %}</h2>
-            <p class="section-subtitle">{% t "By Persian (Jalali) month" %}</p>
+            <h2 class="section-title">{% t "Monthly actual spend" %}</h2>
+            <p class="section-subtitle">{% t "Invoice spend by Jalali month (not budget projection)" %}</p>
           </div>
         </div>
         {% if monthly_chart_has_data %}
           <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-            <canvas id="monthlyTrendChart" height="{% if is_team_filtered %}240{% else %}280{% endif %}"></canvas>
+            <canvas id="monthlyTrendChart"></canvas>
           </div>
         {% else %}
           <div class="empty">{% t "No data to display." %}</div>
@@ -203,7 +203,7 @@
     </section>
 
     {% if show_spend_pie %}
-      <section class="grid two dashboard-breakdown">
+      <section class="dashboard-breakdown">
         <div class="panel">
           <div class="section-header">
             <div>
@@ -213,7 +213,7 @@
           </div>
           {% if spend_pie_has_data %}
             <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-              <canvas id="spendPie" height="280"></canvas>
+              <canvas id="spendPie"></canvas>
             </div>
           {% else %}
             <div class="empty">{% t "No data to display." %}</div>
@@ -229,7 +229,7 @@
           </div>
           {% if team_chart_has_data %}
             <div class="chart-wrap chart-wrap--wide dashboard-panel-chart">
-              <canvas id="teamSpendChart" height="280"></canvas>
+              <canvas id="teamSpendChart"></canvas>
             </div>
           {% elif team_total_rows %}
             <div class="bar-list">
@@ -256,8 +256,8 @@
             <thead>
               <tr>
                 <th>{% t "Team" %}</th>
-                <th class="col-num">{% t "Planned" %}</th>
-                <th class="col-num">{% t "Actual" %}</th>
+                <th class="col-num">{% t "Planned budget (projection)" %}</th>
+                <th class="col-num">{% t "Actual spend" %}</th>
                 <th class="col-num">{% t "Deviation" %}</th>
                 <th class="col-num">{% t "% Consumed" %}</th>
               </tr>
@@ -572,7 +572,7 @@
             data: {
               labels: monthlyData.labels,
               datasets: [{
-                label: "Spend",
+                label: "{% t 'Actual spend'|escapejs %}",
                 data: monthlyData.values,
                 borderColor: "#2563eb",
                 backgroundColor: "rgba(37, 99, 235, 0.15)",
@@ -601,7 +601,7 @@
             data: {
               labels: teamData.labels,
               datasets: [{
-                label: "Spend",
+                label: "{% t 'Actual spend'|escapejs %}",
                 data: teamData.values,
                 backgroundColor: teamData.labels.map(function (_, i) { return palette[i % palette.length]; }),
                 borderRadius: 4
@@ -623,8 +623,8 @@
         if (budgetEl && budgetNode && typeof window.createBudgetVarianceChart === "function") {
           var budgetData = JSON.parse(budgetNode.textContent);
           window.createBudgetVarianceChart(budgetEl, budgetData, {
-            planned: "{% t 'Planned'|escapejs %}",
-            actual: "{% t 'Actual'|escapejs %}",
+            planned: "{% t 'Planned budget (projection)'|escapejs %}",
+            actual: "{% t 'Actual spend'|escapejs %}",
             deviation: "{% t 'Deviation'|escapejs %}"
           });
         }

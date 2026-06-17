@@ -36,7 +36,13 @@ The current app now includes:
 [x] Light/dark theme toggle (session-persisted)
 [x] Jalali month/year filters and Shamsi date parsing in import + forms
 [x] Tests for permissions, imports, analytics, exports, PDF, reference CRUD, money display
+[x] Invoice amount breakdown: action cost, 10% VAT, insurance withholding, paid amount (voice _2, _12)
+[x] Manual budget CRUD, budget variance on invoice form, PDF export wizard, vendor/campaign merge
+[x] Editor Excel import permission (can_import_excel), inline payment-stage edit in lists
+[x] Dashboard UI polish: planned budget vs actual spend terminology, full-width charts, Finance nav
 ```
+
+**Test suite (2026-06-16):** 123 passed, 1 skipped (`uv run pytest -q`).
 
 The important architectural choice is still intact: dashboards and exports are built from
 permission-filtered querysets on the server. Chart.js only draws prepared aggregate JSON; it does
@@ -47,6 +53,8 @@ not receive raw spreadsheet data.
 ## Still thin or missing
 
 ```text
+[ ] Exact Excel round-trip export — 4-sheet mirror identical to source workbook (Google Sheets sync)
+[ ] Year-end financial breakdown export — marketing spend vs VAT vs insurance deposits (fields exist per invoice)
 [ ] Budget variance by category (Budget sheet line titles)
 [ ] Richer campaign-over-year visualization (monthly bars + budget overlay)
 [ ] Lookup validation/dropdowns wired into every invoice data-entry form
@@ -68,21 +76,22 @@ These are intentional boundaries of the current implementation:
 
 ```text
 Reference data can be seeded (`make seed-reference`) and managed in the panel (`/reference/`).
-  SpendCategory, SubTeam, and Requester exist in the database.
-  Invoice forms still use a free-text category field in places.
-  Next step: dropdown/autocomplete choices and validation backed by seeded lookups.
+  SpendCategory, SubTeam, Requester, BusinessLine, InsuranceRateOption exist in the database.
+  Invoice form uses dropdowns for category, business line, and insurance rate.
+  `business_section` is still a CharField (not FK) — form-enforced only.
+
+Invoice amount breakdown (action cost, VAT, insurance, paid) is implemented in
+  marketing/invoice_amounts.py and on invoice/vendor detail pages.
+  No dedicated year-end export separating marketing vs tax vs insurance totals yet.
 
 Charts are richer, but still rendered inside Django templates.
   This is fine for the current server-rendered panel.
   When React is introduced, expose marketing/analytics.py through JSON endpoints.
   Do not rebuild dashboard math on the client.
 
-PDF export is a summary, not a polished full report suite.
-  /reports/dashboard.pdf covers totals, top vendors, and payment stages.
+PDF export includes a filter wizard at `/exports/pdf/` plus direct report endpoints.
+  Summary PDFs are not a full year-end tax/insurance breakdown suite.
   /reports/invoices/print/ still exists for browser print-to-PDF.
-  Vendor/campaign/contract PDFs exist; Persian uses Vazirmatn + arabic-reshaper (not python-bidi display reversal).
-
-Workbook export is a clean DB round-trip, not a byte-for-byte clone.
   /exports/workbook.xlsx recreates familiar sheet names and monthly budget/actual views.
   It is scoped to the user's permitted data and sanitized for Excel and Google Sheets compatibility.
   Next step: optional “include empty budget rows” and variance columns for budget managers.
@@ -111,13 +120,13 @@ Display preferences are session-scoped, not per-user profile fields.
 
 | Priority | Theme | Why |
 |---|---|---|
-| **P0** | Budget planned-vs-actual | Core BI question for every budget manager: “Are we over or under, and where?” |
+| **P0** | Exact Excel round-trip (4-sheet mirror) | Product owner needs Google Sheets sync with the source workbook layout |
 | **P0** | Deploy a small production instance | The app is useful only when non-technical users can reach it in a browser |
+| **P1** | Year-end tax/insurance breakdown report | Aggregate marketing spend vs VAT vs insurance deposits for finance close |
 | **P1** | SMS / Referral reporting polish | Product rule: show separately from team breakdowns while still in total spend |
-| **P1** | Reference management UI + form dropdowns | Reduces bad categories/vendors and matches how the Excel Data sheet was meant to work |
 | **P1** | Upload hardening and S3 | Invoice/payment images are user-supplied and should survive server replacement |
 | **P1** | CI/CD running `make check` | Locks tests, lint, and Django checks before deployment |
-| **P2** | Budget alerts and aging dashboards | High value once variance exists; surfaces invoices stuck in finance review |
+| **P2** | Budget alerts and aging dashboards | High value; surfaces invoices stuck in finance review |
 | **P2** | JSON API + optional React front-end | Useful later, but Django templates are enough for the internal admin panel now |
 
 ---
@@ -125,16 +134,14 @@ Display preferences are session-scoped, not per-user profile fields.
 ## Recommended next build order
 
 ```text
-1. Add budget planned-vs-actual dashboard cards, variance table, and monthly chart (team + campaign drill-down).
-2. Polish SMS / Referral cards and filters so they never mix into team pie slices unless explicitly requested.
-3. Add reference-data management screens for vendors, categories, sub-teams, and requesters.
-4. Wire seeded lookup rows into invoice forms where it improves data quality.
-5. Extend workbook export with variance columns (planned, actual, delta, % used) for budget managers.
-6. Harden uploads, then move production media to S3.
-7. Add CI/CD that runs `make check` and deploys after successful checks.
-8. Deploy on a small always-on service: PaaS first for speed, or EC2/RDS/S3 for AWS learning.
-9. Add Persian/RTL PDF support if PDFs need Persian-facing output.
-10. Add JSON endpoints only when the React front-end becomes the next real milestone.
+1. Build exact 4-sheet Excel round-trip export mirroring the source workbook (Google Sheets sync).
+2. Add year-end financial breakdown export: marketing spend vs VAT vs insurance deposits.
+3. Polish SMS / Referral cards and filters so they never mix into team pie slices unless explicitly requested.
+4. Extend workbook export with variance columns and optional empty budget rows for budget managers.
+5. Harden uploads, then move production media to S3.
+6. Add CI/CD that runs `make check` and deploys after successful checks.
+7. Deploy on a small always-on service: PaaS first for speed, or EC2/RDS/S3 for AWS learning.
+8. Add JSON endpoints only when the React front-end becomes the next real milestone.
 ```
 
 ---

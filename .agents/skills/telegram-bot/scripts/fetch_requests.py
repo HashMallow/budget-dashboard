@@ -8,6 +8,7 @@ Usage:
     python fetch_requests.py
     python fetch_requests.py --skip-transcribe
     python fetch_requests.py --language fa
+    python fetch_requests.py --backend local --max-items 20   # scheduled-safe
 
 Requires TELEGRAM_BOT_TOKEN in .env or the environment.
 """
@@ -60,6 +61,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch Telegram requests and transcribe audio.")
     parser.add_argument("--skip-transcribe", action="store_true", help="Only sync Telegram; skip transcription.")
     parser.add_argument("--language", default=None, help="Language code for transcription (e.g. fa).")
+    parser.add_argument("--model", default=None, help="Whisper model passed to the queue (default: auto).")
+    parser.add_argument(
+        "--backend",
+        default=None,
+        choices=["local", "openai", "auto"],
+        help="Transcription backend. 'local' avoids cloud APIs (recommended for scheduled runs).",
+    )
+    parser.add_argument("--max-items", type=int, default=0, help="Max audio drafts to transcribe this run.")
+    parser.add_argument(
+        "--max-runtime-seconds", type=int, default=0, help="Cap transcription runtime in seconds."
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show what would run without executing.")
     args = parser.parse_args()
 
@@ -78,6 +90,14 @@ def main() -> int:
     transcribe_cmd = [sys.executable, str(TRANSCRIBE_QUEUE)]
     if args.language:
         transcribe_cmd.extend(["--language", args.language])
+    if args.model:
+        transcribe_cmd.extend(["--model", args.model])
+    if args.backend:
+        transcribe_cmd.extend(["--backend", args.backend])
+    if args.max_items:
+        transcribe_cmd.extend(["--max-items", str(args.max_items)])
+    if args.max_runtime_seconds:
+        transcribe_cmd.extend(["--max-runtime-seconds", str(args.max_runtime_seconds)])
 
     if args.dry_run:
         print("Would run:", file=sys.stderr)

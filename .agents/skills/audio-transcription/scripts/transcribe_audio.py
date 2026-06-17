@@ -9,17 +9,39 @@ import sys
 from pathlib import Path
 
 
-AUDIO_EXTENSIONS = {".ogg", ".oga", ".mp3", ".m4a", ".wav"}
+AUDIO_EXTENSIONS = {".ogg", ".oga", ".mp3", ".m4a", ".wav", ".webm", ".opus", ".flac"}
 
 # Model downgrade chain: try the best model first, fall back on OOM or failure
 MODEL_FALLBACK_CHAIN = ["large-v3", "medium", "small", "base"]
+
+# Backend selection: which transcription path is allowed to run.
+#   local  → never call cloud APIs (recommended for scheduled/cron runs)
+#   openai → only the OpenAI API; fail clearly if SDK/key is missing
+#   auto   → use OpenAI when OPENAI_API_KEY is set, otherwise fall back to local
+VALID_BACKENDS = {"local", "openai", "auto"}
+
+
+def _resolve_backend(cli_backend: str | None) -> str:
+    """Resolve the effective backend. CLI flag wins, then TRANSCRIPTION_BACKEND, then 'auto'."""
+    if cli_backend:
+        return cli_backend.strip().lower()
+    env_backend = os.environ.get("TRANSCRIPTION_BACKEND")
+    if env_backend:
+        return env_backend.strip().lower()
+    return "auto"
 
 
 def run(command: list[str]) -> None:
     subprocess.run(command, check=True)
 
 
-def markdown_header(source: Path, wav_path: Path | None, tool: str, language: str | None) -> list[str]:
+def markdown_header(
+    source: Path,
+    wav_path: Path | None,
+    tool: str,
+    language: str | None,
+    confidence: str | None = None,
+) -> list[str]:
     lines = [
         "# Audio Transcript",
         "",
@@ -27,9 +49,11 @@ def markdown_header(source: Path, wav_path: Path | None, tool: str, language: st
     ]
     if wav_path is not None:
         lines.append(f"Converted WAV: `{wav_path}`")
+    lines.append(f"Transcription tool: `{tool}`")
+    if confidence:
+        lines.append(f"Confidence: `{confidence}`")
     lines.extend(
         [
-            f"Transcription tool: `{tool}`",
             f"Requested language: `{language or 'auto'}`",
             "",
             "## Transcript",
@@ -94,42 +118,6 @@ def _detect_conda_env() -> str | None:
     return os.environ.get("CONDA_DEFAULT_ENV")
 
 
-def _probe_nvidia_smi() -> tuple[str | None, float]:
-    """Return (gpu_name, vram_gb) from nvidia-smi when torch is not installed."""
-    nvidia_smi = shutil.which("nvidia-smi")
-    if not nvidia_smi:
-        return None, 0.0
-    try:
-        result = subprocess.run(
-            [
-                nvidia_smi,
-                "--query-gpu=name,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        line = result.stdout.strip().splitlines()[0]
-        name, mem_mib = [part.strip() for part in line.split(",", 1)]
-        return name, float(mem_mib) / 1024
-    except Exception:
-        return None, 0.0
-
-
-def _enrich_cuda_info_from_nvidia_smi(info: dict) -> None:
-    """Fill GPU name / VRAM when CUDA works via ctranslate2 but torch is absent."""
-    if not info.get("cuda_available"):
-        return
-    if info.get("gpu_name") and info.get("vram_gb", 0) > 0:
-        return
-    gpu_name, vram_gb = _probe_nvidia_smi()
-    if gpu_name and not info.get("gpu_name"):
-        info["gpu_name"] = gpu_name
-    if vram_gb > 0 and not info.get("vram_gb"):
-        info["vram_gb"] = vram_gb
-
-
 def _detect_python_env() -> dict:
     """Detect the current Python runtime environment without hardcoding any CUDA version."""
     info: dict = {
@@ -160,7 +148,6 @@ def _detect_python_env() -> dict:
                 info["cuda_available"] = True
         except Exception:
             pass
-    _enrich_cuda_info_from_nvidia_smi(info)
     return info
 
 
@@ -241,8 +228,7 @@ def _gpu_vram_gb() -> float:
             return torch.cuda.get_device_properties(0).total_mem / (1024 ** 3)
     except Exception:
         pass
-    _, vram_gb = _probe_nvidia_smi()
-    return vram_gb
+    return 0.0
 
 
 def _resolve_device(device: str) -> str:
@@ -257,19 +243,22 @@ def _resolve_compute_type(compute_type: str, device: str) -> str:
     return "float16" if device == "cuda" else "int8"
 
 
-def _resolve_local_model(model: str, backend: str) -> str:
-    """When model is 'auto', pick the default for each local backend.
-
-    Priority backends (see main()):
-      mlx (macOS) → large-v3
-      cuda        → large-v3 (downgrades only on OOM via MODEL_FALLBACK_CHAIN)
-      cpu         → small (last resort)
-    """
+def _auto_model(model: str, device: str) -> str:
+    """When model is 'auto', pick the best model based on available VRAM."""
     if model != "auto":
         return model
-    if backend in {"mlx", "cuda"}:
-        return "large-v3"
-    return "small"
+    if device == "cuda":
+        vram = _gpu_vram_gb()
+        if vram >= 10 or vram == 0.0:
+            return "large-v3"     # ~3 GB in float16, easily fits 10+ GB VRAM. 0.0 handles cases where torch is unavailable but CUDA works via ctranslate2.
+        elif vram >= 5:
+            return "medium"
+        else:
+            return "small"
+    elif sys.platform == "darwin":
+        return "large-v3"         # Apple Silicon unified memory handles this well
+    else:
+        return "small"            # CPU fallback, keep it light
 
 
 def _model_fallback_chain(starting_model: str) -> list[str]:
@@ -298,7 +287,7 @@ def transcribe_faster_whisper(
 ) -> tuple[list[str], str]:
     resolved_device = _resolve_device(device)
     resolved_compute = _resolve_compute_type(compute_type, resolved_device)
-    starting_model = _resolve_local_model(model, resolved_device)
+    starting_model = _auto_model(model, resolved_device)
 
     # Use batched inference on GPU for massive speedup (requires faster-whisper >= 1.0)
     use_batched = batch_size > 0 or (resolved_device == "cuda" and batch_size == 0)
@@ -425,150 +414,6 @@ def transcribe_mlx_whisper(
     return lines, "mlx-whisper (Apple GPU)"
 
 
-def _write_transcript(
-    out_path: Path,
-    audio_path: Path,
-    converted: Path | None,
-    tool_label: str,
-    language: str | None,
-    body_lines: list[str],
-) -> None:
-    transcript_lines = markdown_header(audio_path, converted, tool_label, language)
-    transcript_lines.extend(body_lines)
-    out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
-    print(out_path)
-
-
-def _try_openai(
-    wav_path: Path,
-    audio_path: Path,
-    converted: Path | None,
-    out_path: Path,
-    language: str | None,
-) -> bool:
-    if not os.environ.get("OPENAI_API_KEY"):
-        return False
-    try:
-        text = transcribe_openai(wav_path, language)
-        transcript_lines = markdown_header(audio_path, converted, "openai whisper-1", language)
-        transcript_lines.append(text)
-        out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
-        print(out_path)
-        return True
-    except Exception as exc:
-        print(f"OpenAI transcription failed, falling back locally: {exc}", file=sys.stderr)
-        return False
-
-
-def _try_mlx(
-    wav_path: Path,
-    audio_path: Path,
-    converted: Path | None,
-    out_path: Path,
-    language: str | None,
-    model: str,
-) -> bool:
-    if sys.platform != "darwin":
-        return False
-    try:
-        import mlx_whisper  # noqa: F401
-    except ImportError:
-        print("mlx-whisper not installed; skipping Apple Silicon backend.", file=sys.stderr)
-        return False
-    resolved_model = _resolve_local_model(model, "mlx")
-    try:
-        body, runtime = transcribe_mlx_whisper(wav_path, language, resolved_model)
-        _write_transcript(
-            out_path,
-            audio_path,
-            converted,
-            f"mlx-whisper {resolved_model} ({runtime})",
-            language,
-            body,
-        )
-        return True
-    except Exception as exc:
-        print(f"mlx-whisper transcription failed: {exc}", file=sys.stderr)
-        return False
-
-
-def _try_cuda(
-    wav_path: Path,
-    audio_path: Path,
-    converted: Path | None,
-    out_path: Path,
-    language: str | None,
-    model: str,
-    device: str,
-    compute_type: str,
-    batch_size: int,
-) -> bool:
-    if not _cuda_available():
-        return False
-    resolved_model = _resolve_local_model(model, "cuda")
-    print(
-        f"CUDA detected ({_gpu_vram_gb():.1f} GB VRAM). Using model: {resolved_model}",
-        file=sys.stderr,
-    )
-    try:
-        body, runtime = transcribe_faster_whisper(
-            wav_path,
-            language,
-            model,
-            device if device != "auto" else "cuda",
-            compute_type,
-            batch_size,
-        )
-        _write_transcript(
-            out_path,
-            audio_path,
-            converted,
-            f"faster-whisper ({runtime})",
-            language,
-            body,
-        )
-        return True
-    except Exception as exc:
-        print(f"CUDA transcription failed: {exc}", file=sys.stderr)
-        return False
-
-
-def _try_cpu(
-    wav_path: Path,
-    audio_path: Path,
-    converted: Path | None,
-    out_path: Path,
-    language: str | None,
-    model: str,
-    compute_type: str,
-    batch_size: int,
-) -> bool:
-    cpu_model = _resolve_local_model(model, "cpu")
-    if model == "auto":
-        print(f"CPU fallback. Using model: {cpu_model}", file=sys.stderr)
-    try:
-        body, runtime = transcribe_faster_whisper(
-            wav_path,
-            language,
-            cpu_model if model == "auto" else model,
-            "cpu",
-            compute_type if compute_type != "auto" else "int8",
-            batch_size,
-        )
-        _write_transcript(
-            out_path,
-            audio_path,
-            converted,
-            f"faster-whisper ({runtime})",
-            language,
-            body,
-        )
-        return True
-    except Exception as exc:
-        print(f"CPU transcription failed: {exc}", file=sys.stderr)
-        return False
-
-
 def write_limitation(out_path: Path, source: Path, reason: str) -> None:
     out_path.write_text(
         "\n".join(
@@ -592,13 +437,19 @@ def main() -> int:
     parser.add_argument("audio", nargs="?", type=Path, default=None,
                         help="Audio file to transcribe. Not required when using --setup or --env-info.")
     parser.add_argument("--out-dir", type=Path, default=Path("docs/discovery"))
-    parser.add_argument("--language", default=None, help="Language code such as fa or en. Omit for auto-detect.")
     parser.add_argument(
-        "--model",
-        default="auto",
-        help="Whisper model name. 'auto' uses large-v3 on mlx/CUDA and small on CPU. "
-        "Options: large-v3, medium, small, base, tiny, or auto.",
+        "--backend",
+        default=None,
+        choices=["local", "openai", "auto"],
+        help="Which transcription path to allow. 'local' never calls cloud APIs "
+             "(recommended for scheduled runs); 'openai' requires OPENAI_API_KEY and the "
+             "openai SDK; 'auto' uses OpenAI when a key is present, else local. "
+             "Falls back to the TRANSCRIPTION_BACKEND env var, then 'auto'.",
     )
+    parser.add_argument("--language", default=None, help="Language code such as fa or en. Omit for auto-detect.")
+    parser.add_argument("--model", default="auto",
+                        help="Whisper model name. 'auto' picks the best model for your hardware. "
+                             "Options: large-v3, medium, small, base, tiny, or auto.")
     parser.add_argument(
         "--wav-dir",
         type=Path,
@@ -673,62 +524,115 @@ def main() -> int:
         write_limitation(out_path, audio_path, str(exc))
         return 1
 
+    transcript_lines: list[str]
     converted = wav_path if wav_path != audio_path else None
+    backend = _resolve_backend(args.backend)
+    if backend not in VALID_BACKENDS:
+        print(f"Invalid backend '{backend}'. Choose one of: {', '.join(sorted(VALID_BACKENDS))}", file=sys.stderr)
+        return 2
+    print(f"Transcription backend: {backend}", file=sys.stderr)
 
-    # Backend priority (see SKILL.md):
-    #   1. OpenAI whisper-1 (OPENAI_API_KEY)
-    #   2. mlx-whisper large-v3 on macOS
-    #   3. faster-whisper large-v3 on CUDA
-    #   4. whisper CLI (optional legacy)
-    #   5. faster-whisper on CPU (last resort)
-    if _try_openai(wav_path, audio_path, converted, out_path, args.language):
-        return 0
-
-    if _try_mlx(wav_path, audio_path, converted, out_path, args.language, args.model):
-        return 0
-
-    if _try_cuda(
-        wav_path,
-        audio_path,
-        converted,
-        out_path,
-        args.language,
-        args.model,
-        args.device,
-        args.compute_type,
-        args.batch_size,
-    ):
-        return 0
-
-    if shutil.which("whisper"):
+    # --- OpenAI-only backend: must succeed via OpenAI or fail clearly (no local fallback) ---
+    if backend == "openai":
+        if not os.environ.get("OPENAI_API_KEY"):
+            reason = "backend=openai but OPENAI_API_KEY is not set."
+            print(reason, file=sys.stderr)
+            write_limitation(out_path, audio_path, reason)
+            return 2
         try:
-            text = transcribe_whisper_cli(wav_path, args.out_dir, args.language)
-            transcript_lines = markdown_header(audio_path, converted, "whisper CLI", args.language)
+            text = transcribe_openai(wav_path, args.language)
+        except ImportError as exc:
+            reason = f"backend=openai but the openai SDK is not installed: {exc}"
+            print(reason, file=sys.stderr)
+            write_limitation(out_path, audio_path, reason)
+            return 2
+        except Exception as exc:
+            reason = f"backend=openai transcription failed: {exc}"
+            print(reason, file=sys.stderr)
+            write_limitation(out_path, audio_path, reason)
+            return 1
+        transcript_lines = markdown_header(audio_path, converted, "openai whisper-1", args.language, "high")
+        transcript_lines.append(text)
+        out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+        print(out_path)
+        return 0
+
+    # --- auto backend: try OpenAI first when a key exists, then fall back locally ---
+    if backend == "auto" and os.environ.get("OPENAI_API_KEY"):
+        try:
+            text = transcribe_openai(wav_path, args.language)
+            transcript_lines = markdown_header(audio_path, converted, "openai whisper-1", args.language, "high")
             transcript_lines.append(text)
             out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
             print(out_path)
             return 0
         except Exception as exc:
-            print(f"whisper CLI transcription failed: {exc}", file=sys.stderr)
+            print(f"OpenAI transcription failed, falling back locally: {exc}", file=sys.stderr)
 
-    if _try_cpu(
-        wav_path,
-        audio_path,
-        converted,
-        out_path,
-        args.language,
-        args.model,
-        args.compute_type,
-        args.batch_size,
-    ):
+    # --- Local chain (backend == 'local' or 'auto' without/after OpenAI) ---
+    # Prioritize CUDA GPU over mlx-whisper — a 16 GB VRAM GPU with large-v3 in float16
+    # is significantly faster than Apple Silicon unified memory.
+    if _cuda_available():
+        try:
+            resolved_model = _auto_model(args.model, "cuda")
+            print(f"CUDA detected ({_gpu_vram_gb():.1f} GB VRAM). Using model: {resolved_model}", file=sys.stderr)
+            body, runtime = transcribe_faster_whisper(
+                wav_path, args.language, args.model, args.device, args.compute_type, args.batch_size
+            )
+            confidence = "medium" if runtime.startswith("cuda") else "low-medium"
+            transcript_lines = markdown_header(
+                audio_path, converted, f"faster-whisper ({runtime})", args.language, confidence
+            )
+            transcript_lines.extend(body)
+            out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+            print(out_path)
+            return 0
+        except Exception as exc:
+            print(f"CUDA transcription failed, trying fallbacks: {exc}", file=sys.stderr)
+
+    if sys.platform == "darwin":
+        try:
+            import mlx_whisper  # Test if available
+            resolved_model = _auto_model(args.model, "mlx")
+            body, runtime = transcribe_mlx_whisper(wav_path, args.language, resolved_model)
+            transcript_lines = markdown_header(
+                audio_path, converted, f"mlx-whisper {resolved_model} ({runtime})", args.language, "medium"
+            )
+            transcript_lines.extend(body)
+            out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+            print(out_path)
+            return 0
+        except ImportError:
+            print("mlx-whisper not installed; falling back to faster_whisper.", file=sys.stderr)
+        except Exception as exc:
+            print(f"mlx-whisper transcription failed, trying faster_whisper: {exc}", file=sys.stderr)
+
+    if shutil.which("whisper"):
+        try:
+            text = transcribe_whisper_cli(wav_path, args.out_dir, args.language)
+            transcript_lines = markdown_header(audio_path, converted, "whisper CLI", args.language, "medium")
+            transcript_lines.append(text)
+            out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+            print(out_path)
+            return 0
+        except Exception as exc:
+            print(f"whisper CLI transcription failed, trying faster_whisper: {exc}", file=sys.stderr)
+
+    try:
+        body, runtime = transcribe_faster_whisper(
+            wav_path, args.language, args.model, args.device, args.compute_type, args.batch_size
+        )
+        confidence = "medium" if runtime.startswith("cuda") else "low-medium"
+        transcript_lines = markdown_header(
+            audio_path, converted, f"faster-whisper ({runtime})", args.language, confidence
+        )
+        transcript_lines.extend(body)
+        out_path.write_text("\n".join(transcript_lines).strip() + "\n", encoding="utf-8")
+        print(out_path)
         return 0
-
-    write_limitation(
-        out_path,
-        audio_path,
-        "No transcription backend succeeded (OpenAI, mlx, CUDA, whisper CLI, or CPU).",
-    )
-    return 1
+    except Exception as exc:
+        write_limitation(out_path, audio_path, str(exc))
+        return 1
 
 
 if __name__ == "__main__":

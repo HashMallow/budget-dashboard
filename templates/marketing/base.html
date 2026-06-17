@@ -65,6 +65,14 @@
     body.theme-dark .badge.info { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
     body.theme-dark .btn.danger { background: rgba(239, 68, 68, 0.12); border-color: #7f1d1d; color: #f87171; }
     body.theme-dark .bar-track { background: var(--surface-soft); }
+    body.theme-dark .budget-variance-panel { background: var(--surface-soft); border-color: var(--line); }
+    body.theme-dark .consumed-under { color: #4ade80; }
+    body.theme-dark .consumed-warn { color: #fbbf24; }
+    body.theme-dark .consumed-over { color: #f87171; }
+    body.theme-dark .deviation-under { color: #4ade80; }
+    body.theme-dark .deviation-over { color: #f87171; }
+    body.theme-dark .card-note,
+    body.theme-dark .stat-chip-note { color: var(--muted); }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -98,6 +106,13 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: #7b8f9a;
+    }
+    .nav-section-hint {
+      margin: 0 0 4px;
+      padding: 0 10px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.45;
     }
     .nav-section-links { display: grid; gap: 4px; }
     .nav a {
@@ -336,7 +351,7 @@
       padding: 14px;
       border: 1px solid var(--line);
       border-radius: 10px;
-      background: #f8fafc;
+      background: var(--surface-soft);
     }
     .budget-variance-panel .metric-label { color: var(--muted); font-size: 12px; }
     .budget-variance-panel .metric-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
@@ -520,8 +535,26 @@
     .badge.danger { background: #fee2e2; color: var(--danger); }
     .badge.info { background: #dbeafe; color: var(--blue); }
     .chart-wrap { position: relative; max-width: 420px; margin: 4px auto 0; }
-    .chart-wrap--wide { max-width: none; margin: 0; }
+    .chart-wrap--wide { max-width: none; width: 100%; margin: 0 auto; }
     .dashboard-layout { display: grid; gap: 20px; }
+    .dashboard-trends,
+    .dashboard-breakdown {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1fr;
+    }
+    .dashboard-panel-chart {
+      position: relative;
+      min-height: 320px;
+      height: clamp(280px, 38vw, 420px);
+      margin: 0 auto 12px;
+      max-width: 100%;
+    }
+    .dashboard-panel-chart canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
     .dashboard-toolbar.panel {
       padding: 14px 16px;
       display: flex;
@@ -678,7 +711,8 @@
             </div>
 
             <div class="nav-section">
-              <p class="nav-section-label">{% t "Spend & teams" %}</p>
+              <p class="nav-section-label">{% t "Finance" %}</p>
+              <p class="nav-section-hint">{% t "Invoices, teams, budgets, vendors, campaigns and contracts" %}</p>
               <div class="nav-section-links">
                 <a href="{% url 'marketing:invoice_list' %}" class="{% if current == 'invoice_list' or current == 'invoice_detail' or current == 'invoice_create' or current == 'invoice_edit' %}active{% endif %}">
                   <span class="nav-icon">□</span><span>{% t "Invoices" %}</span>
@@ -686,16 +720,10 @@
                 <a href="{% url 'marketing:team_list' %}" class="{% if current == 'team_list' or current == 'team_dashboard' %}active{% endif %}">
                   <span class="nav-icon">◉</span><span>{% t "Teams" %}</span>
                 </a>
-              </div>
-            </div>
-
-            <div class="nav-section">
-              <p class="nav-section-label">{% t "Reports" %}</p>
-              <div class="nav-section-links">
-                <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' %}active{% endif %}">
+                <a href="{% url 'marketing:budget_list' %}" class="{% if current == 'budget_list' or current == 'budget_create' or current == 'budget_edit' %}active{% endif %}">
                   <span class="nav-icon">▦</span><span>{% t "Budget" %}</span>
                 </a>
-                <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' %}active{% endif %}">
+                <a href="{% url 'marketing:vendor_report' %}" class="{% if current == 'vendor_report' or current == 'vendor_detail' %}active{% endif %}">
                   <span class="nav-icon">◫</span><span>{% t "Vendors" %}</span>
                 </a>
                 <a href="{% url 'marketing:campaign_report' %}" class="{% if current == 'campaign_report' %}active{% endif %}">

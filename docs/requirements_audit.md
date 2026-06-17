@@ -4,7 +4,7 @@
 > Fix backlog via [cursor_prompts.md](cursor_prompts.md).  
 > Session log: [PROCESSING_LOG.en.md](voice-feedback/PROCESSING_LOG.en.md)
 
-**Last verified:** 2026-06-16 · Tests: **114 passed, 1 skipped** ✅
+**Last verified:** 2026-06-16 · Tests: **123 passed, 1 skipped** ✅
 
 ---
 
@@ -39,7 +39,7 @@
 | Contract status history | related | ✅ **Done** | Auto-created on stage change |
 | Excel import (workbook) | AGENTS.md | ✅ **Done** | Management command + web UI |
 | Excel export (invoices, vendors, campaigns, workbook) | `22-09-58` | ✅ **Done** | 4 export endpoints |
-| PDF export (dashboard, vendors, campaigns, contracts) | `_10` | ⚠️ **Partial** | Exports exist but **no picker wizard** |
+| PDF export (dashboard, vendors, campaigns, contracts) | `_10` | ✅ **Done** | Direct endpoints + `/exports/pdf/` wizard |
 | User/role management | AGENTS.md | ✅ **Done** | Admin user access page |
 | Team-level access control | AGENTS.md | ✅ **Done** | `UserTeamAccess` + server-side filtering |
 | Reference data CRUD (vendors, categories, business lines, insurance rates, sub-teams, requesters, campaigns) | `_4`, `_21` | ✅ **Done** | Full CRUD for 7 reference types |
@@ -53,6 +53,9 @@
 | **Editor Excel import permission** | `21-52-39` | ✅ | `can_import_excel` on `UserTeamAccess` |
 | **Inline payment-stage edit in lists** | `_14` | ✅ | Dropdown in invoice list + dashboard queues |
 | **Team → budget-line filtering on invoice form** | `_5`, `_19` | ✅ | `/api/categories-for-team/` + form JS |
+| Dashboard UI: terminology, wider charts, consolidated nav, dark mode | `_7`, `_11`, `22-05-26` | ✅ **Done** | Planned budget vs actual spend labels; full-width charts; Finance nav section |
+| **Year-end tax/insurance breakdown report** | `_2`, `_12` | ⚠️ **Partial** | Per-invoice and per-vendor totals exist; no dedicated year-end export/report |
+| **Exact Excel round-trip (4-sheet mirror)** | `22-09-58` | ❌ **Backlog** | Workbook export exists but does not identically mirror source template |
 
 ---
 
@@ -70,6 +73,7 @@
 - ✅ `description` field exists on Invoice model
 - ✅ Vendor detail page shows: invoice total, action cost, tax, paid amount (4 KPI cards)
 - ✅ Test: [test_invoice_amounts.py](../marketing/tests/test_invoice_amounts.py)
+- ⚠️ **Year-end report** separating marketing spend vs tax vs insurance deposits — not a dedicated export yet (aggregate via vendor detail / filtered exports only)
 
 ### Transcript `_4` (Business line dropdown)
 
@@ -87,8 +91,8 @@
 > When I submit an invoice with a budget line, I want to see a panel showing: for this team → this budget line → how much budget was planned, how much spent, deviation, percentage.
 
 **Implementation check:**
-- ❌ **Not implemented** — invoice create/edit form has no budget-line variance panel
-- The data to support it exists (`BudgetLine`, `budget_actual_variance_window_rows`) but is only shown on the dashboard, not during invoice entry
+- ✅ Live variance panel on invoice create/edit (`/api/budget-variance/` + form JS)
+- ✅ Dashboard and team dashboard variance tables include `% Consumed`
 
 ### Transcript `_8` (Clickable vendors + vendor detail)
 
@@ -99,7 +103,7 @@
 - ✅ Vendor names are clickable links throughout (dashboard, invoice list, queues)
 - ✅ Vendor detail shows invoice list with paid/pending color coding
 - ✅ Vendor detail shows contracts with stage and end date
-- ⚠️ Contract `amount` (ceiling) is shown on contract detail but not on vendor detail contract table (only title, stage, end date visible)
+- ✅ Vendor detail shows contracts with title, stage, start date, end date, and amount (ceiling)
 
 ### Transcript `_14` (Inline payment-stage change)
 
@@ -107,8 +111,8 @@
 > Let me change the payment stage directly in the invoice list without opening each invoice. A dropdown or checkmark to mark as paid right in the list.
 
 **Implementation check:**
-- ❌ **Not implemented** — stage change only works on the invoice detail page via `InvoiceStatusForm`
-- The invoice list has no inline dropdown or quick-action buttons
+- ✅ Invoice list: inline stage dropdown (AJAX) for authorized editors
+- ✅ Dashboard marketing/finance queues: inline stage dropdown
 
 ### Transcript `_17` (Marketing/Finance queues + stage change)
 
@@ -117,8 +121,8 @@
 
 **Implementation check:**
 - ✅ Marketing queue table with days waiting
-- ✅ Finance queue table with days waiting  
-- ❌ **No stage-change action** in queue tables — only clickable links to invoice detail page
+- ✅ Finance queue table with days waiting
+- ✅ Inline stage change in queue tables (same dropdown as invoice list)
 
 ### Transcript `_18` (Manual budget entry)
 
@@ -126,10 +130,7 @@
 > I need a section to enter budget data manually. Even if no Excel was imported, I should be able to register budgets. Teams, sub-teams, budget lines should be addable/editable. Budget is month by month (Farvardin to Esfand).
 
 **Implementation check:**
-- ❌ **Not implemented** — `/budgets/` is read-only (list + pivot table)
-- No `BudgetForm`, no budget create/edit views, no budget CRUD URLs
-- Reference data for teams/sub-teams exists and is editable
-- Budget lines can only come from Excel import
+- ✅ `/budgets/new/`, edit, delete (admin); `BudgetLineForm`
 
 ### Transcript `_10` (PDF export wizard)
 
@@ -137,9 +138,7 @@
 > When I click PDF export, open a page where I can pick what to export: maybe just Retail spend, or a specific vendor, or Growth team for a specific month. Need filters for month, year, team, vendor, and business line.
 
 **Implementation check:**
-- ❌ **Not implemented** — current PDF exports dump the full current dashboard/vendor/campaign view
-- No intermediate filter/picker page before generating PDF
-- The existing PDF endpoints (`/reports/dashboard.pdf`, `/reports/vendors.pdf`, etc.) generate directly
+- ✅ `/exports/pdf/` wizard with report type + filters; topbar PDF links route through wizard
 
 ---
 
@@ -157,19 +156,7 @@
 
 ## Cursor prompts patch status
 
-The 9 copy-paste prompts in [cursor_prompts.md](cursor_prompts.md) map to the backlog below. **None are patched yet** (verified against codebase 2026-06-16).
-
-| Prompt # | Feature | Patched |
-|----------|---------|---------|
-| 1 | Manual budget CRUD | ✅ `BudgetLineForm`, `/budgets/new/` |
-| 2 | Budget-line variance on invoice form | ✅ `budget_variance_api` |
-| 3 | Remaining budget % on variance tables | ✅ `percent_consumed` in analytics |
-| 4 | PDF export wizard | ✅ `pdf_export_wizard` view |
-| 5 | Inline payment-stage edit in lists | ✅ JSON stage update + list/queue dropdowns |
-| 6 | Vendor/campaign merge UI | ✅ Merge views in `reference_views.py` |
-| 7 | Team → budget-line cascade | ✅ `categories_for_team_api` |
-| 8 | Editor Excel import permission | ✅ `can_import_excel` field + `can_import()` |
-| 9 | Contract ceiling on vendor detail | ✅ Amount + start date columns |
+All 9 prompts in [cursor_prompts.md](cursor_prompts.md) are **implemented** ✅ (verified 2026-06-16). See [test_cursor_prompts.py](../marketing/tests/test_cursor_prompts.py).
 
 ---
 
@@ -177,31 +164,24 @@ The 9 copy-paste prompts in [cursor_prompts.md](cursor_prompts.md) map to the ba
 
 | # | Feature | Transcript | Priority |
 |---|---------|------------|----------|
-| 1 | **Manual budget CRUD** — create/edit/delete budget lines in the panel | `_18` | 🔴 High |
-| 2 | **Budget-line variance on invoice form** — show planned/actual/% when selecting a budget line | `_6` | 🔴 High |
-| 3 | **Remaining budget % consumed** — percentage display next to amounts on variance tables | `_6` | 🟡 Medium |
-| 4 | **PDF export wizard** — filter picker page before generating PDF | `_10` | 🟡 Medium |
-| 5 | **Inline payment-stage edit** — dropdown or quick-action in invoice list/queue tables | `_14`, `_17` | 🟡 Medium |
-| 6 | **Vendor/campaign merge UI** — admin tool to merge duplicate names | `21-52-39`, `_21` | 🟡 Medium |
-| 7 | **Editor Excel import** — allow editors to import, not just admins | `21-52-39` | 🟢 Low |
-| 8 | **Team → budget-line cascade** on invoice form — filter categories by selected team | `_5`, `_19` | 🟡 Medium |
-| 9 | **Contract ceiling on vendor detail** — show amount column in contracts table | `_8` | 🟢 Low |
+| 1 | **Exact Excel round-trip export** — 4-sheet mirror for Google Sheets sync | `22-09-58` | 🔴 High |
+| 2 | **Year-end financial breakdown report** — separate totals for marketing spend, VAT, insurance deposits | `_2`, `_12` | 🟡 Medium |
+| 3 | **Campaign spend chart** on dashboard (table exists; chart optional) | AGENTS.md | 🟢 Low |
 
 ## Minor Observations
 
 - `business_section` on `Invoice` is a `CharField` rather than a FK to `BusinessLine` — works via form choices but isn't DB-enforced
-- Budget variance table shows deviation but **not % consumed** (user explicitly asked for percentage alongside amounts)
-- Campaign table on dashboard is basic (no chart, just table) — user mentioned "table and chart" for campaign spend
+- Campaign table on dashboard is table-only (no chart) — user mentioned "table and chart" for campaign spend
 
 ---
 
 ## Test Suite Status
 
 ```
-114 passed, 1 skipped in 12.95s
+123 passed, 1 skipped
 ```
 
-Test coverage includes: analytics, contracts, cost buckets, Excel importer, frontend views, import view, invoice amounts, invoice constraints, money formatting, permissions, phase 2 features, reference data + PDF, table sorting, workbook export.
+Test coverage includes: analytics, contracts, cost buckets, cursor prompts, Excel importer, frontend views, import view, invoice amounts, invoice constraints, money formatting, permissions, phase 2 features, reference data + PDF, table sorting, workbook export.
 
 ---
 

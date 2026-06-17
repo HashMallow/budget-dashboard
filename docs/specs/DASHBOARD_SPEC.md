@@ -1,17 +1,16 @@
 # Dashboard and Reporting Specification
 
-> **Implemented UI (2026):** The live panel uses the **Marketing Finance Hub** branding, a **sectioned sidebar**, and a **Finance overview** dashboard with primary KPI cards, a secondary stat strip, paired budget/trend charts, and team-filtered layouts (pie/team charts hidden for a single team). See [`guides/USER_SITEMAP.md`](../guides/USER_SITEMAP.md) for the end-user map. This spec remains the requirements reference.
+> **Implemented UI (2026):** The live panel uses the **Marketing Finance Hub** branding, a **sectioned sidebar** (Overview / **Finance** / Administration / Help), and a **Finance overview** dashboard with KPI cards labeled **Planned budget (projection)** vs **Total actual spend**, full-width charts, budget variance with `% Consumed`, and team-filtered layouts. Invoice forms auto-calculate VAT, insurance, and paid amount from action cost. See [`guides/USER_SITEMAP.md`](../guides/USER_SITEMAP.md) for the end-user map. This spec remains the requirements reference.
 
 ## Dashboard Navigation
 
 Provide a simple internal dashboard with these main sections:
 
 1. Overview (Dashboard)
-2. Spend & teams (Invoices, Teams)
-3. Reports (Budget, Vendors, Campaigns, Contracts)
-4. Administration (Excel Import, Users, Reference data) — admin only
-5. Help — bottom of sidebar; also `/help/`
-6. Exports — top bar on relevant pages
+2. Finance (Invoices, Teams, Budget, Vendors, Campaigns, Contracts)
+3. Administration (Excel Import, Users, Reference data) — admin only
+4. Help — bottom of sidebar; also `/help/`
+5. Exports — top bar on relevant pages
 
 ## Overview Dashboard
 
@@ -19,13 +18,23 @@ Visible to Admin and authorized Managers.
 
 Cards:
 
-- Total marketing spend
+- Total actual spend (and planned budget projection where shown)
 - Total team spend
 - Referral spend
 - SMS spend
 - Number of invoices
 - Number of unpaid invoices
 - Number of invoices in finance review
+
+Invoice financial breakdown (per invoice and on vendor detail):
+
+- Action cost (base marketing spend)
+- Tax (10% VAT on action cost by default)
+- Insurance withholding (16.67% or 7.78% typical)
+- Paid amount — net paid by finance: `(action − insurance) + tax`
+- Invoice face total (`amount` = action + tax)
+
+Year-end aggregate report separating marketing spend vs tax vs insurance deposits — **not built yet** (see [`requirements_audit.md`](../requirements_audit.md)).
 
 Charts:
 

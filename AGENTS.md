@@ -28,13 +28,14 @@ Update **`docs/voice-feedback/PROCESSING_LOG.en.md`** after each transcription b
 
 Main topics from audio:
 
-1. **Invoice amounts** — action cost, 10% VAT, insurance withholding (16.67% / 7.78%), paid amount.
+1. **Invoice amounts** — action cost, 10% VAT, insurance withholding (16.67% / 7.78%), paid amount. **Implemented** in code; year-end aggregate export still backlog.
 2. **Dropdown data entry** — business line, budget line, admin-managed reference lists.
 3. **Dashboard ops** — filters (business line, month), marketing/finance queues, recently paid, vendor drill-down.
-4. **Budget vs actual** — monthly variance, remaining budget %, manual budget entry (backlog).
-5. **Roles** — Manager reports, Editor import, Observer read-only.
-6. **Export** — Excel round-trip; PDF picker (backlog).
+4. **Budget vs actual** — monthly variance, remaining budget %, manual budget entry — **done**.
+5. **Roles** — Manager reports, Editor import (`can_import_excel`), Observer read-only.
+6. **Export** — Excel round-trip (4-sheet mirror) **backlog**; PDF wizard **done**.
 7. **Contracts** — final signed uploads; vendor page with contracts + invoices.
+8. **UI polish** — dashboard terminology (planned budget vs actual spend), wider charts, consolidated nav, dark mode **done** (2026-06-16).
 
 Persian transcripts: `.artifacts/voice-feedback/transcripts/*_transcript.fa.md` (local, gitignored).  
 Tracked log + requests: **`docs/voice-feedback/PROCESSING_LOG.en.md`** · **`docs/voice-feedback/USER_REQUESTS.en.md`**.

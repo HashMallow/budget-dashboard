@@ -32,13 +32,15 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
+# Silence httpx/telegram request logging — those log lines contain the bot token in the URL.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
 
 PROJECT_ROOT = Path.cwd()
 DRAFTS_DIR = PROJECT_ROOT / "docs/discovery/requests/drafts"
-VOICE_DIR = PROJECT_ROOT / ".artifacts/telegram-bot/voice"
-WAV_DIR = PROJECT_ROOT / ".artifacts/telegram-bot/wav"
-AUDIO_DIR = PROJECT_ROOT / ".artifacts/telegram-bot/audio"
 STATE_DIR = PROJECT_ROOT / ".artifacts/telegram-bot"
+# Each audio message gets its own folder: messages/<stem>/{source.<ext>, audio.wav, transcript.md}
+MESSAGES_DIR = STATE_DIR / "messages"
 OFFSET_FILE = STATE_DIR / "offset.json"
 
 AUDIO_MIME_TYPES = {
@@ -58,12 +60,17 @@ AUDIO_EXTENSIONS = {".ogg", ".oga", ".mp3", ".m4a", ".wav", ".webm", ".opus"}
 
 
 def ensure_dirs() -> None:
-    for path in (DRAFTS_DIR, VOICE_DIR, WAV_DIR, AUDIO_DIR, STATE_DIR):
+    for path in (DRAFTS_DIR, MESSAGES_DIR, STATE_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 
+def make_stem(draft_type: str, chat_id: int, message_id: int, timestamp: str) -> str:
+    """Stable identifier shared by the draft file, message folder, and transcript."""
+    return f"{draft_type}_{timestamp}_{chat_id}_{message_id}"
+
+
 def convert_to_wav(source_path: Path) -> Path | None:
-    """Convert an audio file to .wav using ffmpeg."""
+    """Convert an audio file to audio.wav next to the source using ffmpeg."""
     if source_path.suffix.lower() == ".wav":
         return source_path
 
@@ -72,7 +79,7 @@ def convert_to_wav(source_path: Path) -> Path | None:
         logger.warning("ffmpeg not found — skipping WAV conversion")
         return None
 
-    wav_path = WAV_DIR / f"{source_path.stem}.wav"
+    wav_path = source_path.with_name("audio.wav")
     try:
         subprocess.run(
             [ffmpeg, "-y", "-loglevel", "error", "-i", str(source_path), str(wav_path)],
@@ -87,17 +94,23 @@ def convert_to_wav(source_path: Path) -> Path | None:
 
 def save_draft(
     *,
+    stem: str,
     message_id: int,
     chat_id: int,
     sender: str,
     content: str,
     draft_type: str,
     audio_file: Path | None = None,
+    message_dir: Path | None = None,
     forward_from: str | None = None,
 ) -> Path:
-    """Save a draft markdown file with structured YAML frontmatter."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = DRAFTS_DIR / f"{draft_type}_{timestamp}_{chat_id}_{message_id}.md"
+    """Save a draft markdown file with structured YAML frontmatter.
+
+    The draft filename shares `stem` with the message folder so the two are
+    trivially correlated (e.g. drafts/voice_20260616_213757_250394750_24.md ↔
+    .artifacts/telegram-bot/messages/voice_20260616_213757_250394750_24/).
+    """
+    file_path = DRAFTS_DIR / f"{stem}.md"
 
     lines = [
         "---",
@@ -111,6 +124,8 @@ def save_draft(
     ]
     if forward_from:
         lines.append(f"forward_from: {forward_from}")
+    if message_dir:
+        lines.append(f"message_dir: {message_dir.resolve()}")
     if audio_file:
         lines.append(f"audio_file: {audio_file.resolve()}")
     lines.append("---")
@@ -202,7 +217,9 @@ async def _save_audio_draft(
     forward_from = _get_forward_from(message)
     ext = _audio_extension(file_name, mime_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    source_path = (VOICE_DIR if draft_type == "voice" else AUDIO_DIR) / f"{prefix}_{timestamp}_{message.chat_id}_{message.message_id}{ext}"
+    stem = make_stem(draft_type, message.chat_id, message.message_id, timestamp)
+    message_dir = MESSAGES_DIR / stem
+    source_path = message_dir / f"source{ext}"
 
     try:
         await _download_audio(context, file_id, source_path)
@@ -216,12 +233,14 @@ async def _save_audio_draft(
     forward_note = f" (forwarded from {forward_from})" if forward_from else ""
     content = f"[{draft_type.title()} message{forward_note} — awaiting transcription]\n"
     save_draft(
+        stem=stem,
         message_id=message.message_id,
         chat_id=message.chat_id,
         sender=sender,
         content=content,
         draft_type=draft_type,
         audio_file=audio_path,
+        message_dir=message_dir,
         forward_from=forward_from,
     )
 
@@ -239,7 +258,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if forward_from:
         content = f"[Forwarded from {forward_from}]\n\n{content}"
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stem = make_stem("text", message.chat_id, message.message_id, timestamp)
     save_draft(
+        stem=stem,
         message_id=message.message_id,
         chat_id=message.chat_id,
         sender=sender,
@@ -374,9 +396,8 @@ async def run_once(application: Application) -> int:
 def run_polling(application: Application) -> None:
     logger.info("Starting Telegram Bot Pipeline (polling)...")
     logger.info("Project root: %s", PROJECT_ROOT)
-    logger.info("Drafts → %s", DRAFTS_DIR)
-    logger.info("Voice  → %s", VOICE_DIR)
-    logger.info("Audio  → %s", AUDIO_DIR)
+    logger.info("Drafts   → %s", DRAFTS_DIR)
+    logger.info("Messages → %s", MESSAGES_DIR)
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

@@ -15,7 +15,7 @@ Processing log: [`PROCESSING_LOG.en.md`](PROCESSING_LOG.en.md)
 - **Insurance withholding** is deducted from the vendor share (typically **16.67%** or **7.78%** of X; rate varies by vendor).
 - **Paid amount** = (X − insurance) + tax — what finance actually pays (less than invoice face value).
 - Show action, tax, invoice total, and paid **per invoice and per vendor**.
-- Year-end reporting must separate **marketing spend**, **tax**, and **insurance deposits**.
+- **Year-end reporting** must separate **marketing spend**, **tax**, and **insurance deposits** — ⚠️ partial (vendor detail + invoice fields; no dedicated year-end export yet).
 
 ### 2. Data entry — dropdowns and reference data
 
@@ -62,9 +62,10 @@ Processing log: [`PROCESSING_LOG.en.md`](PROCESSING_LOG.en.md)
 
 ### 8. UI polish (approved direction)
 
-- Panel look/feel is **on track**; fix confusion between **budget vs spend** on dashboards.
+- Panel look/feel is **on track**; dashboard now distinguishes **planned budget (projection)** from **actual spend** on KPIs, charts, and variance tables (voice `22-05-26`).
 - Jalali dates, sort/filter by date and month across pages.
-- Clearer charts (wider, centered); consolidated navigation.
+- Wider full-width charts; consolidated **Finance** navigation section (voice `_7`, `_11`).
+- Dark mode tokens for variance panels and status colors.
 
 ---
 
@@ -77,12 +78,14 @@ Processing log: [`PROCESSING_LOG.en.md`](PROCESSING_LOG.en.md)
 | Dashboard: business line, month, queues, recently paid | Done |
 | Vendor detail page + clickable vendors | Done |
 | Invoice list: entry-date sort, paid colors, days when paid | Done |
-| Manual budget CRUD | Backlog |
-| Budget-line variance at invoice entry | Backlog |
-| Remaining budget / % on variance table | Backlog |
-| PDF export wizard | Backlog |
-| Vendor/campaign merge UI | Backlog |
-| Editor Excel import permission | Backlog |
-| Inline payment-stage edit in lists | Backlog |
+| Manual budget CRUD | Done |
+| Budget-line variance at invoice entry | Done |
+| Remaining budget / % on variance table | Done |
+| PDF export wizard | Done |
+| Vendor/campaign merge UI | Done |
+| Editor Excel import permission | Done |
+| Inline payment-stage edit in lists | Done |
+| Dashboard UI: terminology, wider charts, nav, dark mode | Done (2026-06-16) |
+| Excel round-trip export (4-sheet mirror) | Backlog |
 
-Detail: [`PROCESSING_LOG.en.md`](PROCESSING_LOG.en.md) · `.artifacts/voice-feedback/transcripts/audio_requirements.en.md`
+Detail: [`PROCESSING_LOG.en.md`](PROCESSING_LOG.en.md) · [`audio_feedback_batch_2_to_22.en.md`](audio_feedback_batch_2_to_22.en.md)

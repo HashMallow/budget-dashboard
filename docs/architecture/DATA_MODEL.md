@@ -106,7 +106,12 @@ Fields:
 - `description`: TextField, blank allowed
 - `invoice_date`: DateField
 - `due_date`: DateField, nullable/blank
-- `amount`: DecimalField
+- `amount`: DecimalField — invoice total (action cost + VAT)
+- `action_cost_amount`: DecimalField, nullable — base marketing spend before VAT
+- `tax_amount`: DecimalField, nullable — VAT (default 10% of action cost; overridable)
+- `insurance_rate_percent`: DecimalField, nullable — withholding rate (e.g. 16.67%, 7.78%)
+- `insurance_amount`: DecimalField, nullable — withheld from vendor share of action cost
+- `paid_amount`: DecimalField, nullable — net paid by finance: `(action − insurance) + tax`
 - `currency`: CharField, default from settings
 - `payment_stage`: CharField choices from Payment Stage Values
 - `stage_changed_at`: DateTimeField
@@ -122,7 +127,9 @@ Fields:
 
 Rules:
 
-- Use Decimal for amount.
+- Use Decimal for amount fields.
+- Amount breakdown logic lives in `marketing/invoice_amounts.py` (10% VAT default, insurance withholding, paid amount).
+- `amount` is the invoice face total; use `action_cost_amount`, `tax_amount`, `insurance_amount`, and `paid_amount` for finance breakdowns.
 - If `cost_bucket` is `REFERRAL` or `SMS`, it may be shown separately from team totals.
 - When `payment_stage` changes, update `stage_changed_at` and create `InvoiceStatusHistory`.
 - If stage becomes `PAID`, set `paid_at` if empty.
@@ -157,6 +164,7 @@ Fields:
 - `can_upload_invoice_files`: BooleanField, default false
 - `can_upload_payment_proofs`: BooleanField, default false
 - `can_export`: BooleanField, default false
+- `can_import_excel`: BooleanField, default false — allows non-admin editors to use `/imports/`
 - `can_view_referral_sms`: BooleanField, default false
 - `is_global`: BooleanField, default false
 - `is_active`: BooleanField, default true

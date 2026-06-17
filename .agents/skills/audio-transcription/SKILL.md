@@ -10,14 +10,13 @@ Use this skill when an audio file is an input artifact and the user needs a tran
 ## Workflow
 
 1. Locate audio files if the user did not provide an explicit path:
-   - Search `.artifacts/audio/`, `.artifacts/voice-feedback/audio/`, `.artifacts/telegram-bot/voice/`, `.artifacts/telegram-bot/audio/`, then `data/`, `imports/`, and `docs/`.
+   - Search the current directory, `data/`, `imports/`, `docs/`, `.artifacts/telegram-bot/`, and `.artifacts/voice-feedback/audio/`.
    - If multiple likely files exist and the intended one is unclear, ask for the path.
 2. Create the requested output directory. Use `docs/discovery/` when this is part of project discovery.
    For follow-up voice notes in this repo, prefer:
 
 ```text
-.artifacts/audio/                      Telegram / bulk voice drops (also searched)
-.artifacts/voice-feedback/audio/       older source .ogg files
+.artifacts/voice-feedback/audio/       source .ogg files
 .artifacts/voice-feedback/converted/   ffmpeg WAV output
 .artifacts/voice-feedback/transcripts/ markdown transcripts
 ```
@@ -32,24 +31,25 @@ For Telegram-ingested audio, prefer:
 ```
 
 3. Convert `.ogg` or `.oga` to `.wav` with `ffmpeg` before transcription.
-4. **Backend priority** (implemented in `transcribe_audio.py`; do not skip steps):
-
-| Order | Backend | When | Default model (`--model auto`) |
-|------:|---------|------|----------------------------------|
-| 1 | **OpenAI** `whisper-1` | `OPENAI_API_KEY` is set | n/a (API) |
-| 2 | **mlx-whisper** | macOS (`darwin`) + `mlx-whisper` installed | `large-v3` |
-| 3 | **faster-whisper + CUDA** | CUDA available | `large-v3` (`float16`, batched) |
-| 4 | **whisper CLI** | `whisper` on `PATH` (legacy optional) | CLI default |
-| 5 | **faster-whisper + CPU** | nothing above succeeded | `small` (`int8`) |
-
-   On **Mac**, mlx runs before CUDA (most Macs have no CUDA). On **Linux + GPU**, OpenAI is tried first, then CUDA `large-v3`, then CPU.
-
-   Do not print or commit API keys. Override with `--model large-v3` (or `medium` / `small`) when you need a fixed size on every backend.
-
-5. If a `large-v3` load fails (OOM, missing libs), the script downgrades: `large-v3 → medium → small → base`, then may fall through to the next backend in the table above.
-6. If no backend succeeds, write a limitation markdown file and continue with any written requirements available.
-7. Preserve the source language in the transcript. Mark unclear audio as `[unclear]`; do not invent missing words.
-8. When requested, add an English summary and structured requirements file.
+4. Choose a **backend** explicitly (`--backend local|openai|auto`, or the
+   `TRANSCRIPTION_BACKEND` env var). Do not print or commit API keys.
+   - `local` — never calls cloud APIs. **Use this for scheduled/cron runs.**
+   - `openai` — only the OpenAI API; fails clearly (exit 2) if the key/SDK is missing
+     instead of silently falling back.
+   - `auto` (default) — uses OpenAI when `OPENAI_API_KEY` is set, otherwise local.
+5. For the local chain, the script auto-detects hardware and picks the best path
+   (fallback order: **CUDA GPU → Apple Silicon (mlx) → whisper CLI → CPU**):
+   - **CUDA GPU (prioritized):** Uses `faster-whisper` with batched inference for massive speedup.
+     With 16 GB VRAM, it defaults to `large-v3` in `float16` with batch size 16.
+   - **macOS (Apple Silicon):** Uses `mlx-whisper` with `large-v3` via Apple GPU acceleration.
+   - **CPU fallback:** Uses `faster-whisper` with `small` model in `int8`.
+6. The `--model auto` flag (now the default) auto-selects the best model for your hardware:
+   - `large-v3` for ≥10 GB VRAM or Apple Silicon
+   - `medium` for ≥5 GB VRAM
+   - `small` for CPU
+7. If no speech-to-text tool is available, write a transcript file documenting the limitation, then continue with any written requirements available.
+8. Preserve the source language in the transcript. Mark unclear audio as `[unclear]`; do not invent missing words.
+9. When requested, add an English summary and structured requirements file.
 
 ## Telegram Queue Worker (Phase 2a)
 
@@ -61,38 +61,82 @@ When audio arrives via the Telegram bot pipeline, use the standalone queue worke
 # Process all pending audio drafts once
 python skills/audio-transcription/scripts/process_audio_queue.py
 
-# Watch for new drafts every 60 seconds
-python skills/audio-transcription/scripts/process_audio_queue.py --watch 60
+# Scheduled-safe: local only, capped work
+python skills/audio-transcription/scripts/process_audio_queue.py --backend local --max-items 20
 
-# Preview pending drafts
+# Preview pending drafts (no work, no API calls)
 python skills/audio-transcription/scripts/process_audio_queue.py --dry-run
 
 # Specify language (e.g. Persian)
 python skills/audio-transcription/scripts/process_audio_queue.py --language fa
+
+# Watch for new drafts every 60 seconds (interactive use only — see note below)
+python skills/audio-transcription/scripts/process_audio_queue.py --watch 60
 ```
 
 The worker:
 1. Scans `docs/discovery/requests/drafts/` for drafts with `status: pending` and `type: voice|audio`
-2. Reads `audio_file` from YAML frontmatter (not freeform body text)
-3. Runs `transcribe_audio.py` on each file
-4. Writes transcripts to `.artifacts/telegram-bot/transcripts/`
-5. Updates drafts to `status: transcribed` with the transcript embedded
+2. Reads `audio_file` from YAML frontmatter (falls back to a legacy body line)
+3. Runs `transcribe_audio.py` on each file, forwarding `--backend`/`--model`/`--language`
+4. Writes the transcript **into the message's own folder** as `transcript.md`
+   (`.artifacts/telegram-bot/messages/<stem>/transcript.md`), next to its `audio.wav`.
+   Legacy drafts without a `message_dir` fall back to `.artifacts/telegram-bot/transcripts/`.
+5. The transcript gets frontmatter + relative backlinks to its audio and draft, so you can
+   open it and verify it matches the recording.
+6. On success → `status: transcribed` (+ `transcript_file`, `confidence`, `processed_at`)
+7. On failure → `status: failed` (+ `error`, `processed_at`); the original body is preserved
+8. Rebuilds `docs/discovery/requests/INDEX.md` — a single table linking every draft to its
+   transcript and audio (skip with `--no-index`; build only with `--index`).
 
-This runs **completely independently** of the Telegram bot. Schedule it via cron, run on demand, or use `--watch`.
+This runs **completely independently** of the Telegram bot. Schedule it, run on demand, or use `--watch`.
+
+### Navigating transcripts
+
+- **Start at `docs/discovery/requests/INDEX.md`** — one row per message with links to the
+  draft, transcript, and audio, plus status and confidence.
+- Each message folder (`.artifacts/telegram-bot/messages/<stem>/`) holds the `source.*`,
+  `audio.wav`, and `transcript.md` together.
+- Rebuild the index any time without transcribing:
+  `python skills/audio-transcription/scripts/process_audio_queue.py --index`
+
+### Periodic cleanup
+
+```bash
+make clean-runtime   # remove artifacts + active drafts (keeps drafts/processed/)
+make clean-all       # full wipe including model cache — see Makefile `make help`
+```
+
+### Safety controls (budget + idempotency)
+
+| Flag | Purpose |
+|---|---|
+| `--backend local\|openai\|auto` | Control/avoid cloud spend. Defaults to `TRANSCRIPTION_BACKEND` then `auto`. |
+| `--max-items N` | Process at most N drafts this run. |
+| `--max-runtime-seconds S` | Stop starting new drafts after S seconds. |
+| `--max-audio-minutes M` | Skip audio longer than M minutes (needs `ffprobe`). |
+| `--dry-run` | List what would be processed; never spends or mutates. |
+| `--force` | Steal an existing lock you are sure is dead. |
+
+**Locking / idempotency:** the worker takes a lock at `.artifacts/telegram-bot/queue.lock`
+so two runs never process the same drafts concurrently (a second run exits with code 3).
+The lock is removed on normal exit. A lock is considered **stale** — and stolen
+automatically — if its PID is dead or it is older than 1 hour. Terminal statuses
+(`transcribed`, `failed`, `processed`) are never reprocessed, so the worker is safe to run
+twice a day. To retry a `failed` draft, reset its `status` to `pending`.
+
+See [`docs/architecture/draft-schema.md`](../../docs/architecture/draft-schema.md) for the full draft schema.
 
 ## Output Files
 
-For this project, save voice-derived English instructions under **`docs/voice-feedback/`** (git-tracked):
+For discovery work, use these names unless the user asks otherwise:
 
 ```text
-docs/voice-feedback/PROCESSING_LOG.en.md         verification + fixes + backlog
-docs/voice-feedback/USER_REQUESTS.en.md          main topics (agents read first)
-docs/voice-feedback/README.md
-.artifacts/voice-feedback/transcripts/{stem}_transcript.fa.md   Persian (local)
-.artifacts/voice-feedback/converted/            ffmpeg WAV (local)
+docs/discovery/audio_transcript.fa.md
+docs/discovery/audio_summary.en.md
+docs/discovery/audio_requirements.en.md
 ```
 
-After batch transcription, update **`PROCESSING_LOG.en.md`** with results.
+For non-Persian audio, adjust the language suffix, for example `audio_transcript.en.md`.
 
 ## Script
 
@@ -110,14 +154,11 @@ python skills/audio-transcription/scripts/transcribe_audio.py --env-info
 python skills/audio-transcription/scripts/transcribe_audio.py --setup
 ```
 
-On your **conda system** with torch already installed, activate the env first (this project uses **`ml-env`**):
+On your **conda system** with torch already installed, activate the env first:
 
 ```bash
-conda activate ml-env
-python .agents/skills/audio-transcription/scripts/transcribe_audio.py --setup
-
-# Batch all .artifacts audio (26 files):
-PYTHONUNBUFFERED=1 python tools/batch_transcribe_artifacts.py
+conda activate <your-torch-env>
+python skills/audio-transcription/scripts/transcribe_audio.py --setup
 ```
 
 This runs `pip install faster-whisper` inside your conda env, reusing the existing
@@ -125,89 +166,68 @@ torch + CUDA 12.8 (or whatever version is present). No CUDA wheels are downloade
 
 ### Transcription
 
-After setup, transcribe directly from the activated environment (`--model auto` is the default):
+After setup, transcribe directly from the activated environment:
 
 ```bash
-python .agents/skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg --out-dir docs/discovery --language fa
-```
-
-**Recommended shortcuts (this repo):**
-
-```bash
-# Best quality on NVIDIA GPU (large-v3, CUDA) — works without torch if ctranslate2 + nvidia-smi see the GPU:
-make transcribe-audio-high AUDIO=.artifacts/audio/voice_....ogg \
-  TRANSCRIPT_OUT=.artifacts/voice-feedback/transcripts \
-  TRANSCRIPT_WAV_DIR=.artifacts/voice-feedback/converted \
-  TRANSCRIPT_OUTPUT_NAME=voice_...._transcript.fa.md
-
-# Shorthand when audio is under voice-feedback/audio/:
-make transcribe-voice AUDIO=.artifacts/voice-feedback/audio/note.ogg
-
-# Apple Silicon (mlx-whisper large-v3):
-make transcribe-audio-mac AUDIO=path/to/audio.ogg TRANSCRIPT_MODEL=large-v3
-
-# OpenAI (set OPENAI_API_KEY first):
-make transcribe-audio AUDIO=path/to/audio.ogg TRANSCRIPT_PACKAGES="--with openai"
+python skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg --out-dir docs/discovery --language fa
 ```
 
 On Mac without conda, you can still use the `uv` wrapper:
 
 ```bash
-uv run --with mlx-whisper .agents/skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg
+uv run --with mlx-whisper skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg
 ```
 
-### Backend priority and `--model auto`
+### Hardware auto-detection and model selection
 
-See the table in **Workflow** above. Summary:
+The script auto-detects your hardware and picks the best model. Use `--model auto` (the default):
 
-- **OpenAI first** when `OPENAI_API_KEY` is set.
-- **mlx `large-v3`** on macOS before any local CUDA attempt.
-- **CUDA `large-v3`** on Linux/Windows when a GPU is available (`float16`, batch 16).
-- **CPU `small`** only as the last local fallback.
+| Hardware | Model | Compute | Inference |
+|---|---|---|---|
+| CUDA GPU ≥ 10 GB VRAM | `large-v3` | `float16` | Batched (batch=16) |
+| CUDA GPU ≥ 5 GB VRAM | `medium` | `float16` | Batched |
+| Apple Silicon (mlx) | `large-v3` | Apple GPU | Sequential |
+| CPU only | `small` | `int8` | Sequential |
 
-### Model fallback chain (OOM only)
+### Model fallback chain
 
-If `large-v3` cannot load on mlx or CUDA, the script downgrades within that backend:
+If a model fails to load (OOM, missing libraries), the script automatically downgrades:
 
 ```
 large-v3 → medium → small → base
 ```
 
-Then it tries the next backend in the priority table (e.g. CUDA → CPU).
-
-You can force a smaller model to save VRAM or time:
+You can also explicitly request a smaller model to reduce GPU/CPU load:
 
 ```bash
-# Force medium (less VRAM, still decent for Persian):
-python .agents/skills/audio-transcription/scripts/transcribe_audio.py audio.wav --model medium
+# Force medium model (less VRAM, still good accuracy for most languages):
+python skills/audio-transcription/scripts/transcribe_audio.py audio.wav --model medium
 
-# Force small (CPU-friendly):
-python .agents/skills/audio-transcription/scripts/transcribe_audio.py audio.wav --model small --device cpu
+# Force small model (minimal resources):
+python skills/audio-transcription/scripts/transcribe_audio.py audio.wav --model small
 ```
 
 Model accuracy order: `tiny` < `base` < `small` < `medium` < `large-v3`. For Persian voice notes,
-prefer **`large-v3`** via OpenAI, mlx, or CUDA; avoid `small`/`tiny` unless CPU is the only option.
-Models download once into `docs/discovery/faster-whisper-models/` (gitignored). Override with `WHISPER_DOWNLOAD_ROOT`.
+use at least **`medium`**; `small`/`tiny` are often phonetically garbled. Models download once
+into `docs/discovery/faster-whisper-models/` (gitignored). Override with `WHISPER_DOWNLOAD_ROOT`.
 
 **Download stalls:** Hugging Face model downloads can be very slow without `HF_TOKEN`. If a run
 appears stuck at 0 bytes, check network speed to `huggingface.co` / `cas-bridge.xethub.hf.co`.
 Use `medium` first (smaller download), or set `HF_TOKEN` for higher rate limits.
 
-If `OPENAI_API_KEY` is set and you want OpenAI speech-to-text through the helper, include the
-OpenAI package for that run:
+To force OpenAI speech-to-text for a single run (requires `OPENAI_API_KEY` and the `openai`
+package):
 
 ```bash
-make transcribe-audio AUDIO=path/to/audio.ogg TRANSCRIPT_PACKAGES="--with openai --with faster-whisper"
+python skills/audio-transcription/scripts/transcribe_audio.py path/to/audio.ogg --backend openai
 ```
-
-If you intentionally want a persistent local-only install inside `.venv`, install it with `uv pip`
-and do not add it to `pyproject.toml` unless transcription becomes part of the app runtime.
 
 The script:
 
 - Converts `.ogg`/`.oga` to WAV with `ffmpeg` (quiet; use `--wav-dir` to separate WAV from transcript output).
-- Tries backends in order: **OpenAI → mlx (macOS) → CUDA large-v3 → whisper CLI → CPU**.
-- Writes a markdown transcript with timestamps.
+- Selects the backend via `--backend` / `TRANSCRIPTION_BACKEND` (`local` | `openai` | `auto`).
+- Local fallback order: **CUDA `faster-whisper` → Apple Silicon `mlx-whisper` → `whisper` CLI → CPU `faster-whisper`**.
+- Writes a markdown transcript with timestamps and a `Confidence:` line in the header.
 - Caches models under `docs/discovery/faster-whisper-models/` (or `WHISPER_DOWNLOAD_ROOT`).
 
 Review the transcript after generation. Local Whisper output can contain phonetic mistakes, especially for Persian names, mixed English/Persian business terms, and noisy mobile voice notes.

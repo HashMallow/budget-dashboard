@@ -72,13 +72,18 @@ source: telegram
 sender: username
 date: 2025-06-16 12:00:00
 type: voice          # text | voice | audio
-status: pending      # pending → transcribed → processed
+status: pending      # pending → transcribed → processed (or → failed)
 message_id: 42
 chat_id: -100123456
-audio_file: /absolute/path/to/file.wav   # voice/audio only
+message_dir: /abs/.artifacts/telegram-bot/messages/voice_..._42   # voice/audio only
+audio_file: /abs/.../messages/voice_..._42/audio.wav              # voice/audio only
 forward_from: original_sender            # when forwarded
 ---
 ```
+
+The audio queue worker adds `transcript_file`, `confidence`, and `processed_at` on success,
+or `error` + `processed_at` on failure. See the full contract in
+[`docs/architecture/draft-schema.md`](../../docs/architecture/draft-schema.md).
 
 **Phase 2a: Transcription (`process_audio_queue.py` — standalone)**
 
@@ -114,21 +119,32 @@ When asked to "process the telegram queue" or "check drafts":
 
 ## Directory Layout
 
+Each audio message gets its **own folder** named with the same stem as its draft, so a
+draft and its audio + transcript are trivially correlated. A generated `INDEX.md` links
+everything together.
+
 ```text
 docs/discovery/requests/
+├── INDEX.md                             ← navigation hub: one row per draft (Phase 2a)
 ├── drafts/                              ← raw incoming messages (Phase 1)
-│   ├── text_20250616_120000_-100_42.md
-│   ├── voice_20250616_120100_-100_43.md
+│   ├── text_20260616_120000_-1001293270975_42.md
+│   ├── voice_20260616_120100_250394750_43.md
 │   └── processed/                       ← archived after Phase 2b
-└── instruction_20250616_42.md           ← structured instruction (Phase 2b)
+└── instruction_20260616_42.md           ← structured instruction (Phase 2b)
 
 .artifacts/telegram-bot/
-├── voice/                               ← native voice note .ogg files
-├── audio/                               ← forwarded/sent audio files (mp3, m4a, etc.)
-├── wav/                                 ← ffmpeg-converted .wav files
-├── transcripts/                         ← transcription output (Phase 2a)
+├── messages/                            ← one folder per audio message (stem = draft name)
+│   └── voice_20260616_120100_250394750_43/
+│       ├── source.oga                   ← original download
+│       ├── audio.wav                    ← ffmpeg-converted (ready to transcribe)
+│       └── transcript.md                ← transcript + backlinks (Phase 2a)
 └── offset.json                          ← last processed update_id (--once mode)
 ```
+
+The `transcript.md` in each folder carries YAML frontmatter and relative links back to
+its `audio.wav`, `source.*`, and draft — so you can open a transcript and confirm it
+matches the audio. Legacy flat layouts (`voice/`, `wav/`, `transcripts/`) from older runs
+still work; the queue and `INDEX.md` handle both.
 
 ## Setup
 
@@ -144,36 +160,76 @@ cp .env.example .env
 
 Scripts load `.env` automatically. Shell exports still work and take precedence.
 
+## Periodic cleanup
+
+Runtime files (drafts, audio, transcripts, INDEX) accumulate over time. From the project root:
+
+```bash
+# Typical “once in a while” cleanup — removes artifacts + active drafts, keeps processed/
+make clean-runtime
+
+# Lighter: caches, lock file, logs only
+make clean
+
+# Full wipe including processed drafts and Whisper model cache
+make clean-all
+```
+
+See `make help` for all targets. `.env` is never deleted.
+
 ## Running
 
-Run from the **project root** (where `docs/` and `.artifacts/` should live):
+Run from the **project root** (where `docs/` and `.artifacts/` should live).
 
-### Option A: Cron-friendly sync (recommended — no always-on bot)
+### Option A: Twice-daily finite sync (recommended — no always-on bot)
 
-Fetch pending messages every few minutes via cron:
-
-```bash
-# Manual sync
-uv run skills/telegram-bot/scripts/telegram_pipeline.py --once
-
-# Cron example — sync every 2 minutes
-*/2 * * * * cd /path/to/project && uv run skills/telegram-bot/scripts/telegram_pipeline.py --once >> .artifacts/telegram-bot/sync.log 2>&1
-```
-
-Then transcribe on a separate schedule:
+For normal use, run a **finite, idempotent** job a couple of times per day. Each run fetches
+pending updates, transcribes locally, and exits. It is safe to run twice per day: the offset
+file avoids re-ingesting messages, and the queue lock + terminal statuses avoid double work.
 
 ```bash
-# Cron example — transcribe every 5 minutes
-*/5 * * * * cd /path/to/project && python skills/audio-transcription/scripts/process_audio_queue.py >> .artifacts/telegram-bot/transcribe.log 2>&1
+# Manual, on-demand (fetch + transcribe locally, capped)
+python skills/telegram-bot/scripts/fetch_requests.py --backend local --max-items 20
+
+# Cron — 09:00 and 17:00 daily, local-only (no cloud spend)
+0 9,17 * * * cd /path/to/project && python skills/telegram-bot/scripts/fetch_requests.py --backend local --max-items 20 >> .artifacts/telegram-bot/fetch.log 2>&1
 ```
 
-### Option B: Always-on polling
+**Avoiding cloud API usage in scheduled mode:** always pass `--backend local` (or set
+`TRANSCRIPTION_BACKEND=local` in `.env`). With `local`, no OpenAI calls are made even if
+`OPENAI_API_KEY` is present. Use `--max-items` / `--max-runtime-seconds` to bound each run.
+
+**Preview before running** (no work, no API calls):
+
+```bash
+python skills/telegram-bot/scripts/fetch_requests.py --dry-run
+python skills/audio-transcription/scripts/process_audio_queue.py --dry-run
+```
+
+You can also split sync and transcription onto separate schedules:
+
+```bash
+# Sync only (no transcription)
+python skills/telegram-bot/scripts/fetch_requests.py --skip-transcribe
+# Transcribe only, local + capped
+python skills/audio-transcription/scripts/process_audio_queue.py --backend local --max-items 20
+```
+
+### Option B: `--watch` (interactive only)
+
+`--watch` re-scans on an interval and **holds the queue lock for the whole session**. Use it
+only for interactive/foreground sessions where you want near-real-time transcription. Do not
+combine it with the cron job above (the cron run would exit with code 3 while watch holds the
+lock). For unattended operation, prefer Option A.
+
+### Option C: Always-on polling
 
 ```bash
 uv run skills/telegram-bot/scripts/telegram_pipeline.py --poll
 ```
 
-Stop with Ctrl+C. For background: `nohup ... &`
+Stop with Ctrl+C. For background: `nohup ... &`. Only needed if you want messages ingested
+the instant they arrive; otherwise Option A is simpler and cheaper.
 
 ## Processing Drafts (AI Agent Instructions)
 

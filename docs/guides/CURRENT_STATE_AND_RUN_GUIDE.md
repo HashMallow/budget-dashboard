@@ -166,7 +166,7 @@ Alireza/
 [x] Jalali (Persian-calendar) month/year grouping and year filters in reports
 [x] Shamsi/Jalali date parsing in Excel import and invoice forms (`1405/01/10`, `۱۴۰۵/۰۱/۱۰`, and Gregorian ISO)
 [x] Overall-spend pie chart (Chart.js doughnut; hidden when a single team is filtered on the main dashboard)
-[x] Sectioned sidebar navigation (Overview / Spend & teams / Reports / Administration / Help at bottom)
+[x] Sectioned sidebar navigation (Overview / Finance / Administration / Help at bottom)
 [x] In-app Help page at `/help/` (mirrors USER_SITEMAP; RTL-friendly navigation paths in FA)
 [x] Invoice `business_section` field (business segments from Excel Business Section) — filter, search, import, export
 [x] Finance overview dashboard layout (primary KPI cards, stat strip, paired budget/trend charts, collapsible team budget table)
@@ -185,10 +185,14 @@ Alireza/
 [x] Server-rendered PDF reports via ReportLab (`/reports/*.pdf`) with Persian/RTL + Vazirmatn when UI is FA
 [x] Contract tracking UI (`/contracts/`) with stages, expiry, and attachments
 [x] Reference-data management UI (`/reference/`) for vendors, categories, sub-teams, requesters (admin)
+[x] Invoice amount breakdown: action cost, 10% VAT, insurance withholding, paid amount (`marketing/invoice_amounts.py`)
+[x] Manual budget CRUD (`/budgets/new/`, edit, delete), budget variance API, `% Consumed` on variance tables
+[x] PDF export wizard (`/exports/pdf/`), inline payment-stage edit, vendor/campaign merge UI
+[x] Team → category cascade API; Editor Excel import permission (`can_import_excel`); contract ceiling on vendor detail
+[x] Dashboard UI polish: planned budget vs actual spend terminology, full-width charts, dark-mode variance colors
 [x] Budget planned-vs-actual variance table and chart on main and team dashboards
 [x] Budget planned-by-month and planned-by-team charts on `/budgets/`
-[x] Workbook-style Excel export that recreates the source workbook's sheets (`/exports/workbook.xlsx`)
-[x] Consolidated Settings menu in the top bar (language, amount format, currency unit, theme)
+[x] Workbook-style Excel export (`/exports/workbook.xlsx`) — familiar sheets, not a byte-for-byte 4-sheet mirror
 [x] Compact/full amount display toggle (e.g. 84.3B vs 84,276,543,010) with exact value on hover
 [x] Rial/Toman currency display toggle (display-only; stored values stay in Rial)
 [x] Light/Dark theme toggle (persisted per session)
@@ -198,10 +202,10 @@ Alireza/
 ### Partially Working
 
 ```text
-[~] Invoice category field is still free text; seeded SpendCategory rows are not yet enforced dropdowns.
+[~] Year-end financial breakdown export — per-invoice and per-vendor tax/insurance totals exist; no dedicated aggregate report yet.
+[~] Excel round-trip export — `/exports/workbook.xlsx` recreates familiar sheets but not the exact 4-sheet source template for Google Sheets sync.
 [~] Budget variance is by month and team; category-level variance from Budget sheet titles is not built yet.
-[~] Campaign CRUD exists in the panel at `/reference/campaigns/` (and links from the campaign report); Django Admin remains a fallback.
-[~] Lookup rows can be managed at `/reference/` or via `make seed-reference`; not every form validates against them yet.
+[~] `business_section` is a CharField (not FK to BusinessLine); form dropdown enforces choices but DB is not relational.
 [~] PDF exports support Persian shaping (Vazirmatn + arabic-reshaper); layout polish can still improve.
 [~] Media uploads use local `media/`; S3 production storage is documented but not provisioned.
 ```
@@ -265,6 +269,9 @@ BudgetLine
 
 Invoice
   Actual spend/invoice record imported from Marketing Spend Input.
+  Amount breakdown: `action_cost_amount`, `tax_amount` (10% VAT default), `insurance_rate_percent`,
+  `insurance_amount`, `paid_amount` (net paid by finance), and `amount` (invoice face total).
+  Logic: `marketing/invoice_amounts.py`.
 
 InvoiceAttachment
   Future invoice image/payment proof file support.
