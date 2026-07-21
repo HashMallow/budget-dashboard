@@ -84,12 +84,17 @@
     <div class="card">
       <div class="card-label">{% t "Planned budget" %}</div>
       <div class="card-value number">{{ budget_total|money }}</div>
-      <div class="card-note">{% t "From budget lines (projection), not actual spend" %}</div>
+      <div class="card-note">
+        {% t "Remaining budget" %}: <span class="number">{{ budget_remaining|money }}</span>
+      </div>
     </div>
     <div class="card">
       <div class="card-label">{% t "Budget deviation" %}</div>
       <div class="card-value number {{ budget_deviation|deviation_class }}">{{ budget_deviation|money }}</div>
-      <div class="card-note">{% t "Positive deviation means overspend vs plan" %}</div>
+      <div class="card-note">
+        {% t "Positive deviation means overspend vs plan" %}
+        {% if budget_consumed_percent is not None %} · <span class="{{ budget_consumed_percent|consumed_class }}">{% t "% Consumed" %}: {{ budget_consumed_percent }}%</span>{% endif %}
+      </div>
     </div>
     <div class="card">
       <div class="card-label">{% t "Invoice count" %}</div>

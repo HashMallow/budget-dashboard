@@ -17,23 +17,13 @@ from ..analytics import (
     monthly_chart_data,
     monthly_spend_window_rows,
     overall_spend_pie,
+    percent_consumed,
     queue_invoices,
     recently_paid_invoices,
     team_budget_variance_rows,
     team_chart_data,
     team_spend_rows,
     vendor_grouped_rows,
-)
-from .core import (
-    distinct_business_sections,
-    distinct_jalali_years,
-    filter_by_jalali_month,
-    filter_by_jalali_year,
-    get_months,
-    get_ui_lang,
-    monthly_trend_window,
-    visible_invoice_queryset,
-    visible_team_queryset,
 )
 from ..cost_buckets import team_spend_cost_buckets
 from ..forms import (
@@ -53,6 +43,17 @@ from ..permissions import (
     get_user_scope,
 )
 from ..table_sort import parse_sort, sort_rows
+from .core import (
+    distinct_business_sections,
+    distinct_jalali_years,
+    filter_by_jalali_month,
+    filter_by_jalali_year,
+    get_months,
+    get_ui_lang,
+    monthly_trend_window,
+    visible_invoice_queryset,
+    visible_team_queryset,
+)
 
 User = get_user_model()
 ZERO = Decimal("0")
@@ -217,6 +218,8 @@ def dashboard(request):
     budget_variance_totals = budget_variance_row_totals(budget_variance_rows)
     budget_total = decimal_sum(budget_lines, "planned_amount")
     budget_deviation = total_spend - budget_total
+    budget_remaining = budget_total - total_spend
+    budget_consumed_percent = percent_consumed(budget_total, total_spend)
     scoped_teams = visible_team_queryset(request)
     if selected_team.isdigit():
         scoped_teams = scoped_teams.filter(pk=int(selected_team))
@@ -278,6 +281,8 @@ def dashboard(request):
         "sms_total": sms_total,
         "budget_total": budget_total,
         "budget_deviation": budget_deviation,
+        "budget_remaining": budget_remaining,
+        "budget_consumed_percent": budget_consumed_percent,
         "contracts_expiring_soon": contracts_expiring_soon,
         "contracts_expired": contracts_expired,
         "monthly_rows": monthly_rows,

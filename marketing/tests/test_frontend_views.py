@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
-from marketing.models import CostBucket, Invoice, PaymentStage
+from marketing.models import BudgetLine, CostBucket, Invoice, PaymentStage
 
 pytestmark = pytest.mark.django_db
 
@@ -39,6 +39,25 @@ def test_dashboard_renders_for_admin(client, frontend_data):
 
     assert response.status_code == 200
     assert "Finance overview" in response.content.decode()
+
+
+def test_dashboard_shows_remaining_budget_and_consumption(client, frontend_data):
+    BudgetLine.objects.create(
+        year=1405,
+        month=1,
+        team=frontend_data["growth"],
+        category="Performance",
+        planned_amount=Decimal("5000.00"),
+    )
+    client.force_login(frontend_data["admin"])
+
+    response = client.get(reverse("marketing:dashboard"))
+
+    assert response.status_code == 200
+    assert response.context["budget_remaining"] == Decimal("2000.00")
+    assert response.context["budget_consumed_percent"] == 60
+    assert "Remaining budget" in response.content.decode()
+    assert "% Consumed: 60%" in response.content.decode()
 
 
 def test_invoice_list_is_scoped_for_team_editor(client, frontend_data):

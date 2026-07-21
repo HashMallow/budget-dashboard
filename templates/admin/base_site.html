@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /*
+   * Qazvini-teal accent override — applied on top of Django admin's stock palette.
+   * Only touches colour variables; layout / functionality untouched.
+   */
+  :root,
+  html[data-theme="light"] {
+    --primary:    #4aab9a;   /* warm teal-green */
+    --secondary:  #2e7d72;   /* deeper forest teal */
+    --accent:     #f0c060;   /* warm amber — keeps the golden highlight */
+
+    --header-bg:              var(--secondary);
+    --header-color:           #e6f7f4;
+    --header-branding-color:  var(--accent);
+
+    --breadcrumbs-bg:         #1f5e56;
+    --breadcrumbs-fg:         #b2ddd7;
+    --breadcrumbs-link-fg:    #fff;
+
+    --link-fg:                #2e7d72;
+    --link-hover-color:       #1a4d48;
+    --link-selected-fg:       var(--secondary);
+
+    --button-bg:              var(--secondary);
+    --button-hover-bg:        #1f5e56;
+    --default-button-bg:      #1f5e56;
+    --default-button-hover-bg: var(--secondary);
+
+    --selected-row:           #d6f0eb;
+    --darkened-bg:            #f2faf8;
+  }
+
+  html[data-theme="dark"] {
+    --primary:    #5ac4b1;
+    --secondary:  #3a9488;
+    --accent:     #f0c060;
+
+    --header-bg:              #1e4f4a;
+    --header-color:           #d4f0eb;
+
+    --breadcrumbs-bg:         #163d39;
+    --breadcrumbs-fg:         #9ed8d0;
+
+    --link-fg:                #5ac4b1;
+    --link-hover-color:       #7dd8cb;
+    --link-selected-fg:       var(--primary);
+
+    --button-bg:              var(--secondary);
+    --button-hover-bg:        #2a7268;
+    --default-button-bg:      #2a7268;
+    --default-button-hover-bg: var(--secondary);
+
+    --selected-row:           #1e4f4a;
+  }
+</style>
+{% endblock %}
